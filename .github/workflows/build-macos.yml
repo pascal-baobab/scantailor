@@ -7,7 +7,6 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
-# Cancel previous run on the same branch when a new push arrives
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,6 +17,11 @@ jobs:
     runs-on: macos-latest        # macOS 14 Sonoma, arm64 (Apple Silicon)
     env:
       CMAKE_BUILD_TYPE: Release
+      # Speed up Homebrew: skip auto-update, dependent checks and cleanup.
+      # The runner's formula database is fresh enough for our packages.
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────
@@ -26,9 +30,7 @@ jobs:
 
       # ── 2. Install dependencies via Homebrew ─────────────────────────────
       - name: Install dependencies
-        run: |
-          brew update
-          brew install qt@5 boost libtiff libjpeg-turbo libpng zlib
+        run: brew install qt@5 boost libtiff libjpeg-turbo libpng zlib
 
       # ── 3. Put Qt5 bin on PATH and set CMAKE_PREFIX_PATH ──────────────────
       # brew --prefix returns the architecture-correct path
@@ -48,11 +50,13 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14"
 
-      # ── 5. Build ──────────────────────────────────────────────────────────
+      # ── 5. Build (also runs macdeployqt via the macos_bundle ALL target) ──
       - name: Build
         run: cmake --build build --parallel
 
       # ── 6. Produce .dmg ───────────────────────────────────────────────────
+      # The 'dmg' target runs macdeployqt -dmg and renames the output to
+      # ScanTailor-<VERSION>.dmg inside the build directory.
       - name: Package DMG
         run: cmake --build build --target dmg
 

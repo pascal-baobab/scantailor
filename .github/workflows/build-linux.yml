@@ -7,17 +7,14 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
-# Cancel previous run on the same branch when a new push arrives
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-linux:
-    # IMPORTANT: linuxdeployqt requires ubuntu-20.04 — it fails on 22.04+
-    # because it checks the host glibc version and rejects "too new" systems.
-    name: Linux x86_64 (Ubuntu 20.04, Qt5, AppImage)
-    runs-on: ubuntu-20.04
+    name: Linux x86_64 (Ubuntu 22.04, Qt5, AppImage)
+    runs-on: ubuntu-22.04
     env:
       CMAKE_BUILD_TYPE: Release
 
@@ -36,12 +33,11 @@ jobs:
             libboost-dev libboost-test-dev \
             libtiff-dev libjpeg-dev libpng-dev zlib1g-dev \
             libxrender-dev libx11-dev \
-            libfuse2 \
-            patchelf
+            libfuse2 patchelf
 
       # ── 3. Configure ──────────────────────────────────────────────────────
-      # CMAKE_POSITION_INDEPENDENT_CODE=ON is mandatory: Ubuntu Qt5 is built
-      # with -reduce-relocations, requiring all code to use -fPIC.
+      # CMAKE_POSITION_INDEPENDENT_CODE=ON: Ubuntu Qt5 uses -reduce-relocations
+      # and requires all code to be compiled with -fPIC.
       - name: Configure (CMake)
         run: |
           cmake -S . -B build \
@@ -58,49 +54,48 @@ jobs:
       - name: Install into AppDir
         run: DESTDIR="$PWD/AppDir" cmake --install build
 
-      # ── 6. Download linuxdeployqt ─────────────────────────────────────────
-      - name: Download linuxdeployqt
+      # ── 6. Download linuxdeploy + Qt plugin ───────────────────────────────
+      # linuxdeploy is the modern successor to linuxdeployqt and works on
+      # Ubuntu 22.04+. The Qt plugin bundles all required Qt libraries/plugins.
+      - name: Download deployment tools
         run: |
           wget -q \
-            "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" \
-            -O linuxdeployqt
-          chmod +x linuxdeployqt
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" \
+            -O linuxdeploy
+          wget -q \
+            "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage" \
+            -O linuxdeploy-plugin-qt
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
 
       # ── 7. Build AppImage ─────────────────────────────────────────────────
       - name: Build AppImage
+        env:
+          # QMAKE: used by linuxdeploy-plugin-qt to locate the Qt installation
+          QMAKE: /usr/bin/qmake
+          # OUTPUT: final AppImage filename (linuxdeploy respects this env var)
+          OUTPUT: ScanTailor-Linux-x86_64.AppImage
+          # APPIMAGE_EXTRACT_AND_RUN: run AppImage tools without FUSE
+          # (avoids the need for fuse kernel module on the runner)
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
-          # .desktop file in FHS location (read by linuxdeployqt)
+          # .desktop file (required by linuxdeploy)
           mkdir -p AppDir/usr/share/applications
           printf '[Desktop Entry]\nName=ScanTailor\nExec=scantailor\nIcon=scantailor\nType=Application\nCategories=Graphics;\n' \
             > AppDir/usr/share/applications/scantailor.desktop
 
-          # Icon
+          # Icon (256x256 slot — linuxdeploy uses it for the AppImage icon)
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-          cp resources/icons/16x16/scantailor.png \
-            AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || \
-          convert -size 256x256 xc:gray \
+          cp resources/icons/appicon-about.png \
             AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || true
 
-          # appimagetool (called by linuxdeployqt) looks for .desktop and icon
-          # in the AppDir ROOT — copy them there explicitly.
-          cp AppDir/usr/share/applications/scantailor.desktop AppDir/
-          cp AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png AppDir/ 2>/dev/null || true
+          ./linuxdeploy \
+            --appdir AppDir \
+            --desktop-file AppDir/usr/share/applications/scantailor.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png \
+            --plugin qt \
+            --output appimage
 
-          # VERSION env var sets the AppImage filename
-          export VERSION="$(git describe --tags --always --dirty)"
-
-          ./linuxdeployqt AppDir/usr/bin/scantailor \
-            -appimage \
-            -no-strip \
-            -always-overwrite \
-            -qmake=/usr/bin/qmake
-
-      # ── 8. Rename and upload ──────────────────────────────────────────────
-      - name: Rename AppImage
-        run: |
-          find . -maxdepth 1 -name '*.AppImage' ! -name 'linuxdeployqt' \
-            -exec mv {} ScanTailor-Linux-x86_64.AppImage \;
-
+      # ── 8. Upload ─────────────────────────────────────────────────────────
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
