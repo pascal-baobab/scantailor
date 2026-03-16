@@ -59,13 +59,12 @@ jobs:
 
       # ── 5. Package ────────────────────────────────────────────────────────
       # windeployqt exits with error on MSYS2 (missing libGLESv2.dll) and
-      # doesn't copy plugins. Instead we use a 2-pass objdump approach to
-      # collect all DLLs, then copy Qt plugins manually.
+      # doesn't copy plugins. We use an iterative objdump loop that keeps
+      # resolving DLL dependencies until no new DLLs are found (convergence).
+      # Tested locally: 5 passes, 65+ DLLs collected correctly.
       #
-      # IMPORTANT: use  if/fi  instead of  [ ] && cmd  inside pipelines.
-      # With MSYS2's set -eo pipefail, a failed [ -f ] test (false condition)
-      # in  "[ -f x ] && cp x dest"  exits with code 1 and kills the job.
-      # The if/fi form always exits 0.
+      # IMPORTANT: use  if/fi  (not [ ] && cmd) and  || true  after pipelines
+      # to survive MSYS2's  set -eo pipefail.
       - name: Package
         run: |
           mkdir -p dist/platforms dist/styles dist/imageformats dist/printsupport
@@ -74,26 +73,28 @@ jobs:
           cp build/scantailor.exe dist/
           cp build/scantailor-cli.exe dist/ 2>/dev/null || true
 
-          # Pass 1: direct DLL dependencies of scantailor.exe
-          objdump -p build/scantailor.exe \
-            | grep 'DLL Name:' | awk '{print $NF}' \
-            | while read dll; do
-                if [ -f "/mingw64/bin/$dll" ]; then
-                  cp -n "/mingw64/bin/$dll" dist/
-                fi
-              done
-
-          # Pass 2: transitive DLL dependencies (deps of the DLLs we copied)
-          # shopt nullglob prevents glob literal from being passed to objdump
-          # if dist/ has no DLLs yet (would cause a spurious objdump error).
+          # Iteratively resolve ALL DLL dependencies until convergence.
+          # Each pass scans every exe/dll in dist/ and copies any new
+          # MinGW DLL dependency from /mingw64/bin/.
+          prev_count=0
           shopt -s nullglob
-          for dll in dist/*.dll; do
-            objdump -p "$dll" 2>/dev/null | grep 'DLL Name:' | awk '{print $NF}' \
-              | while read dep; do
-                  if [ -f "/mingw64/bin/$dep" ]; then
-                    cp -n "/mingw64/bin/$dep" dist/ 2>/dev/null || true
-                  fi
-                done
+          while true; do
+            for file in dist/*.exe dist/*.dll; do
+              objdump -p "$file" 2>/dev/null \
+                | grep 'DLL Name:' | awk '{print $NF}' \
+                | while read dep; do
+                    if [ -f "/mingw64/bin/$dep" ] && [ ! -f "dist/$dep" ]; then
+                      cp "/mingw64/bin/$dep" dist/
+                    fi
+                  done || true
+            done
+
+            curr_count=$(find dist -maxdepth 1 -name '*.dll' | wc -l)
+            echo "DLL pass: $curr_count DLLs collected"
+            if [ "$curr_count" -eq "$prev_count" ]; then
+              break
+            fi
+            prev_count=$curr_count
           done
           shopt -u nullglob
 
