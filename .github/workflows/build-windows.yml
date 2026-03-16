@@ -63,6 +63,18 @@ jobs:
       - name: Deploy Qt DLLs (windeployqt)
         run: /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
 
+      # ── 5b. Copy MinGW runtime DLLs (windeployqt does NOT copy these) ─────
+      # libwinpthread-1.dll, libgcc_s_seh-1.dll, libstdc++-6.dll are required
+      # at runtime on any Windows machine that doesn't have MinGW installed.
+      - name: Copy MinGW runtime DLLs
+        run: |
+          for dll in \
+            libwinpthread-1.dll \
+            libgcc_s_seh-1.dll \
+            libstdc++-6.dll; do
+            cp /mingw64/bin/$dll build/ 2>/dev/null && echo "Copied $dll" || echo "WARNING: $dll not found"
+          done
+
       # ── 6. Package ZIP (PowerShell — no 7z needed in MSYS2) ───────────────
       - name: Package ZIP
         shell: pwsh
