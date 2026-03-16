@@ -63,17 +63,19 @@ jobs:
       - name: Deploy Qt DLLs (windeployqt)
         run: /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
 
-      # ── 5b. Copy MinGW runtime DLLs (windeployqt does NOT copy these) ─────
-      # libwinpthread-1.dll, libgcc_s_seh-1.dll, libstdc++-6.dll are required
-      # at runtime on any Windows machine that doesn't have MinGW installed.
-      - name: Copy MinGW runtime DLLs
+      # ── 5b. Copy ALL MinGW runtime DLLs that the exe depends on ─────────────
+      # windeployqt only copies Qt DLLs. We use ldd to find every /mingw64/bin
+      # DLL that scantailor.exe (or its Qt DLLs) pulls in at runtime, then copy
+      # them all. This catches libwinpthread-1.dll, libgcc_s_seh-1.dll,
+      # libstdc++-6.dll and any other MinGW runtime dependency automatically.
+      - name: Copy MinGW runtime DLLs (via ldd)
         run: |
-          for dll in \
-            libwinpthread-1.dll \
-            libgcc_s_seh-1.dll \
-            libstdc++-6.dll; do
-            cp /mingw64/bin/$dll build/ 2>/dev/null && echo "Copied $dll" || echo "WARNING: $dll not found"
-          done
+          ldd build/scantailor.exe \
+            | grep -i '/mingw64/bin' \
+            | awk '{print $3}' \
+            | xargs -I{} cp -n {} build/
+          echo "MinGW DLLs in build/:"
+          ls build/*.dll | xargs -n1 basename | grep -iv '^Qt'
 
       # ── 6. Package ZIP (PowerShell — no 7z needed in MSYS2) ───────────────
       - name: Package ZIP
