@@ -38,7 +38,8 @@ jobs:
           cmake -S . -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
-            -DCMAKE_INSTALL_PREFIX=/usr
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
       # ── 4. Build ──────────────────────────────────────────────────────────
       - name: Build
