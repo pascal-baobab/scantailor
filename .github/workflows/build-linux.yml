@@ -1,0 +1,98 @@
+name: Build Linux
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Linux x86_64 (Ubuntu 22.04, Qt5, AppImage)
+    runs-on: ubuntu-22.04
+    env:
+      CMAKE_BUILD_TYPE: Release
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # ── 2. Install dependencies ───────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build \
+            qtbase5-dev qttools5-dev qttools5-dev-tools \
+            libboost-dev libboost-test-dev \
+            libtiff-dev libjpeg-dev libpng-dev zlib1g-dev \
+            libxrender-dev libx11-dev \
+            libfuse2 \
+            patchelf
+
+      # ── 3. Configure ──────────────────────────────────────────────────────
+      - name: Configure (CMake)
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
+            -DCMAKE_INSTALL_PREFIX=/usr
+
+      # ── 4. Build ──────────────────────────────────────────────────────────
+      - name: Build
+        run: cmake --build build --parallel
+
+      # ── 5. Install into AppDir ─────────────────────────────────────────────
+      - name: Install into AppDir
+        run: |
+          DESTDIR="$PWD/AppDir" cmake --install build
+
+      # ── 6. Download linuxdeployqt ─────────────────────────────────────────
+      - name: Download linuxdeployqt
+        run: |
+          wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" \
+            -O linuxdeployqt
+          chmod +x linuxdeployqt
+
+      # ── 7. Build AppImage ─────────────────────────────────────────────────
+      - name: Build AppImage
+        run: |
+          # Create a minimal .desktop file required by linuxdeployqt
+          mkdir -p AppDir/usr/share/applications
+          cat > AppDir/usr/share/applications/scantailor.desktop <<'EOF'
+          [Desktop Entry]
+          Name=ScanTailor
+          Exec=scantailor
+          Icon=scantailor
+          Type=Application
+          Categories=Graphics;
+          EOF
+
+          # Copy icon if available
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp resources/images/icon.png \
+            AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || \
+          cp resources/icons/16x16/scantailor.png \
+            AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || \
+          convert -size 256x256 xc:gray \
+            AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || true
+
+          ./linuxdeployqt AppDir/usr/bin/scantailor \
+            -appimage \
+            -no-strip \
+            -always-overwrite
+
+      # ── 8. Rename and upload ──────────────────────────────────────────────
+      - name: Rename AppImage
+        run: |
+          mv ScanTailor*.AppImage ScanTailor-Linux-x86_64.AppImage || \
+          mv *.AppImage ScanTailor-Linux-x86_64.AppImage
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScanTailor-Linux-x86_64
+          path: ScanTailor-Linux-x86_64.AppImage
+          if-no-files-found: error
