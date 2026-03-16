@@ -72,6 +72,11 @@ jobs:
           convert -size 256x256 xc:gray \
             AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || true
 
+          # appimagetool (called by linuxdeployqt) looks for .desktop in AppDir root
+          cp AppDir/usr/share/applications/scantailor.desktop AppDir/
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png AppDir/ 2>/dev/null || true
+
+          export VERSION="$(git describe --tags --always)"
           ./linuxdeployqt AppDir/usr/bin/scantailor \
             -appimage \
             -no-strip \

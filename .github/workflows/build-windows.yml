@@ -58,19 +58,21 @@ jobs:
         run: |
           /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
 
-      # ── 6. Collect all files into a zip ───────────────────────────────────
+      # ── 6. Collect all files into a zip (PowerShell, no 7z needed) ──────────
       - name: Package ZIP
+        shell: pwsh
         run: |
-          mkdir -p dist
-          cp build/scantailor.exe dist/
-          cp build/scantailor-cli.exe dist/ || true
-          # Copy all DLLs deployed by windeployqt
-          cp build/*.dll dist/ 2>/dev/null || true
-          cp -r build/platforms dist/ 2>/dev/null || true
-          cp -r build/styles   dist/ 2>/dev/null || true
-          cp -r build/imageformats dist/ 2>/dev/null || true
-          cp -r build/translations dist/ 2>/dev/null || true
-          cd dist && 7z a ../ScanTailor-Windows-x64.zip .
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item build\scantailor.exe dist\
+          Copy-Item build\scantailor-cli.exe dist\ -ErrorAction SilentlyContinue
+          Get-ChildItem build\*.dll -ErrorAction SilentlyContinue |
+            Copy-Item -Destination dist\
+          foreach ($d in @('platforms','styles','imageformats','translations')) {
+            if (Test-Path "build\$d") {
+              Copy-Item -Recurse "build\$d" dist\
+            }
+          }
+          Compress-Archive -Path dist\* -DestinationPath ScanTailor-Windows-x64.zip
 
       # ── 7. Upload artifact ────────────────────────────────────────────────
       - name: Upload ZIP
