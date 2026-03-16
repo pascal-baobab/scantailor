@@ -58,33 +58,46 @@ jobs:
         run: cmake --build build --parallel
 
       # ── 5. Package ────────────────────────────────────────────────────────
-      # Non usiamo windeployqt (esce con errore per libGLESv2 in MSYS2 e non
-      # copia i plugin). Usiamo invece objdump per trovare tutte le DLL in
-      # modo ricorsivo, poi copiamo i plugin Qt direttamente da MSYS2.
+      # windeployqt exits with error on MSYS2 (missing libGLESv2.dll) and
+      # doesn't copy plugins. Instead we use a 2-pass objdump approach to
+      # collect all DLLs, then copy Qt plugins manually.
+      #
+      # IMPORTANT: use  if/fi  instead of  [ ] && cmd  inside pipelines.
+      # With MSYS2's set -eo pipefail, a failed [ -f ] test (false condition)
+      # in  "[ -f x ] && cp x dest"  exits with code 1 and kills the job.
+      # The if/fi form always exits 0.
       - name: Package
         run: |
           mkdir -p dist/platforms dist/styles dist/imageformats dist/printsupport
 
-          # Eseguibili
+          # Executables
           cp build/scantailor.exe dist/
           cp build/scantailor-cli.exe dist/ 2>/dev/null || true
 
-          # Pass 1: DLL dirette dell'exe
+          # Pass 1: direct DLL dependencies of scantailor.exe
           objdump -p build/scantailor.exe \
             | grep 'DLL Name:' | awk '{print $NF}' \
             | while read dll; do
-                [ -f "/mingw64/bin/$dll" ] && cp -n "/mingw64/bin/$dll" dist/
+                if [ -f "/mingw64/bin/$dll" ]; then
+                  cp -n "/mingw64/bin/$dll" dist/
+                fi
               done
 
-          # Pass 2: DLL transitive (dipendenze delle DLL già copiate)
+          # Pass 2: transitive DLL dependencies (deps of the DLLs we copied)
+          # shopt nullglob prevents glob literal from being passed to objdump
+          # if dist/ has no DLLs yet (would cause a spurious objdump error).
+          shopt -s nullglob
           for dll in dist/*.dll; do
             objdump -p "$dll" 2>/dev/null | grep 'DLL Name:' | awk '{print $NF}' \
               | while read dep; do
-                  [ -f "/mingw64/bin/$dep" ] && cp -n "/mingw64/bin/$dep" dist/
+                  if [ -f "/mingw64/bin/$dep" ]; then
+                    cp -n "/mingw64/bin/$dep" dist/ 2>/dev/null || true
+                  fi
                 done
           done
+          shopt -u nullglob
 
-          # Plugin Qt (obbligatori — senza platforms/qwindows.dll Qt non parte)
+          # Qt plugins (mandatory — Qt GUI won't start without platforms/qwindows.dll)
           QT_PLUGINS=/mingw64/share/qt5/plugins
           cp "$QT_PLUGINS/platforms/qwindows.dll"   dist/platforms/
           cp "$QT_PLUGINS/platforms/qminimal.dll"   dist/platforms/ 2>/dev/null || true
@@ -92,12 +105,12 @@ jobs:
           cp "$QT_PLUGINS/styles/"*.dll             dist/styles/      2>/dev/null || true
           cp "$QT_PLUGINS/printsupport/"*.dll       dist/printsupport/ 2>/dev/null || true
 
-          # Riepilogo
+          # Summary
           echo "=== dist/ ==="
           find dist -name '*.dll' -o -name '*.exe' | sort
-          echo "Totale DLL: $(find dist -name '*.dll' | wc -l)"
+          echo "Total DLLs: $(find dist -name '*.dll' | wc -l)"
 
-      # ── 6. ZIP con PowerShell ──────────────────────────────────────────────
+      # ── 6. ZIP with PowerShell ─────────────────────────────────────────────
       - name: Create ZIP
         shell: pwsh
         run: Compress-Archive -Path dist\* -DestinationPath ScanTailor-Windows-x64.zip
