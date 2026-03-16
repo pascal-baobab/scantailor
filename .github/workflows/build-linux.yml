@@ -60,21 +60,13 @@ jobs:
       # ── 7. Build AppImage ─────────────────────────────────────────────────
       - name: Build AppImage
         run: |
-          # Create a minimal .desktop file required by linuxdeployqt
+          # Create .desktop file (printf avoids YAML-indentation issues)
           mkdir -p AppDir/usr/share/applications
-          cat > AppDir/usr/share/applications/scantailor.desktop <<'EOF'
-          [Desktop Entry]
-          Name=ScanTailor
-          Exec=scantailor
-          Icon=scantailor
-          Type=Application
-          Categories=Graphics;
-          EOF
+          printf '[Desktop Entry]\nName=ScanTailor\nExec=scantailor\nIcon=scantailor\nType=Application\nCategories=Graphics;\n' \
+            > AppDir/usr/share/applications/scantailor.desktop
 
-          # Copy icon if available
+          # Copy icon
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-          cp resources/images/icon.png \
-            AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || \
           cp resources/icons/16x16/scantailor.png \
             AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || \
           convert -size 256x256 xc:gray \
@@ -83,7 +75,8 @@ jobs:
           ./linuxdeployqt AppDir/usr/bin/scantailor \
             -appimage \
             -no-strip \
-            -always-overwrite
+            -always-overwrite \
+            -qmake=/usr/bin/qmake
 
       # ── 8. Rename and upload ──────────────────────────────────────────────
       - name: Rename AppImage

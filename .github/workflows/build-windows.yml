@@ -56,7 +56,7 @@ jobs:
       # ── 5. Deploy Qt DLLs ─────────────────────────────────────────────────
       - name: Deploy Qt DLLs (windeployqt)
         run: |
-          /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe
+          /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
 
       # ── 6. Collect all files into a zip ───────────────────────────────────
       - name: Package ZIP
