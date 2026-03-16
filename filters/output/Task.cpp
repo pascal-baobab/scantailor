@@ -153,7 +153,7 @@ Task::process(
 	status.throwIfCancelled();
 
 	Params params(m_ptrSettings->getParams(m_pageId));
-	RenderParams const render_params(params.colorParams());
+	RenderParams const render_params(params.colorParams(), &params.splittingOptions());
 	QString const out_file_path(m_outFileNameGen.filePathFor(m_pageId));
 	QFileInfo const out_file_info(out_file_path);
 
@@ -172,13 +172,22 @@ Task::process(
 	);
 	QFileInfo speckles_file_info(speckles_file_path);
 
+	QString const foreground_dir(Utils::foregroundDir(m_outFileNameGen.outDir()));
+	QString const foreground_file_path(
+		QDir(foreground_dir).absoluteFilePath(out_file_info.fileName())
+	);
+	QString const background_dir(Utils::backgroundDir(m_outFileNameGen.outDir()));
+	QString const background_file_path(
+		QDir(background_dir).absoluteFilePath(out_file_info.fileName())
+	);
+
 	bool const need_picture_editor = render_params.mixedOutput() && !m_batchProcessing;
 	bool const need_speckles_image = params.despeckleLevel() != DESPECKLE_OFF
 		&& params.colorParams().colorMode() != ColorParams::COLOR_GRAYSCALE && !m_batchProcessing;
 	
 	OutputGenerator const generator(
-		params.outputDpi(), params.colorParams(), params.despeckleLevel(),
-		new_xform, content_rect_phys
+		params.outputDpi(), params.colorParams(), params.splittingOptions(),
+		params.despeckleLevel(), new_xform, content_rect_phys
 	);
 	
 	OutputImageParams new_output_image_params(
@@ -254,6 +263,7 @@ Task::process(
 	} while (false);
 	
 	QImage out_img;
+	QImage foreground_img;
 	BinaryImage automask_img;
 	BinaryImage speckles_img;
 	
@@ -289,10 +299,12 @@ Task::process(
 		// different levels without going through the whole output generation process.
 		bool const write_automask = render_params.mixedOutput();
 		bool const write_speckles_file = params.despeckleLevel() != DESPECKLE_OFF &&
-			params.colorParams().colorMode() != ColorParams::COLOR_GRAYSCALE; 
+			params.colorParams().colorMode() != ColorParams::COLOR_GRAYSCALE;
+		bool const write_split = render_params.splitOutput();
 
 		automask_img = BinaryImage();
 		speckles_img = BinaryImage();
+		foreground_img = QImage();
 
 		DistortionModel distortion_model;
 		if (params.dewarpingMode() == DewarpingMode::MANUAL) {
@@ -307,7 +319,8 @@ Task::process(
 			params.depthPerception(),
 			write_automask ? &automask_img : 0,
 			write_speckles_file ? &speckles_img : 0,
-			m_ptrDbg.get()
+			m_ptrDbg.get(),
+			write_split ? &foreground_img : 0
 		);
 
 		if (params.dewarpingMode() == DewarpingMode::AUTO && distortion_model.isValid()) {
@@ -350,6 +363,23 @@ Task::process(
 			if (!QDir().mkpath(speckles_dir)) {
 				invalidate_params = true;
 			} else if (!TiffWriter::writeImage(speckles_file_path, speckles_img.toQImage())) {
+				invalidate_params = true;
+			}
+		}
+
+		if (write_split && !foreground_img.isNull()) {
+			if (!QDir().mkpath(foreground_dir)) {
+				invalidate_params = true;
+			} else if (!TiffWriter::writeImage(foreground_file_path, foreground_img)) {
+				invalidate_params = true;
+			}
+		}
+
+		if (write_split && render_params.originalBackground()) {
+			// Write the processed output as the background layer
+			if (!QDir().mkpath(Utils::backgroundDir(m_outFileNameGen.outDir()))) {
+				invalidate_params = true;
+			} else if (!TiffWriter::writeImage(background_file_path, out_img)) {
 				invalidate_params = true;
 			}
 		}
@@ -483,10 +513,15 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		return;
 	}
 
+	std::auto_ptr<TabbedImageView::TabImageRectMap> tab_image_rect_map(
+		new TabbedImageView::TabImageRectMap()
+	);
+
 	std::auto_ptr<ImageViewBase> image_view(
 		new ImageView(m_outputImage, m_downscaledOutputImage)
 	);
 	QPixmap const downscaled_output_pixmap(image_view->downscaledPixmap());
+	(*tab_image_rect_map)[TAB_OUTPUT] = m_xform.resultingRect();
 
 	std::auto_ptr<ImageViewBase> dewarping_view(
 		new DewarpingView(
@@ -499,6 +534,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		)
 	);
 	QPixmap const downscaled_orig_pixmap(dewarping_view->downscaledPixmap());
+	(*tab_image_rect_map)[TAB_DEWARPING] = m_xform.resultingPreCropArea().boundingRect();
 	QObject::connect(
 		opt_widget, SIGNAL(depthPerceptionChanged(double)),
 		dewarping_view.get(), SLOT(depthPerceptionChanged(double))
@@ -525,6 +561,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 			picture_zone_editor.get(), SIGNAL(invalidateThumbnail(PageId const&)),
 			opt_widget, SIGNAL(invalidateThumbnail(PageId const&))
 		);
+		(*tab_image_rect_map)[TAB_PICTURE_ZONES] = m_xform.resultingPreCropArea().boundingRect();
 	}
 
 	// We make sure we never need to update the original <-> output
@@ -559,6 +596,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		fill_zone_editor.get(), SIGNAL(invalidateThumbnail(PageId const&)),
 		opt_widget, SIGNAL(invalidateThumbnail(PageId const&))
 	);
+	(*tab_image_rect_map)[TAB_FILL_ZONES] = m_xform.resultingRect();
 
 	std::auto_ptr<QWidget> despeckle_view;
 	if (m_params.colorParams().colorMode() == ColorParams::COLOR_GRAYSCALE) {
@@ -575,6 +613,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 			opt_widget, SIGNAL(despeckleLevelChanged(DespeckleLevel, bool*)),
 			despeckle_view.get(), SLOT(despeckleLevelChanged(DespeckleLevel, bool*))
 		);
+		(*tab_image_rect_map)[TAB_DESPECKLING] = m_xform.resultingRect();
 	}
 
 	std::auto_ptr<TabbedImageView> tab_widget(new TabbedImageView);
@@ -586,6 +625,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	tab_widget->addTab(dewarping_view.release(), tr("Dewarping"), TAB_DEWARPING);
 	tab_widget->addTab(despeckle_view.release(), tr("Despeckling"), TAB_DESPECKLING);
 	tab_widget->setCurrentTab(opt_widget->lastTab());
+	tab_widget->setImageRectMap(tab_image_rect_map);
 
 	QObject::connect(
 		tab_widget.get(), SIGNAL(tabChanged(ImageViewTab)),

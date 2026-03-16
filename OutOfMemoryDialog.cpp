@@ -17,7 +17,6 @@
 */
 
 #include "OutOfMemoryDialog.h"
-#include "OutOfMemoryDialog.h.moc"
 #include "ProjectWriter.h"
 #include "RecentProjects.h"
 #include <QFileDialog>

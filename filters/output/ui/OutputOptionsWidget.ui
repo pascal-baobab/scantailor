@@ -98,7 +98,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="modePanel">
+    <widget class="CollapsibleGroupBox" name="modePanel">
      <property name="title">
       <string>Mode</string>
      </property>
@@ -198,6 +198,34 @@
       <item>
        <widget class="QWidget" name="bwOptions" native="true">
         <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QCheckBox" name="bwWhiteMarginsCB">
+           <property name="text">
+            <string>White margins</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="bwEqualizeIlluminationCB">
+           <property name="text">
+            <string>Equalize illumination</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_binarization">
+           <item>
+            <widget class="QLabel" name="binarizationLabel">
+             <property name="text">
+              <string>Binarization:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="thresholdMethodBox"/>
+           </item>
+          </layout>
+         </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_12">
            <item>
@@ -314,6 +342,20 @@
          </item>
         </layout>
        </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_fillcolor">
+        <item>
+         <widget class="QLabel" name="fillColorLabel">
+          <property name="text">
+           <string>Fill color:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="fillColorBox"/>
+        </item>
+       </layout>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -504,7 +546,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="despecklePanel">
+    <widget class="CollapsibleGroupBox" name="despecklePanel">
      <property name="title">
       <string>Despeckling</string>
      </property>
@@ -686,6 +728,233 @@
     </widget>
    </item>
    <item>
+    <widget class="CollapsibleGroupBox" name="colorSegmentationPanel">
+     <property name="title">
+      <string>Color Segmentation</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <layout class="QFormLayout" name="formLayout_seg">
+      <item row="0" column="0">
+       <widget class="QLabel" name="noiseReductionLabel">
+        <property name="text">
+         <string>Noise reduction:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="noiseReductionSB">
+        <property name="minimum">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>7</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="redAdjLabel">
+        <property name="text">
+         <string>Red:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="redAdjSB">
+        <property name="minimum">
+         <number>-255</number>
+        </property>
+        <property name="maximum">
+         <number>255</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="greenAdjLabel">
+        <property name="text">
+         <string>Green:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="greenAdjSB">
+        <property name="minimum">
+         <number>-255</number>
+        </property>
+        <property name="maximum">
+         <number>255</number>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="blueAdjLabel">
+        <property name="text">
+         <string>Blue:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="blueAdjSB">
+        <property name="minimum">
+         <number>-255</number>
+        </property>
+        <property name="maximum">
+         <number>255</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="CollapsibleGroupBox" name="posterizationPanel">
+     <property name="title">
+      <string>Posterization</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <layout class="QFormLayout" name="formLayout_post">
+      <item row="0" column="0">
+       <widget class="QLabel" name="posterizeLevelLabel">
+        <property name="text">
+         <string>Level:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="posterizeLevelSB">
+        <property name="minimum">
+         <number>2</number>
+        </property>
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>4</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QCheckBox" name="posterizeNormalizeCB">
+        <property name="text">
+         <string>Normalize</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QCheckBox" name="posterizeForceBWCB">
+        <property name="text">
+         <string>Force B&amp;W</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="CollapsibleGroupBox" name="splittingPanel">
+     <property name="title">
+      <string>Split Output</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_split">
+      <item>
+       <widget class="QRadioButton" name="bwForegroundRB">
+        <property name="text">
+         <string>B&amp;W foreground</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="colorForegroundRB">
+        <property name="text">
+         <string>Color foreground</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="originalBackgroundCB">
+        <property name="text">
+         <string>Original background</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="exportPanel">
+     <property name="title">
+      <string>Export</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_export">
+      <item>
+       <widget class="QCheckBox" name="autoGeneratePdfCB">
+        <property name="text">
+         <string>Generate PDF on batch run</string>
+        </property>
+        <property name="toolTip">
+         <string>When checked, a PDF will be automatically generated in out/PDF/ after batch processing completes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="exportImagesBtn">
+        <property name="text">
+         <string>Export as Images ...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="exportPdfBtn">
+        <property name="text">
+         <string>Export as PDF ...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="exportBothBtn">
+        <property name="text">
+         <string>Export Both (Images + PDF)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="vectorizePdfBtn">
+        <property name="text">
+         <string>Vectorize PDF (OCR) ...</string>
+        </property>
+        <property name="toolTip">
+         <string>Create a searchable PDF with OCR text overlay (requires Tesseract)</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer_2">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -700,6 +969,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>CollapsibleGroupBox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../../../resources/resources.qrc"/>
  </resources>

@@ -17,10 +17,9 @@
 */
 
 #include "MainWindow.h"
-#include "MainWindow.h.moc"
 #include "NewOpenProjectPanel.h"
 #include "RecentProjects.h"
-#include "WorkerThread.h"
+#include "WorkerThreadPool.h"
 #include "ProjectPages.h"
 #include "PageSequence.h"
 #include "PageSelectionAccessor.h"
@@ -60,10 +59,16 @@
 #include "FixDpiDialog.h"
 #include "LoadFilesStatusDialog.h"
 #include "SettingsDialog.h"
+#include "DefaultParamsDialog.h"
+#include "ImageMetadataLoader.h"
+#include "ImageFileInfo.h"
 #include "AbstractRelinker.h"
 #include "RelinkingDialog.h"
 #include "OutOfMemoryHandler.h"
 #include "OutOfMemoryDialog.h"
+#include "RagExporter.h"
+#include "VectorPdfExporter.h"
+#include "VectorPdfDialog.h"
 #include "QtSignalForwarder.h"
 #include "filters/fix_orientation/Filter.h"
 #include "filters/fix_orientation/Task.h"
@@ -97,6 +102,11 @@
 #include <boost/lambda/bind.hpp>
 #endif
 #include <QApplication>
+#include <QFileInfo>
+#include <QInputDialog>
+#include <QKeySequence>
+#include <QLabel>
+#include <QShortcut>
 #include <QLineF>
 #include <QPointer>
 #include <QWidget>
@@ -107,6 +117,7 @@
 #include <QVBoxLayout>
 #include <QLayoutItem>
 #include <QScrollBar>
+#include <QScrollArea>
 #include <QPushButton>
 #include <QCheckBox>
 #include <QFileInfo>
@@ -118,6 +129,8 @@
 #include <QModelIndex>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QPrinter>
+#include <QPainter>
 #include <QPalette>
 #include <QStyle>
 #include <QSettings>
@@ -158,14 +171,16 @@ private:
 MainWindow::MainWindow()
 :	m_ptrPages(new ProjectPages),
 	m_ptrStages(new StageSequence(m_ptrPages, newPageSelectionAccessor())),
-	m_ptrWorkerThread(new WorkerThread),
+	m_ptrWorkerThreadPool(new WorkerThreadPool),
 	m_ptrInteractiveQueue(new ProcessingTaskQueue(ProcessingTaskQueue::RANDOM_ORDER)),
 	m_ptrOutOfMemoryDialog(new OutOfMemoryDialog),
+	m_ptrStatusLabel(new QLabel),
 	m_curFilter(0),
 	m_ignoreSelectionChanges(0),
 	m_ignorePageOrderingChanges(0),
 	m_debug(false),
-	m_closing(false)
+	m_closing(false),
+	m_autoGeneratePdf(false)
 {
 	m_maxLogicalThumbSize = QSize(250, 160);
 	m_ptrThumbSequence.reset(new ThumbnailSequence(m_maxLogicalThumbSize));
@@ -173,11 +188,10 @@ MainWindow::MainWindow()
 	setupUi(this);
 	sortOptions->setVisible(false);
 
-#if !defined(ENABLE_OPENGL)
-	// Right now the only setting is 3D acceleration, so get rid of
-	// the whole Settings dialog, if it's inaccessible.
-	actionSettings->setVisible(false);
-#endif
+	QMainWindow::statusBar()->addPermanentWidget(m_ptrStatusLabel, 1);
+
+	QShortcut* goToPageShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_G), this);
+	connect(goToPageShortcut, SIGNAL(activated()), this, SLOT(goToPageByNumber()));
 
 	createBatchProcessingWidget();
 	m_ptrProcessingIndicationWidget.reset(new ProcessingIndicationWidget);
@@ -192,7 +206,11 @@ MainWindow::MainWindow()
 	m_debug = actionDebug->isChecked();
 	m_pImageFrameLayout = new QStackedLayout(imageViewFrame);
 	m_pOptionsFrameLayout = new QStackedLayout(filterOptions);
-	
+	m_pOptionsScrollArea = new QScrollArea;
+	m_pOptionsScrollArea->setWidgetResizable(true);
+	m_pOptionsScrollArea->setFrameShape(QFrame::NoFrame);
+	m_pOptionsFrameLayout->addWidget(m_pOptionsScrollArea);
+
 	addAction(actionFirstPage);
 	addAction(actionLastPage);
 	addAction(actionNextPage);
@@ -226,7 +244,7 @@ MainWindow::MainWindow()
 	);
 	
 	connect(
-		m_ptrWorkerThread.get(),
+		m_ptrWorkerThreadPool.get(),
 		SIGNAL(taskResult(BackgroundTaskPtr const&, FilterResultPtr const&)),
 		this, SLOT(filterResult(BackgroundTaskPtr const&, FilterResultPtr const&))
 	);
@@ -272,6 +290,10 @@ MainWindow::MainWindow()
 		actionSettings, SIGNAL(triggered(bool)),
 		this, SLOT(openSettingsDialog())
 	);
+	connect(
+		actionDefaultParams, SIGNAL(triggered(bool)),
+		this, SLOT(openDefaultParamsDialog())
+	);
 	
 	connect(
 		actionNewProject, SIGNAL(triggered(bool)),
@@ -292,6 +314,18 @@ MainWindow::MainWindow()
 	connect(
 		actionCloseProject, SIGNAL(triggered(bool)),
 		this, SLOT(closeProject())
+	);
+	connect(
+		actionExportPdf, SIGNAL(triggered(bool)),
+		this, SLOT(exportPdfTriggered())
+	);
+	connect(
+		actionExportRag, SIGNAL(triggered(bool)),
+		this, SLOT(exportRagTriggered())
+	);
+	connect(
+		actionVectorizePdf, SIGNAL(triggered(bool)),
+		this, SLOT(vectorizePdfTriggered())
 	);
 	connect(
 		actionQuit, SIGNAL(triggered(bool)),
@@ -320,9 +354,11 @@ MainWindow::~MainWindow()
 	if (m_ptrBatchQueue.get()) {
 		m_ptrBatchQueue->cancelAndClear();
 	}
-	m_ptrWorkerThread->shutdown();
+	m_ptrWorkerThreadPool->shutdown();
 	
 	removeWidgetsFromLayout(m_pImageFrameLayout);
+	m_pOptionsScrollArea->takeWidget();
+	m_optionsWidgetCleanup.clear();
 	removeWidgetsFromLayout(m_pOptionsFrameLayout);
 	m_ptrTabbedDebugImages->clear();
 }
@@ -465,7 +501,12 @@ MainWindow::showNewOpenProjectPanel()
 		this, SLOT(openProject(QString const&)),
 		Qt::QueuedConnection
 	);
-	
+	connect(
+		nop, SIGNAL(vectorizePdf()),
+		this, SLOT(vectorizePdfStandalone()),
+		Qt::QueuedConnection
+	);
+
 	layout->addWidget(nop, 1, 1);
 	layout->setColumnStretch(0, 1);
 	layout->setColumnStretch(2, 1);
@@ -698,21 +739,14 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 		return;
 	}
 	
-	if (m_ptrOptionsWidget != widget) {
-		removeWidgetsFromLayout(m_pOptionsFrameLayout);
-	}
-	
-	// Delete the old widget we were owning, if any.
-	m_optionsWidgetCleanup.clear();
-	
-	if (ownership == TRANSFER_OWNERSHIP) {
-		m_optionsWidgetCleanup.add(widget);
-	}
-	
 	if (m_ptrOptionsWidget == widget) {
+		// Same widget — just update ownership.
+		if (ownership == TRANSFER_OWNERSHIP) {
+			m_optionsWidgetCleanup.add(widget);
+		}
 		return;
 	}
-	
+
 	if (m_ptrOptionsWidget) {
 		disconnect(
 			m_ptrOptionsWidget, SIGNAL(reloadRequested()),
@@ -734,9 +768,32 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 			m_ptrOptionsWidget, SIGNAL(goToPage(PageId const&)),
 			this, SLOT(goToPage(PageId const&))
 		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(exportImagesRequested()),
+			this, SLOT(exportImagesTriggered())
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(exportPdfRequested()),
+			this, SLOT(exportPdfTriggered())
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(exportBothRequested()),
+			this, SLOT(exportBothTriggered())
+		);
 	}
-	
-	m_pOptionsFrameLayout->addWidget(widget);
+
+	// Detach old widget from scroll area before deleting it.
+	// takeWidget() reparents it back to us so QScrollArea won't delete it.
+	m_pOptionsScrollArea->takeWidget();
+
+	// Now safe to delete the old widget we were owning.
+	m_optionsWidgetCleanup.clear();
+
+	if (ownership == TRANSFER_OWNERSHIP) {
+		m_optionsWidgetCleanup.add(widget);
+	}
+
+	m_pOptionsScrollArea->setWidget(widget);
 	m_ptrOptionsWidget = widget;
 	
 	// We use an asynchronous connection here, because the slot
@@ -762,6 +819,28 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 	connect(
 		widget, SIGNAL(goToPage(PageId const&)),
 		this, SLOT(goToPage(PageId const&))
+	);
+
+	// Connect export signals if this is the output options widget.
+	connect(
+		widget, SIGNAL(exportImagesRequested()),
+		this, SLOT(exportImagesTriggered())
+	);
+	connect(
+		widget, SIGNAL(exportPdfRequested()),
+		this, SLOT(exportPdfTriggered())
+	);
+	connect(
+		widget, SIGNAL(exportBothRequested()),
+		this, SLOT(exportBothTriggered())
+	);
+	connect(
+		widget, SIGNAL(autoGeneratePdfChanged(bool)),
+		this, SLOT(autoGeneratePdfToggled(bool))
+	);
+	connect(
+		widget, SIGNAL(vectorizePdfRequested()),
+		this, SLOT(vectorizePdfTriggered())
 	);
 }
 
@@ -948,6 +1027,24 @@ MainWindow::goPrevPage()
 }
 
 void
+MainWindow::goToPageByNumber()
+{
+	PageSequence const seq(m_ptrThumbSequence->toPageSequence());
+	size_t const total = seq.numPages();
+	if (total == 0) return;
+
+	bool ok = false;
+	int const n = QInputDialog::getInt(
+		this, tr("Go to Page"),
+		tr("Page number (1 - %1):").arg((int)total),
+		1, 1, (int)total, 1, &ok
+	);
+	if (ok && n >= 1 && (size_t)n <= total) {
+		goToPage(seq.pageAt((size_t)n - 1).id());
+	}
+}
+
+void
 MainWindow::goToPage(PageId const& page_id)
 {
 	focusButton->setChecked(true);
@@ -960,11 +1057,32 @@ MainWindow::goToPage(PageId const& page_id)
 }
 
 void
+MainWindow::updateStatusBar(PageInfo const& page_info)
+{
+	PageSequence const seq(m_ptrThumbSequence->toPageSequence());
+	size_t const total = seq.numPages();
+	size_t pageNo = 0;
+	for (size_t i = 0; i < total; ++i) {
+		if (seq.pageAt(i).id() == page_info.id()) {
+			pageNo = i + 1;
+			break;
+		}
+	}
+	QString const filename(
+		QFileInfo(page_info.imageId().filePath()).fileName()
+	);
+	m_ptrStatusLabel->setText(
+		tr("Page %1 / %2  —  %3").arg(pageNo).arg(total).arg(filename)
+	);
+}
+
+void
 MainWindow::currentPageChanged(
 	PageInfo const& page_info, QRectF const& thumb_rect,
 	ThumbnailSequence::SelectionFlags const flags)
 {
 	m_selectedPage.set(page_info.id(), getCurrentView());
+	updateStatusBar(page_info);
 
 	if ((flags & ThumbnailSequence::SELECTED_BY_USER) || focusButton->isChecked()) {
 		if (!(flags & ThumbnailSequence::AVOID_SCROLLING_TO)) {
@@ -1184,9 +1302,14 @@ MainWindow::startBatchProcessing()
 	filterList->setBatchProcessingInProgress(true);
 	filterList->setEnabled(false);
 
-	BackgroundTaskPtr const task(m_ptrBatchQueue->takeForProcessing());
+	BackgroundTaskPtr task(m_ptrBatchQueue->takeForProcessing());
 	if (task) {
-		m_ptrWorkerThread->performTask(task);
+		do {
+			m_ptrWorkerThreadPool->submitTask(task);
+			if (!m_ptrWorkerThreadPool->hasSpareCapacity()) {
+				break;
+			}
+		} while ((task = m_ptrBatchQueue->takeForProcessing()));
 	} else {
 		stopBatchProcessing();
 	}
@@ -1261,24 +1384,42 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 	
 	if (isBatchProcessingInProgress()) {
 		if (m_ptrBatchQueue->allProcessed()) {
+			bool const wasOutputFilter = isOutputFilter();
 			stopBatchProcessing();
-			
+
 			QApplication::alert(this); // Flash the taskbar entry.
 			if (m_checkBeepWhenFinished()) {
 				QApplication::beep();
 			}
 
+			// Auto-generate PDF after output batch completes.
+			if (wasOutputFilter && m_autoGeneratePdf) {
+				QString const outDir = m_outFileNameGen.outDir();
+				QString const pdfDir = QDir(outDir).filePath("PDF");
+				QDir().mkpath(pdfDir);
+				QString const pdfPath = QDir(pdfDir).filePath("output.pdf");
+				if (doExportPdf(pdfPath)) {
+					QMessageBox::information(this, tr("Export"),
+						tr("Batch complete.\nPDF auto-generated:\n%1").arg(pdfPath));
+				}
+			}
+
 			if (m_selectedPage.get(getCurrentView()) == m_ptrThumbSequence->lastPage().id()) {
-				// If batch processing finished at the last page, jump to the first one.	
+				// If batch processing finished at the last page, jump to the first one.
 				goFirstPage();
 			}
 
 			return;
 		}
 
-		BackgroundTaskPtr const task(m_ptrBatchQueue->takeForProcessing());
+		BackgroundTaskPtr task(m_ptrBatchQueue->takeForProcessing());
 		if (task) {
-			m_ptrWorkerThread->performTask(task);
+			do {
+				m_ptrWorkerThreadPool->submitTask(task);
+				if (!m_ptrWorkerThreadPool->hasSpareCapacity()) {
+					break;
+				}
+			} while ((task = m_ptrBatchQueue->takeForProcessing()));
 		}
 
 		PageInfo const page(m_ptrBatchQueue->selectedPage());
@@ -1397,12 +1538,335 @@ MainWindow::saveProjectAsTriggered()
 }
 
 void
+MainWindow::exportImagesTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const dir = QFileDialog::getExistingDirectory(
+		this, tr("Export Images — Select Directory"),
+		QFileInfo(m_projectFile).absolutePath()
+	);
+	if (dir.isEmpty()) {
+		return;
+	}
+
+	int const exported = doExportImages(dir);
+
+	if (exported == 0) {
+		QMessageBox::warning(this, tr("Export"),
+			tr("No processed output images found.\n"
+			   "Run batch processing first, then export."));
+		return;
+	}
+
+	QMessageBox::information(this, tr("Export"),
+		tr("Exported %1 image(s) to:\n%2").arg(exported).arg(dir));
+}
+
+void
+MainWindow::exportBothTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const dir = QFileDialog::getExistingDirectory(
+		this, tr("Export — Select Directory"),
+		QFileInfo(m_projectFile).absolutePath()
+	);
+	if (dir.isEmpty()) {
+		return;
+	}
+
+	int const imgCount = doExportImages(dir);
+
+	QString const pdfPath = QDir(dir).filePath("output.pdf");
+	bool const pdfOk = doExportPdf(pdfPath);
+
+	if (imgCount == 0 && !pdfOk) {
+		QMessageBox::warning(this, tr("Export"),
+			tr("No processed output images found.\n"
+			   "Run batch processing first, then export."));
+		return;
+	}
+
+	QString msg;
+	if (imgCount > 0) {
+		msg += tr("Exported %1 image(s).\n").arg(imgCount);
+	}
+	if (pdfOk) {
+		msg += tr("PDF saved: %1").arg(pdfPath);
+	}
+	QMessageBox::information(this, tr("Export"), msg);
+}
+
+int
+MainWindow::doExportImages(QString const& dir)
+{
+	PageSequence const pages = m_ptrPages->toPageSequence(PAGE_VIEW);
+	int exported = 0;
+
+	for (size_t i = 0; i < pages.numPages(); ++i) {
+		PageInfo const& info = pages.pageAt(i);
+		QString const srcPath = m_outFileNameGen.filePathFor(info.id());
+		QImage img(srcPath);
+		if (img.isNull()) {
+			continue;
+		}
+
+		QString baseName = QFileInfo(srcPath).completeBaseName();
+		QString dstPath = QDir(dir).filePath(baseName + ".tif");
+
+		if (QFile::exists(dstPath)) {
+			int n = 1;
+			do {
+				dstPath = QDir(dir).filePath(
+					baseName + QString("_%1.tif").arg(n++)
+				);
+			} while (QFile::exists(dstPath));
+		}
+
+		if (img.save(dstPath, "TIFF")) {
+			++exported;
+		}
+	}
+
+	return exported;
+}
+
+bool
+MainWindow::doExportPdf(QString const& path)
+{
+	PageSequence const pages = m_ptrPages->toPageSequence(PAGE_VIEW);
+
+	QPrinter printer(QPrinter::HighResolution);
+	printer.setOutputFormat(QPrinter::PdfFormat);
+	printer.setOutputFileName(path);
+	printer.setResolution(300);
+	printer.setFullPage(true);
+
+	QPainter painter;
+	bool painterStarted = false;
+	int exported = 0;
+
+	for (size_t i = 0; i < pages.numPages(); ++i) {
+		PageInfo const& info = pages.pageAt(i);
+		QString const imgPath = m_outFileNameGen.filePathFor(info.id());
+		QImage img(imgPath);
+		if (img.isNull()) {
+			continue;
+		}
+
+		qreal const w_in = img.width()  / 300.0;
+		qreal const h_in = img.height() / 300.0;
+		printer.setPaperSize(QSizeF(w_in * 25.4, h_in * 25.4), QPrinter::Millimeter);
+
+		if (!painterStarted) {
+			if (!painter.begin(&printer)) {
+				return false;
+			}
+			painterStarted = true;
+		} else {
+			printer.newPage();
+		}
+
+		painter.drawImage(painter.viewport(), img);
+		++exported;
+	}
+
+	if (painterStarted) {
+		painter.end();
+	}
+
+	if (exported == 0) {
+		QFile::remove(path);
+		return false;
+	}
+
+	return true;
+}
+
+void
+MainWindow::exportPdfTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const path = QFileDialog::getSaveFileName(
+		this,
+		tr("Export as PDF"),
+		QFileInfo(m_projectFile).absolutePath(),
+		tr("PDF Files (*.pdf)")
+	);
+	if (path.isEmpty()) {
+		return;
+	}
+
+	if (!doExportPdf(path)) {
+		QMessageBox::warning(this, tr("Export"),
+			tr("No processed output images found.\n"
+			   "Run batch processing first, then export."));
+		return;
+	}
+
+	QMessageBox::information(this, tr("Export"),
+		tr("PDF saved:\n%1").arg(path));
+}
+
+void
+MainWindow::autoGeneratePdfToggled(bool const enabled)
+{
+	m_autoGeneratePdf = enabled;
+}
+
+void
+MainWindow::vectorizePdfTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const outDir = m_outFileNameGen.outDir();
+	VectorPdfDialog* dlg = new VectorPdfDialog(outDir, this);
+	dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+	connect(dlg, &VectorPdfDialog::exportRequested,
+		[this, dlg](QString const& path, QString const& lang,
+		            int jpegQuality, int dpi) {
+			VectorPdfExporter::Options opts;
+			opts.language = lang;
+			opts.dpi = dpi;
+			opts.jpegQuality = jpegQuality;
+
+			int const result = VectorPdfExporter::exportSearchablePdf(
+				m_ptrPages, m_outFileNameGen, path, opts,
+				[dlg](int current, int total) -> bool {
+					dlg->setProgress(current, total);
+					QApplication::processEvents();
+					return false; // don't cancel
+				}
+			);
+			dlg->exportFinished(result);
+		}
+	);
+
+	dlg->show();
+}
+
+void
+MainWindow::vectorizePdfStandalone()
+{
+	// Ask user to select an input PDF or images.
+	QStringList const filters = QStringList()
+		<< tr("PDF Files (*.pdf)")
+		<< tr("Images (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)")
+		<< tr("All Files (*)");
+
+	QStringList const inputFiles = QFileDialog::getOpenFileNames(
+		this,
+		tr("Select PDF or Images to Vectorize"),
+		QDir::homePath(),
+		filters.join(";;")
+	);
+
+	if (inputFiles.isEmpty()) {
+		return;
+	}
+
+	// Determine a default output path: same dir as input, prefixed SCNTLR_.
+	QFileInfo const firstInfo(inputFiles.first());
+	QString const defaultOut = firstInfo.absolutePath()
+		+ "/SCNTLR_" + firstInfo.completeBaseName() + ".pdf";
+
+	VectorPdfDialog* dlg = new VectorPdfDialog(firstInfo.absolutePath(), this);
+	dlg->setAttribute(Qt::WA_DeleteOnClose);
+	dlg->setOutputPath(defaultOut);
+
+	connect(dlg, &VectorPdfDialog::exportRequested,
+		[this, dlg, inputFiles](QString const& path, QString const& lang,
+		                        int jpegQuality, int dpi) {
+			VectorPdfExporter::Options opts;
+			opts.language = lang;
+			opts.dpi = dpi;
+			opts.jpegQuality = jpegQuality;
+
+			int result = 0;
+
+			// Check if input is a single PDF.
+			if (inputFiles.size() == 1
+				&& inputFiles.first().toLower().endsWith(".pdf")) {
+				result = VectorPdfExporter::vectorizePdf(
+					inputFiles.first(), path, opts,
+					[dlg](int current, int total) -> bool {
+						dlg->setProgress(current, total);
+						QApplication::processEvents();
+						return false;
+					}
+				);
+			} else {
+				// Treat as image list.
+				result = VectorPdfExporter::vectorizeImages(
+					inputFiles, path, opts,
+					[dlg](int current, int total) -> bool {
+						dlg->setProgress(current, total);
+						QApplication::processEvents();
+						return false;
+					}
+				);
+			}
+
+			dlg->exportFinished(result);
+		}
+	);
+
+	dlg->show();
+}
+
+void
+MainWindow::exportRagTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const dir = QFileDialog::getExistingDirectory(
+		this,
+		tr("Select RAG Export Directory"),
+		QFileInfo(m_projectFile).absolutePath()
+	);
+	if (dir.isEmpty()) {
+		return;
+	}
+
+	QString const projectName = m_projectFile.isEmpty()
+		? tr("Untitled")
+		: QFileInfo(m_projectFile).completeBaseName();
+
+	QString const err = RagExporter::exportProject(
+		*m_ptrPages,
+		m_outFileNameGen,
+		dir,
+		projectName
+	);
+
+	if (err.isEmpty()) {
+		QMessageBox::information(this, tr("RAG Export"),
+			tr("Export complete.\nOutput directory:\n%1").arg(dir));
+	} else {
+		QMessageBox::critical(this, tr("RAG Export Error"), err);
+	}
+}
+
+void
 MainWindow::newProject()
 {
 	if (!closeProjectInteractive()) {
 		return;
 	}
-	
+
 	// It will delete itself when it's done.
 	ProjectCreationContext* context = new ProjectCreationContext(this);
 	connect(
@@ -1512,6 +1976,15 @@ MainWindow::openSettingsDialog()
 }
 
 void
+MainWindow::openDefaultParamsDialog()
+{
+	DefaultParamsDialog* dialog = new DefaultParamsDialog(this);
+	dialog->setAttribute(Qt::WA_DeleteOnClose);
+	dialog->setWindowModality(Qt::WindowModal);
+	dialog->show();
+}
+
+void
 MainWindow::showAboutDialog()
 {
 	Ui::AboutDialog ui;
@@ -1560,11 +2033,12 @@ MainWindow::removeWidgetsFromLayout(QLayout* layout)
 void
 MainWindow::removeFilterOptionsWidget()
 {
-	removeWidgetsFromLayout(m_pOptionsFrameLayout);
-	
+	// Detach from scroll area first (reparents, prevents double-delete).
+	m_pOptionsScrollArea->takeWidget();
+
 	// Delete the old widget we were owning, if any.
 	m_optionsWidgetCleanup.clear();
-	
+
 	m_ptrOptionsWidget = 0;
 }
 
@@ -1697,7 +2171,7 @@ MainWindow::loadPageInteractive(PageInfo const& page)
 	m_ptrInteractiveQueue->addProcessingTask(
 		page, createCompositeTask(page, m_curFilter, /*batch=*/false, m_debug)
 	);
-	m_ptrWorkerThread->performTask(m_ptrInteractiveQueue->takeForProcessing());
+	m_ptrWorkerThreadPool->submitTask(m_ptrInteractiveQueue->takeForProcessing());
 }
 
 void
@@ -1742,7 +2216,7 @@ MainWindow::closeProjectInteractive()
 	QFileInfo const project_file(m_projectFile);
 	QFileInfo const backup_file(
 		project_file.absoluteDir(),
-		QString::fromAscii("Backup.")+project_file.fileName()
+		QString::fromLatin1("Backup.")+project_file.fileName()
 	);
 	QString const backup_file_path(backup_file.absoluteFilePath());
 	

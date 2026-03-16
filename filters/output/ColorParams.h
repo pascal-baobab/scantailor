@@ -28,12 +28,14 @@ class QDomElement;
 namespace output
 {
 
+enum FillingColor { FILL_BACKGROUND, FILL_WHITE };
+
 class ColorParams
 {
 public:
 	enum ColorMode { BLACK_AND_WHITE, COLOR_GRAYSCALE, MIXED };
 	
-	ColorParams(): m_colorMode(BLACK_AND_WHITE) {}
+	ColorParams(): m_colorMode(BLACK_AND_WHITE), m_fillingColor(FILL_WHITE) {}
 	
 	ColorParams(QDomElement const& el);
 	
@@ -58,6 +60,10 @@ public:
 	void setBlackWhiteOptions(BlackWhiteOptions const& opt) {
 		m_bwOptions = opt;
 	}
+
+	FillingColor fillingColor() const { return m_fillingColor; }
+
+	void setFillingColor(FillingColor color) { m_fillingColor = color; }
 private:
 	static ColorMode parseColorMode(QString const& str);
 	
@@ -66,6 +72,7 @@ private:
 	ColorMode m_colorMode;
 	ColorGrayscaleOptions m_colorGrayscaleOptions;
 	BlackWhiteOptions m_bwOptions;
+	FillingColor m_fillingColor;
 };
 
 } // namespace output

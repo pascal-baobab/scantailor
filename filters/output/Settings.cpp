@@ -210,6 +210,21 @@ Settings::setDespeckleLevel(PageId const& page_id, DespeckleLevel level)
 	}
 }
 
+void
+Settings::setSplittingOptions(PageId const& page_id, SplittingOptions const& splitting_options)
+{
+	QMutexLocker const locker(&m_mutex);
+
+	PerPageParams::iterator const it(m_perPageParams.lower_bound(page_id));
+	if (it == m_perPageParams.end() || m_perPageParams.key_comp()(page_id, it->first)) {
+		Params params;
+		params.setSplittingOptions(splitting_options);
+		m_perPageParams.insert(it, PerPageParams::value_type(page_id, params));
+	} else {
+		it->second.setSplittingOptions(splitting_options);
+	}
+}
+
 std::auto_ptr<OutputParams>
 Settings::getOutputParams(PageId const& page_id) const
 {

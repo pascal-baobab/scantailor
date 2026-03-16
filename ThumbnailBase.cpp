@@ -146,7 +146,7 @@ ThumbnailBase::paint(QPainter* painter,
 	display_rect.setRight(ceil(display_rect.right()));
 		
 	QPixmap temp_pixmap;
-	QString const cache_key(QString::fromAscii("ThumbnailBase::temp_pixmap"));
+	QString const cache_key(QString::fromLatin1("ThumbnailBase::temp_pixmap"));
 	if (!QPixmapCache::find(cache_key, temp_pixmap)
 			|| temp_pixmap.width() < display_rect.width()
 			|| temp_pixmap.height() < display_rect.width()) {
@@ -241,6 +241,22 @@ ThumbnailBase::setImageXform(ImageTransformation const& image_xform)
 	double const y_post_scale = scaled_size.height() / unscaled_size.height();
 	m_postScaleXform.reset();
 	m_postScaleXform.scale(x_post_scale, y_post_scale);
+}
+
+void
+ThumbnailBase::paintDeviant(QPainter& painter)
+{
+	QPen pen(QColor(0xdd, 0x00, 0x00, 0xcc));
+	pen.setWidth(5);
+	pen.setCosmetic(true);
+	painter.setPen(pen);
+
+	QFont font("Serif");
+	font.setWeight(QFont::Bold);
+	font.setPixelSize(static_cast<int>(boundingRect().width() / 2));
+	painter.setFont(font);
+
+	painter.drawText(boundingRect(), Qt::AlignCenter, "*");
 }
 
 void

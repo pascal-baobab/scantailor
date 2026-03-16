@@ -17,6 +17,7 @@
 */
 
 #include "OutputGenerator.h"
+#include "../../BlackOnWhiteEstimator.h"
 #include "ImageTransformation.h"
 #include "FilterData.h"
 #include "TaskStatus.h"
@@ -60,6 +61,8 @@
 #include "imageproc/PolygonRasterizer.h"
 #include "imageproc/ConnectivityMap.h"
 #include "imageproc/InfluenceMap.h"
+#include "imageproc/ColorSegmenter.h"
+#include "imageproc/Posterizer.h"
 #include "config.h"
 #ifndef Q_MOC_RUN
 #include <boost/foreach.hpp>
@@ -74,6 +77,7 @@
 #include <QPointF>
 #include <QPolygonF>
 #include <QPainter>
+#include <QPainterPath>
 #include <QColor>
 #include <QPen>
 #include <QBrush>
@@ -187,6 +191,39 @@ void reserveBlackAndWhite(QImage& img)
 }
 
 /**
+ * In mixed mode with color segmentation: replaces text-area pixels in
+ * \p mixed with the corresponding pixel from \p segmented (where bw_mask is set),
+ * and applies reserveBlackAndWhite to picture-area pixels.
+ */
+template<typename MixedPixel>
+void applySegmentedMixed(
+	QImage& mixed, QImage const& segmented, BinaryImage const& bw_mask)
+{
+	MixedPixel* mixed_line = reinterpret_cast<MixedPixel*>(mixed.bits());
+	int const mixed_stride = mixed.bytesPerLine() / sizeof(MixedPixel);
+	MixedPixel const* seg_line = reinterpret_cast<MixedPixel const*>(segmented.bits());
+	int const seg_stride = segmented.bytesPerLine() / sizeof(MixedPixel);
+	uint32_t const* bw_mask_line = bw_mask.data();
+	int const bw_mask_stride = bw_mask.wordsPerLine();
+	int const width = mixed.width();
+	int const height = mixed.height();
+	uint32_t const msb = uint32_t(1) << 31;
+
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			if (bw_mask_line[x >> 5] & (msb >> (x & 31))) {
+				mixed_line[x] = seg_line[x]; // text area: use segmented color
+			} else {
+				mixed_line[x] = reserveBlackAndWhite<MixedPixel>(mixed_line[x]); // picture area
+			}
+		}
+		mixed_line += mixed_stride;
+		seg_line += seg_stride;
+		bw_mask_line += bw_mask_stride;
+	}
+}
+
+/**
  * Fills areas of \p mixed with pixels from \p bw_content in
  * areas where \p bw_mask is black.  Supported \p mixed image formats
  * are Indexed8 grayscale, RGB32 and ARGB32.
@@ -239,11 +276,13 @@ void combineMixed(
 
 OutputGenerator::OutputGenerator(
 	Dpi const& dpi, ColorParams const& color_params,
+	SplittingOptions const& splitting_options,
 	DespeckleLevel const despeckle_level,
 	ImageTransformation const& xform,
 	QPolygonF const& content_rect_phys)
 :	m_dpi(dpi),
 	m_colorParams(color_params),
+	m_splittingOptions(splitting_options),
 	m_xform(xform),
 	m_outRect(xform.resultingRect().toRect()),
 	m_contentRect(xform.transform().map(content_rect_phys).boundingRect().toRect()),
@@ -264,13 +303,14 @@ OutputGenerator::process(
 	DepthPerception const& depth_perception,
 	imageproc::BinaryImage* auto_picture_mask,
 	imageproc::BinaryImage* speckles_image,
-	DebugImages* const dbg) const
+	DebugImages* const dbg,
+	QImage* foreground_img) const
 {
 	QImage image(
 		processImpl(
 			status, input, picture_zones, fill_zones,
 			dewarping_mode, distortion_model, depth_perception,
-			auto_picture_mask, speckles_image, dbg
+			auto_picture_mask, speckles_image, dbg, foreground_img
 		)
 	);
 	assert(!image.isNull());
@@ -453,9 +493,10 @@ OutputGenerator::processImpl(
 	DepthPerception const& depth_perception,
 	imageproc::BinaryImage* auto_picture_mask,
 	imageproc::BinaryImage* speckles_image,
-	DebugImages* const dbg) const
+	DebugImages* const dbg,
+	QImage* foreground_img) const
 {
-	RenderParams const render_params(m_colorParams);
+	RenderParams const render_params(m_colorParams, &m_splittingOptions);
 
 	if (dewarping_mode == DewarpingMode::AUTO ||
 		(dewarping_mode == DewarpingMode::MANUAL && distortion_model.isValid())) {
@@ -471,7 +512,7 @@ OutputGenerator::processImpl(
 	} else {
 		return processWithoutDewarping(
 			status, input, picture_zones, fill_zones,
-			auto_picture_mask, speckles_image, dbg
+			auto_picture_mask, speckles_image, dbg, foreground_img
 		);
 	}
 }
@@ -486,10 +527,14 @@ OutputGenerator::processAsIs(
 	uint8_t const dominant_gray = reserveBlackAndWhite<uint8_t>(
 		calcDominantBackgroundGrayLevel(input.grayImage())
 	);
-	
+
 	status.throwIfCancelled();
-	
-	QColor const bg_color(dominant_gray, dominant_gray, dominant_gray);
+
+	QColor const bg_color(
+		m_colorParams.fillingColor() == FILL_WHITE
+		? Qt::white
+		: QColor(dominant_gray, dominant_gray, dominant_gray)
+	);
 	
 	QImage out;
 
@@ -500,7 +545,7 @@ OutputGenerator::processAsIs(
 			if (image.isNull()) {
 				throw std::bad_alloc();
 			}
-			image.fill(dominant_gray);
+			image.fill((uint8_t)bg_color.red());
 			return image;
 		}
 
@@ -533,9 +578,10 @@ OutputGenerator::processWithoutDewarping(
 	ZoneSet const& picture_zones, ZoneSet const& fill_zones,
 	imageproc::BinaryImage* auto_picture_mask,
 	imageproc::BinaryImage* speckles_image,
-	DebugImages* dbg) const
+	DebugImages* dbg,
+	QImage* foreground_img) const
 {
-	RenderParams const render_params(m_colorParams);
+	RenderParams const render_params(m_colorParams, &m_splittingOptions);
 	
 	// The whole image minus the part cut off by the split line.
 	QRect const big_margins_rect(
@@ -610,31 +656,38 @@ OutputGenerator::processWithoutDewarping(
 	
 	status.throwIfCancelled();
 	
+	bool const blackOnWhite = BlackOnWhiteEstimator::isBlackOnWhite(
+		input.grayImage(), m_xform, status, dbg
+	);
+
 	if (render_params.binaryOutput() || m_outRect.isEmpty()) {
 		BinaryImage dst(m_outRect.size().expandedTo(QSize(1, 1)), WHITE);
-		
+
 		if (!m_contentRect.isEmpty()) {
 			BinaryImage bw_content(
 				binarize(maybe_smoothed, normalize_illumination_crop_area)
 			);
+			if (!blackOnWhite) {
+				bw_content.invert();
+			}
 			if (dbg) {
 				dbg->add(bw_content, "binarized_and_cropped");
 			}
-			
+
 			status.throwIfCancelled();
-			
+
 			morphologicalSmoothInPlace(bw_content, status);
 			if (dbg) {
 				dbg->add(bw_content, "edges_smoothed");
 			}
 
 			status.throwIfCancelled();
-			
+
 			QRect const src_rect(m_contentRect.translated(-normalize_illumination_rect.topLeft()));
 			QRect const dst_rect(m_contentRect);
 			rasterOp<RopSrc>(dst, dst_rect, bw_content, src_rect.topLeft());
 			bw_content.release(); // Save memory.
-			
+
 			// It's important to keep despeckling the very last operation
 			// affecting the binary part of the output. That's because
 			// we will be reconstructing the input to this despeckling
@@ -644,8 +697,14 @@ OutputGenerator::processWithoutDewarping(
 				speckles_image, m_dpi, status, dbg
 			);
 		}
-		
+
 		applyFillZonesInPlace(dst, fill_zones);
+
+		// For split output in B&W mode, the foreground is the B&W output itself.
+		if (foreground_img && render_params.splitOutput()) {
+			*foreground_img = dst.toQImage();
+		}
+
 		return dst.toQImage();
 	}
 	
@@ -742,25 +801,52 @@ OutputGenerator::processWithoutDewarping(
 			bw_content, small_margins_rect, m_contentRect,
 			m_despeckleLevel, speckles_image, m_dpi, status, dbg
 		);
-		
+
+		// For split output in Mixed mode, capture the B&W foreground layer.
+		if (foreground_img && render_params.splitOutput() && !render_params.colorForeground()) {
+			BinaryImage fg_full(m_outRect.size(), WHITE);
+			if (!m_contentRect.isEmpty()) {
+				QRect const src_rect(m_contentRect.translated(-small_margins_rect.topLeft()));
+				rasterOp<RopSrc>(fg_full, m_contentRect, bw_content, src_rect.topLeft());
+			}
+			*foreground_img = fg_full.toQImage();
+		}
+
 		status.throwIfCancelled();
-		
-		if (maybe_normalized.format() == QImage::Format_Indexed8) {
-			combineMixed<uint8_t>(
-				maybe_normalized, bw_content, bw_mask
+
+		if (render_params.colorSegmentation()) {
+			BlackWhiteOptions::ColorSegmenterOptions const& segOpts =
+				m_colorParams.blackWhiteOptions().getColorSegmenterOptions();
+			imageproc::ColorSegmenter segmenter(
+				m_dpi, segOpts.getNoiseReduction(),
+				segOpts.getRedThresholdAdjustment(),
+				segOpts.getGreenThresholdAdjustment(),
+				segOpts.getBlueThresholdAdjustment()
 			);
+			QImage segmented = segmenter.segment(bw_content, maybe_normalized);
+			status.throwIfCancelled();
+			if (maybe_normalized.format() == QImage::Format_Indexed8) {
+				applySegmentedMixed<uint8_t>(maybe_normalized, segmented, bw_mask);
+			} else {
+				applySegmentedMixed<uint32_t>(maybe_normalized, segmented, bw_mask);
+			}
 		} else {
-			assert(maybe_normalized.format() == QImage::Format_RGB32
-				|| maybe_normalized.format() == QImage::Format_ARGB32);
-			
-			combineMixed<uint32_t>(
-				maybe_normalized, bw_content, bw_mask
-			);
+			if (maybe_normalized.format() == QImage::Format_Indexed8) {
+				combineMixed<uint8_t>(
+					maybe_normalized, bw_content, bw_mask
+				);
+			} else {
+				assert(maybe_normalized.format() == QImage::Format_RGB32
+					|| maybe_normalized.format() == QImage::Format_ARGB32);
+				combineMixed<uint32_t>(
+					maybe_normalized, bw_content, bw_mask
+				);
+			}
 		}
 	}
-	
+
 	status.throwIfCancelled();
-	
+
 	assert(!target_size.isEmpty());
 	QImage dst(target_size, maybe_normalized.format());
 
@@ -785,8 +871,22 @@ OutputGenerator::processWithoutDewarping(
 		QRect const dst_rect(m_contentRect);
 		drawOver(dst, dst_rect, maybe_normalized, src_rect);
 	}
-	
+
 	applyFillZonesInPlace(dst, fill_zones);
+
+	// Posterization for Color/Grayscale mode
+	if (render_params.posterize() && !render_params.needBinarization()) {
+		ColorGrayscaleOptions::PosterizationOptions const& postOpts =
+			m_colorParams.colorGrayscaleOptions().getPosterizationOptions();
+		imageproc::Posterizer posterizer(
+			postOpts.getLevel(),
+			postOpts.isNormalizationEnabled(),
+			postOpts.isForceBlackAndWhite()
+		);
+		dst = posterizer.posterize(dst);
+		status.throwIfCancelled();
+	}
+
 	return dst;
 }
 
@@ -1015,7 +1115,7 @@ OutputGenerator::processWithDewarping(
 	status.throwIfCancelled();
 
 	QColor bg_color(Qt::white);
-	if (!render_params.whiteMargins()) {
+	if (m_colorParams.fillingColor() == FILL_BACKGROUND && !render_params.whiteMargins()) {
 		uint8_t const dominant_gray = reserveBlackAndWhite<uint8_t>(
 			calcDominantBackgroundGrayLevel(input.grayImage())
 		);
@@ -1473,13 +1573,29 @@ OutputGenerator::calcBinarizationThreshold(
 BinaryImage
 OutputGenerator::binarize(QImage const& image, BinaryImage const& mask) const
 {
-	GrayscaleHistogram hist(image, mask);
-	BinaryThreshold const bw_thresh(BinaryThreshold::otsuThreshold(hist));
-	BinaryImage binarized(image, adjustThreshold(bw_thresh));
-	
+	BinarizationMethod const method =
+		m_colorParams.blackWhiteOptions().binarizationMethod();
+
+	BlackWhiteOptions const& bwOpts = m_colorParams.blackWhiteOptions();
+	int const ws = bwOpts.windowSize();
+	QSize const winSize(ws, ws);
+
+	BinaryImage binarized;
+	if (method == SAUVOLA) {
+		binarized = binarizeSauvola(image, winSize);
+	} else if (method == WOLF) {
+		binarized = binarizeWolf(image, winSize,
+			(unsigned char)bwOpts.wolfLowerBound(),
+			(unsigned char)bwOpts.wolfUpperBound());
+	} else {
+		GrayscaleHistogram hist(image, mask);
+		BinaryThreshold const bw_thresh(BinaryThreshold::otsuThreshold(hist));
+		binarized = BinaryImage(image, adjustThreshold(bw_thresh));
+	}
+
 	// Fill masked out areas with white.
 	rasterOp<RopAnd<RopSrc, RopDst> >(binarized, mask);
-	
+
 	return binarized;
 }
 
@@ -1491,8 +1607,20 @@ OutputGenerator::binarize(QImage const& image,
 	path.addPolygon(crop_area);
 	
 	if (path.contains(image.rect()) && !mask) {
-		BinaryThreshold const bw_thresh(BinaryThreshold::otsuThreshold(image));
-		return BinaryImage(image, adjustThreshold(bw_thresh));
+		BlackWhiteOptions const& bwOpts = m_colorParams.blackWhiteOptions();
+		BinarizationMethod const method = bwOpts.binarizationMethod();
+		int const ws = bwOpts.windowSize();
+		QSize const winSize(ws, ws);
+		if (method == SAUVOLA) {
+			return binarizeSauvola(image, winSize);
+		} else if (method == WOLF) {
+			return binarizeWolf(image, winSize,
+				(unsigned char)bwOpts.wolfLowerBound(),
+				(unsigned char)bwOpts.wolfUpperBound());
+		} else {
+			BinaryThreshold const bw_thresh(BinaryThreshold::otsuThreshold(image));
+			return BinaryImage(image, adjustThreshold(bw_thresh));
+		}
 	} else {
 		BinaryImage modified_mask(image.size(), BLACK);
 		PolygonRasterizer::fillExcept(modified_mask, WHITE, crop_area, Qt::WindingFill);

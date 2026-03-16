@@ -17,7 +17,6 @@
 */
 
 #include "Application.h"
-#include "Application.h.moc"
 #include "OutOfMemoryHandler.h"
 #include <new>
 

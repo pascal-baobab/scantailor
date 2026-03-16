@@ -20,7 +20,12 @@
 
 #include <vector>
 #include <iostream>
+#include <algorithm>
 #include <assert.h>
+
+#include <QThreadPool>
+#include <QThread>
+#include <QSettings>
 
 #include "Utils.h"
 #include "ProjectPages.h"
@@ -207,6 +212,25 @@ ConsoleBatch::process()
 		endFilterIdx = ef;
 	}
 
+	// Determine thread count from settings
+	int maxThreads = QThread::idealThreadCount();
+	if (sizeof(void*) <= 4) {
+		maxThreads = std::min(maxThreads, 2);
+	}
+	QSettings settings;
+	int numThreads = settings.value(
+		"settings/batch_processing_threads", maxThreads
+	).toInt();
+	numThreads = std::min(numThreads, maxThreads);
+	numThreads = std::max(numThreads, 1);
+
+	QThreadPool pool;
+	pool.setMaxThreadCount(numThreads);
+
+	if (cli.isVerbose()) {
+		std::cout << "Using " << numThreads << " thread(s) for batch processing\n";
+	}
+
 	for (int j=startFilterIdx; j<=endFilterIdx; j++) {
 		if (cli.isVerbose())
 			std::cout << "Filter: " << (j+1) << "\n";
@@ -216,10 +240,25 @@ ConsoleBatch::process()
 		for (unsigned i=0; i<page_sequence.numPages(); i++) {
 			PageInfo page = page_sequence.pageAt(i);
 			if (cli.isVerbose())
-				std::cout << "\tProcessing: " << page.imageId().filePath().toAscii().constData() << "\n";
+				std::cout << "\tProcessing: " << page.imageId().filePath().toLatin1().constData() << "\n";
 			BackgroundTaskPtr bgTask = createCompositeTask(page, j);
-			(*bgTask)();
+
+			// Use a simple QRunnable wrapper to run tasks in the thread pool
+			class TaskRunner : public QRunnable {
+			public:
+				TaskRunner(BackgroundTaskPtr task) : m_task(task) {
+					setAutoDelete(true);
+				}
+				void run() override { (*m_task)(); }
+			private:
+				BackgroundTaskPtr m_task;
+			};
+
+			pool.start(new TaskRunner(bgTask));
 		}
+
+		// Wait for all pages in this filter stage to complete
+		pool.waitForDone();
 	}
 }
 
@@ -230,6 +269,19 @@ ConsoleBatch::saveProject(QString const project_file)
 	SelectedPage sPage(fpage.id(), IMAGE_VIEW);
 	ProjectWriter writer(m_ptrPages, sPage, m_outFileNameGen);
 	writer.write(project_file, m_ptrStages->filters());
+}
+
+#include "RagExporter.h"
+
+QString
+ConsoleBatch::exportRag(QString const& outputDir, QString const& projectName)
+{
+	return RagExporter::exportProject(
+		*m_ptrPages,
+		m_outFileNameGen,
+		outputDir,
+		projectName
+	);
 }
 
 

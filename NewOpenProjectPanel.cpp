@@ -15,8 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-#include "NewOpenProjectPanel.h.moc"
+#include "NewOpenProjectPanel.h"
 #include "RecentProjects.h"
 #include "Utils.h"
 #ifndef Q_MOC_RUN
@@ -80,6 +79,14 @@ NewOpenProjectPanel::NewOpenProjectPanel(QWidget* parent)
 	connect(
 		openProjectLabel, SIGNAL(linkActivated(QString const&)),
 		this, SIGNAL(openProject())
+	);
+
+	vectorizePdfLabel->setText(
+		Utils::richTextForLink(vectorizePdfLabel->text())
+	);
+	connect(
+		vectorizePdfLabel, SIGNAL(linkActivated(QString const&)),
+		this, SIGNAL(vectorizePdf())
 	);
 }
 

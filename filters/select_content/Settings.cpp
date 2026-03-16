@@ -21,6 +21,7 @@
 #include "RelinkablePath.h"
 #include "AbstractRelinker.h"
 #include <QMutexLocker>
+#include <cmath>
 #ifndef Q_MOC_RUN
 #include <boost/foreach.hpp>
 #endif
@@ -41,6 +42,7 @@ Settings::clear()
 {
 	QMutexLocker locker(&m_mutex);
 	m_pageParams.clear();
+	m_deviationProvider.clear();
 }
 
 void
@@ -57,6 +59,13 @@ Settings::performRelinking(AbstractRelinker const& relinker)
 	}
 
 	m_pageParams.swap(new_params);
+
+	m_deviationProvider.clear();
+	for (PageParams::const_iterator it = m_pageParams.begin();
+	     it != m_pageParams.end(); ++it) {
+		QSizeF const& sz = it->second.contentSizeMM();
+		m_deviationProvider.addOrUpdate(it->first, std::sqrt(sz.width() * sz.width() + sz.height() * sz.height()));
+	}
 }
 
 void
@@ -64,6 +73,8 @@ Settings::setPageParams(PageId const& page_id, Params const& params)
 {
 	QMutexLocker locker(&m_mutex);
 	Utils::mapSetValue(m_pageParams, page_id, params);
+	QSizeF const& sz = params.contentSizeMM();
+	m_deviationProvider.addOrUpdate(page_id, std::sqrt(sz.width() * sz.width() + sz.height() * sz.height()));
 }
 
 void
@@ -71,6 +82,7 @@ Settings::clearPageParams(PageId const& page_id)
 {
 	QMutexLocker locker(&m_mutex);
 	m_pageParams.erase(page_id);
+	m_deviationProvider.remove(page_id);
 }
 
 std::auto_ptr<Params>

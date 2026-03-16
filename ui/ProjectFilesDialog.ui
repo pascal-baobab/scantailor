@@ -34,6 +34,13 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="importPdfBtn">
+        <property name="text">
+         <string>Import PDF ...</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

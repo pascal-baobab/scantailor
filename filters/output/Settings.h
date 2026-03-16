@@ -24,6 +24,7 @@
 #include "PageId.h"
 #include "Dpi.h"
 #include "ColorParams.h"
+#include "SplittingOptions.h"
 #include "OutputParams.h"
 #include "DewarpingMode.h"
 #include "dewarping/DistortionModel.h"
@@ -68,6 +69,8 @@ public:
 	void setDepthPerception(PageId const& page_id, DepthPerception const& depth_perception);
 
 	void setDespeckleLevel(PageId const& page_id, DespeckleLevel level);
+
+	void setSplittingOptions(PageId const& page_id, SplittingOptions const& splitting_options);
 	
 	std::auto_ptr<OutputParams> getOutputParams(PageId const& page_id) const;
 	

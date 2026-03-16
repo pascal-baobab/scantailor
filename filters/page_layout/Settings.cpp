@@ -17,6 +17,7 @@
 */
 
 #include "Settings.h"
+#include "Guide.h"
 #include "PageId.h"
 #include "PageSequence.h"
 #include "Params.h"
@@ -39,6 +40,7 @@
 #include <algorithm>
 #include <functional> // for std::greater<>
 #include <vector>
+#include <cmath>
 #include <stddef.h>
 
 
@@ -115,8 +117,10 @@ class Settings::Impl
 {
 public:
 	Impl();
-	
+
 	~Impl();
+
+	std::vector<Guide>& guides() { return m_guides; }
 	
 	void clear();
 
@@ -156,6 +160,8 @@ public:
 	QSizeF getAggregateHardSizeMM(
 		PageId const& page_id, QSizeF const& hard_size_mm,
 		Alignment const& alignment) const;
+
+	void fillDeviationProvider(DeviationProvider<PageId>& dp) const;
 private:
 	class SequencedTag;
 	class DescWidthTag;
@@ -207,6 +213,7 @@ private:
 	QSizeF const m_invalidSize;
 	Margins const m_defaultHardMarginsMM;
 	Alignment const m_defaultAlignment;
+	std::vector<Guide> m_guides;
 };
 
 
@@ -224,19 +231,24 @@ Settings::~Settings()
 void
 Settings::clear()
 {
-	return m_ptrImpl->clear();
+	m_ptrImpl->clear();
+	m_deviationProvider.clear();
 }
 
 void
 Settings::performRelinking(AbstractRelinker const& relinker)
 {
 	m_ptrImpl->performRelinking(relinker);
+	m_deviationProvider.clear();
+	m_ptrImpl->fillDeviationProvider(m_deviationProvider);
 }
 
 void
 Settings::removePagesMissingFrom(PageSequence const& pages)
 {
 	m_ptrImpl->removePagesMissingFrom(pages);
+	m_deviationProvider.clear();
+	m_ptrImpl->fillDeviationProvider(m_deviationProvider);
 }
 
 bool
@@ -255,7 +267,8 @@ Settings::getPageParams(PageId const& page_id) const
 void
 Settings::setPageParams(PageId const& page_id, Params const& params)
 {
-	return m_ptrImpl->setPageParams(page_id, params);
+	m_ptrImpl->setPageParams(page_id, params);
+	updateDeviationProvider(page_id);
 }
 
 Params
@@ -263,10 +276,12 @@ Settings::updateContentSizeAndGetParams(
 	PageId const& page_id, QSizeF const& content_size_mm,
 	QSizeF* agg_hard_size_before, QSizeF* agg_hard_size_after)
 {
-	return m_ptrImpl->updateContentSizeAndGetParams(
+	Params const result(m_ptrImpl->updateContentSizeAndGetParams(
 		page_id, content_size_mm,
 		agg_hard_size_before, agg_hard_size_after
-	);
+	));
+	updateDeviationProvider(page_id);
+	return result;
 }
 
 Margins
@@ -279,6 +294,7 @@ void
 Settings::setHardMarginsMM(PageId const& page_id, Margins const& margins_mm)
 {
 	m_ptrImpl->setHardMarginsMM(page_id, margins_mm);
+	updateDeviationProvider(page_id);
 }
 
 Alignment
@@ -297,13 +313,16 @@ Settings::AggregateSizeChanged
 Settings::setContentSizeMM(
 	PageId const& page_id, QSizeF const& content_size_mm)
 {
-	return m_ptrImpl->setContentSizeMM(page_id, content_size_mm);
+	AggregateSizeChanged const result = m_ptrImpl->setContentSizeMM(page_id, content_size_mm);
+	updateDeviationProvider(page_id);
+	return result;
 }
 
 void
 Settings::invalidateContentSize(PageId const& page_id)
 {
-	return m_ptrImpl->invalidateContentSize(page_id);
+	m_ptrImpl->invalidateContentSize(page_id);
+	m_deviationProvider.remove(page_id);
 }
 
 QSizeF
@@ -318,6 +337,25 @@ Settings::getAggregateHardSizeMM(
 	Alignment const& alignment) const
 {
 	return m_ptrImpl->getAggregateHardSizeMM(page_id, hard_size_mm, alignment);
+}
+
+std::vector<Guide>&
+Settings::guides()
+{
+	return m_ptrImpl->guides();
+}
+
+void
+Settings::updateDeviationProvider(PageId const& page_id)
+{
+	std::auto_ptr<Params> params = m_ptrImpl->getPageParams(page_id);
+	if (params.get() && params->contentSizeMM().isValid()) {
+		double const w = params->contentSizeMM().width()
+			+ params->hardMarginsMM().left() + params->hardMarginsMM().right();
+		double const h = params->contentSizeMM().height()
+			+ params->hardMarginsMM().top() + params->hardMarginsMM().bottom();
+		m_deviationProvider.addOrUpdate(page_id, std::sqrt(w * w + h * h));
+	}
 }
 
 
@@ -691,6 +729,19 @@ Settings::Impl::getAggregateHardSizeMM(
 	}
 	
 	return QSizeF(width, height);
+}
+
+void
+Settings::Impl::fillDeviationProvider(DeviationProvider<PageId>& dp) const
+{
+	QMutexLocker const locker(&m_mutex);
+	for (Container::const_iterator it = m_items.begin(); it != m_items.end(); ++it) {
+		if (it->contentSizeMM.isValid()) {
+			double const w = it->contentSizeMM.width() + it->hardMarginsMM.left() + it->hardMarginsMM.right();
+			double const h = it->contentSizeMM.height() + it->hardMarginsMM.top() + it->hardMarginsMM.bottom();
+			dp.addOrUpdate(it->pageId, std::sqrt(w * w + h * h));
+		}
+	}
 }
 
 } // namespace page_layout

@@ -66,6 +66,8 @@ public:
 
 	bool hasHelp() const { return contains("help"); }
 	bool hasOutputProject() const { return contains("output-project"); }
+	bool hasExportRag() const { return contains("export-rag"); }
+	QString exportRagDir() const;
 	bool hasLayout() const { return contains("layout"); }
 	bool hasLayoutDirection() const { return contains("layout-direction"); }
 	bool hasStartFilterIdx() const { return contains("start-filter"); }

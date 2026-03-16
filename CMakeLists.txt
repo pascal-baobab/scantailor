@@ -1,8 +1,4 @@
-IF(WIN32)
-	CMAKE_MINIMUM_REQUIRED(VERSION 2.8.4)
-ELSE()
-	CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0)
-ENDIF()
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 
 IF(COMMAND cmake_policy)
 	# Suppress warnings.
@@ -89,7 +85,9 @@ GET_FILENAME_COMPONENT(source_outer_dir "${PROJECT_SOURCE_DIR}/../../../.." ABSO
 GET_FILENAME_COMPONENT(build_outer_dir "${PROJECT_BINARY_DIR}/.." ABSOLUTE)
 
 SET(STAGING_LIBS_DIR "")
-IF(WIN32)
+# On MSYS2/MinGW or any system with Qt5 available, skip the legacy
+# scantailor-deps-build requirement and use system Qt5 libraries.
+IF(WIN32 AND NOT DEFINED ENV{MSYSTEM})
 	FIND_PATH(
 		DEPS_BUILD_DIR build-qt.bat
 		HINTS "${build_outer_dir}/scantailor-deps-build"
@@ -102,40 +100,36 @@ IF(WIN32)
 		)
 	ENDIF()
 	SET(STAGING_LIBS_DIR "${DEPS_BUILD_DIR}/staging/libs")
-	
-	IF (NOT EXISTS "${QT_QMAKE_EXECUTABLE}")
-		FILE(GLOB qt_dirs1 "${build_outer_dir}/qt-win-*-4.[0-9]*")
-		FILE(GLOB qt_dirs2 "${build_outer_dir}/qt-everywhere-*-4.[0-9]*")
-		FILE(GLOB qt_dirs3 "${source_outer_dir}/qt-win-*-4.[0-9]*")
-		FILE(GLOB qt_dirs4 "${source_outer_dir}/qt-everywhere-*-4.[0-9]*")
-		FILE(GLOB qt_dirs5 "C:/Qt/4.*.*")
-		FILE(GLOB qt_dirs6 "C:/Qt/20*/qt")
-		FIND_PROGRAM(
-			QT_QMAKE_EXECUTABLE qmake
-			PATHS dummy_dir ${qt_dirs1} ${qt_dirs2} ${qt_dirs3}
-			${qt_dirs4} ${qt_dirs5} ${qt_dirs6}
-			PATH_SUFFIXES bin
-		)
-	ENDIF()
 ENDIF()
 
-INCLUDE(FindQt4)
-IF(NOT QT4_FOUND)
-	MESSAGE(
-		FATAL_ERROR "Qt4 could not be found. "
-		"If it's installed in a non-standard location, specify the path to qmake in QT_QMAKE_EXECUTABLE. "
-		"You can do it in interactive mode (ccmake instead of cmake) or using -DVAR=VAL syntax."
-	)
-ENDIF(NOT QT4_FOUND)
-GET_FILENAME_COMPONENT(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" PATH)
+# Qt5 support (Qt4 is EOL; use Qt5 when available)
+FIND_PACKAGE(Qt5 REQUIRED COMPONENTS Core Gui Widgets Xml PrintSupport LinguistTools)
+IF(NOT Qt5_FOUND)
+	MESSAGE(FATAL_ERROR "Qt5 could not be found.")
+ENDIF()
+SET(CMAKE_AUTOMOC ON)
+SET(CMAKE_AUTOUIC OFF)
+SET(CMAKE_AUTORCC ON)
+GET_TARGET_PROPERTY(_qmake Qt5::qmake IMPORTED_LOCATION)
+GET_FILENAME_COMPONENT(QT_BIN_DIR "${_qmake}" PATH)
+# Translation tools (Qt5 equivalents of Qt4 variables used in UpdateTranslations.cmake)
+FIND_PROGRAM(QT_LUPDATE_EXECUTABLE lupdate HINTS "${QT_BIN_DIR}")
+FIND_PROGRAM(QT_LRELEASE_EXECUTABLE lrelease HINTS "${QT_BIN_DIR}")
 
+# Compatibility variables so rest of the file still works
+SET(QT_DEFINITIONS "")
+SET(QT_INCLUDES
+	${Qt5Core_INCLUDE_DIRS}
+	${Qt5Gui_INCLUDE_DIRS}
+	${Qt5Widgets_INCLUDE_DIRS}
+	${Qt5Xml_INCLUDE_DIRS}
+)
+SET(QT_QTGUI_LIBRARY   Qt5::Widgets Qt5::PrintSupport)
+SET(QT_QTXML_LIBRARY   Qt5::Xml)
+SET(QT_QTCORE_LIBRARY  Qt5::Core)
 
 INCLUDE(FindOpenGL)
 SET(use_opengl OFF)
-IF(OPENGL_FOUND AND QT_QTOPENGL_FOUND)
-	# Disabled for now due to various problems associated with it.
-	# SET(use_opengl ON)
-ENDIF()
 OPTION(ENABLE_OPENGL "OpenGL may be used for UI acceleration" ${use_opengl})
 
 
@@ -306,8 +300,8 @@ LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
 
 SET(EXTRA_LIBS "")
 
-IF(UNIX)
-	# We need to manually use XRender.
+IF(UNIX AND NOT APPLE)
+	# We need to manually use XRender (Linux/BSD only; macOS uses Cocoa, no XRender).
 	INCLUDE(FindX11)
 	IF(NOT X11_Xrender_FOUND)
 		MESSAGE(
@@ -331,6 +325,13 @@ IF(UNIX)
 			"Could not detect threading flags.\n"
 			"Try specifying them manually in PTHREADS_CFLAGS and PTHREADS_LIBS."
 		)
+	ENDIF(PTHREADS_FOUND)
+ELSEIF(APPLE)
+	# macOS: pthreads are part of the system libc; no XRender needed.
+	FindPthreads()
+	IF(PTHREADS_FOUND)
+		ADD_DEFINITIONS(${PTHREADS_CFLAGS})
+		LINK_LIBRARIES(${PTHREADS_LIBS})
 	ENDIF(PTHREADS_FOUND)
 ELSEIF(MINGW)
 	ADD_DEFINITIONS(-mthreads)
@@ -397,6 +398,68 @@ ELSE(WIN32)
 ENDIF(WIN32)
 SET(TRANSLATIONS_DIR_ABS "${CMAKE_INSTALL_PREFIX}/${TRANSLATIONS_DIR_REL}")
 
+# Poppler option for PDF import (cross-platform: Linux/macOS via pkg-config, Windows via vcpkg)
+OPTION(ENABLE_POPPLER "Enable PDF import via Poppler" OFF)
+IF(ENABLE_POPPLER)
+	FIND_PACKAGE(PkgConfig QUIET)
+	IF(PkgConfig_FOUND)
+		PKG_CHECK_MODULES(POPPLER poppler-qt5)
+		IF(NOT POPPLER_FOUND)
+			PKG_CHECK_MODULES(POPPLER poppler REQUIRED)
+		ENDIF()
+	ELSE()
+		FIND_LIBRARY(POPPLER_LIBRARIES NAMES poppler-qt5 poppler REQUIRED
+			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
+		FIND_PATH(POPPLER_INCLUDE_DIRS poppler-document.h
+			PATH_SUFFIXES poppler/qt5 poppler
+			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
+		IF(NOT POPPLER_LIBRARIES OR NOT POPPLER_INCLUDE_DIRS)
+			MESSAGE(FATAL_ERROR "Poppler not found. Install via vcpkg: vcpkg install poppler:x64-windows")
+		ENDIF()
+		SET(POPPLER_FOUND TRUE)
+		SET(POPPLER_CFLAGS "")
+		SET(POPPLER_LIBRARY_DIRS "")
+	ENDIF()
+	ADD_DEFINITIONS(-DHAVE_POPPLER ${POPPLER_CFLAGS})
+	INCLUDE_DIRECTORIES(${POPPLER_INCLUDE_DIRS})
+	IF(POPPLER_LIBRARY_DIRS)
+		LINK_DIRECTORIES(${POPPLER_LIBRARY_DIRS})
+	ENDIF()
+	SET(EXTRA_LIBS ${EXTRA_LIBS} ${POPPLER_LIBRARIES})
+ENDIF(ENABLE_POPPLER)
+
+# Tesseract OCR option for vectorized PDF export (searchable text overlay)
+OPTION(ENABLE_TESSERACT "Enable OCR via Tesseract for vectorized PDF export" OFF)
+IF(ENABLE_TESSERACT)
+	FIND_PACKAGE(PkgConfig QUIET)
+	IF(PkgConfig_FOUND)
+		PKG_CHECK_MODULES(TESSERACT tesseract)
+		IF(NOT TESSERACT_FOUND)
+			PKG_CHECK_MODULES(TESSERACT tesseract REQUIRED)
+		ENDIF()
+		PKG_CHECK_MODULES(LEPTONICA lept REQUIRED)
+	ELSE()
+		FIND_LIBRARY(TESSERACT_LIBRARIES NAMES tesseract
+			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
+		FIND_PATH(TESSERACT_INCLUDE_DIRS tesseract/baseapi.h
+			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
+		FIND_LIBRARY(LEPTONICA_LIBRARIES NAMES leptonica lept
+			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
+		FIND_PATH(LEPTONICA_INCLUDE_DIRS leptonica/allheaders.h
+			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
+		IF(NOT TESSERACT_LIBRARIES OR NOT TESSERACT_INCLUDE_DIRS)
+			MESSAGE(FATAL_ERROR "Tesseract not found. Install: pacman -S mingw-w64-x86_64-tesseract-ocr")
+		ENDIF()
+		SET(TESSERACT_FOUND TRUE)
+	ENDIF()
+	ADD_DEFINITIONS(-DHAVE_TESSERACT)
+	INCLUDE_DIRECTORIES(${TESSERACT_INCLUDE_DIRS} ${LEPTONICA_INCLUDE_DIRS})
+	IF(TESSERACT_LIBRARY_DIRS)
+		LINK_DIRECTORIES(${TESSERACT_LIBRARY_DIRS} ${LEPTONICA_LIBRARY_DIRS})
+	ENDIF()
+	SET(EXTRA_LIBS ${EXTRA_LIBS} ${TESSERACT_LIBRARIES} ${LEPTONICA_LIBRARIES})
+ENDIF(ENABLE_TESSERACT)
+
 CONFIGURE_FILE(config.h.in ${CMAKE_BINARY_DIR}/config.h @ONLY)
 
 # crash_reporter is included unconditionally to collect translation sources from there.
@@ -416,8 +479,8 @@ FOREACH(ui_file ${common_ui_files})
 ENDFOREACH()
 
 SOURCE_GROUP("UI Files" FILES ${common_ui_files} ${gui_only_ui_files})
-QT4_WRAP_UI(common_ui_sources ${common_ui_files})
-QT4_WRAP_UI(gui_only_ui_sources ${gui_only_ui_files})
+qt5_wrap_ui(common_ui_sources ${common_ui_files})
+qt5_wrap_ui(gui_only_ui_sources ${gui_only_ui_files})
 SET_SOURCE_FILES_PROPERTIES(${common_ui_sources} ${gui_only_ui_files} PROPERTIES GENERATED TRUE)
 ADD_SUBDIRECTORY(ui)
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}") # for ui files
@@ -432,7 +495,9 @@ ADD_SUBDIRECTORY(filters/page_layout)
 ADD_SUBDIRECTORY(filters/output)
 
 SET(resource_sources)
-QT4_ADD_RESOURCES(resource_sources resources/resources.qrc)
+qt5_add_resources(resource_sources resources/resources.qrc)
+qt5_add_resources(resource_sources resources/dark_scheme/dark_scheme.qrc)
+qt5_add_resources(resource_sources resources/light_scheme/light_scheme.qrc)
 SOURCE_GROUP("Generated" FILES ${common_ui_sources} ${gui_only_ui_sources} ${resource_sources})
 SOURCE_GROUP("Resources" FILES resources/resources.qrc resources/icons/COPYING)
 IF(WIN32)
@@ -466,6 +531,7 @@ SET(
 	ImageViewBase.cpp ImageViewBase.h
 	BasicImageView.cpp BasicImageView.h
 	StageListView.cpp StageListView.h
+	SkinnedButton.cpp SkinnedButton.h
 	DebugImageView.cpp DebugImageView.h
 	TabbedDebugImages.cpp TabbedDebugImages.h
 	ThumbnailLoadResult.h
@@ -491,10 +557,17 @@ SET(
 	PngMetadataLoader.cpp PngMetadataLoader.h
 	TiffMetadataLoader.cpp TiffMetadataLoader.h
 	JpegMetadataLoader.cpp JpegMetadataLoader.h
+	PdfMetadataLoader.cpp PdfMetadataLoader.h
 	ImageLoader.cpp ImageLoader.h
 	ErrorWidget.cpp ErrorWidget.h
 	OrthogonalRotation.cpp OrthogonalRotation.h
 	WorkerThread.cpp WorkerThread.h
+	WorkerThreadPool.cpp WorkerThreadPool.h
+	Units.cpp Units.h
+	UnitsConverter.cpp UnitsConverter.h
+	UnitsListener.cpp UnitsListener.h
+	UnitsProvider.cpp UnitsProvider.h
+	BlackOnWhiteEstimator.cpp BlackOnWhiteEstimator.h
 	LoadFileTask.cpp LoadFileTask.h
 	FilterOptionsWidget.cpp FilterOptionsWidget.h
 	TaskStatus.h FilterUiInterface.h
@@ -508,6 +581,20 @@ SET(
 	ThreadPriority.cpp ThreadPriority.h
 	FileNameDisambiguator.cpp FileNameDisambiguator.h
 	OutputFileNameGenerator.cpp OutputFileNameGenerator.h
+	RagExporter.cpp RagExporter.h
+	VectorPdfExporter.cpp VectorPdfExporter.h
+	VectorPdfDialog.cpp VectorPdfDialog.h
+	DefaultParams.cpp DefaultParams.h
+	DefaultParamsProfileManager.cpp DefaultParamsProfileManager.h
+	DefaultParamsProvider.cpp DefaultParamsProvider.h
+	DefaultParamsDialog.cpp DefaultParamsDialog.h
+	ColorScheme.h
+	ColorSchemeManager.cpp ColorSchemeManager.h
+	DarkColorScheme.cpp DarkColorScheme.h
+	LightColorScheme.cpp LightColorScheme.h
+	CollapsibleGroupBox.cpp CollapsibleGroupBox.h
+	DeviationProvider.h
+	OrderByDeviationProvider.cpp OrderByDeviationProvider.h
 	PageRange.cpp PageRange.h
 	SelectedPage.cpp SelectedPage.h
 	Utils.cpp Utils.h
@@ -535,7 +622,6 @@ SET(
 SET(
 	gui_only_sources
 	Application.cpp Application.h
-	SkinnedButton.cpp SkinnedButton.h
 	RelinkablePathVisualization.cpp RelinkablePathVisualization.h
 	RelinkingModel.cpp RelinkingModel.h
 	RelinkingSortingModel.cpp RelinkingSortingModel.h
@@ -562,7 +648,8 @@ SET(
 )
 
 SOURCE_GROUP("Sources" FILES ${common_sources} ${gui_only_sources} ${cli_only_sources})
-QT4_AUTOMOC(${common_sources} ${gui_only_sources} ${cli_only_sources})
+# Qt5: AUTOMOC is set globally above; no manual per-file call needed
+# QT4_AUTOMOC(${common_sources} ${gui_only_sources} ${cli_only_sources})
 
 SOURCE_GROUP("Special Headers" FILES version.h config.h.in)
 
@@ -602,10 +689,34 @@ ENDIF(WIN32)
 
 ADD_LIBRARY(stcore STATIC ${common_sources} ${common_ui_sources})
 
+IF(APPLE)
+	SET(MACOSX_BUNDLE_ICON_FILE ScanTailor.icns)
+	SET(app_icon_macos "${CMAKE_SOURCE_DIR}/packaging/osx/ScanTailor.icns")
+	SET_SOURCE_FILES_PROPERTIES(
+		${app_icon_macos} PROPERTIES
+		MACOSX_PACKAGE_LOCATION "Resources"
+	)
+ENDIF()
+
 ADD_EXECUTABLE(
-	scantailor WIN32 ${gui_only_sources} ${common_ui_sources} ${gui_only_ui_sources}
+	scantailor WIN32 MACOSX_BUNDLE
+	${gui_only_sources} ${common_ui_sources} ${gui_only_ui_sources}
 	${resource_sources} ${win32_resource_file} resources/icons/COPYING
+	$<$<BOOL:${APPLE}>:${app_icon_macos}>
 )
+
+IF(APPLE)
+	SET_TARGET_PROPERTIES(scantailor PROPERTIES
+		MACOSX_BUNDLE TRUE
+		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/packaging/osx/Info.plist.in"
+		MACOSX_BUNDLE_BUNDLE_NAME "ScanTailor"
+		MACOSX_BUNDLE_BUNDLE_VERSION "${VERSION}"
+		MACOSX_BUNDLE_SHORT_VERSION_STRING "${VERSION}"
+		MACOSX_BUNDLE_IDENTIFIER "net.sourceforge.Scantailor"
+		MACOSX_BUNDLE_ICON_FILE "ScanTailor.icns"
+		OUTPUT_NAME "ScanTailor"
+	)
+ENDIF()
 
 ADD_EXECUTABLE(scantailor-cli ${cli_only_sources} ${common_ui_sources})
 
@@ -680,7 +791,7 @@ FOREACH(ts_file ${ts_files})
 		LIST(APPEND FILTERED_TRANSLATION_FILES "${ts_file}")
 	ENDIF("${ts_file}" MATCHES ".*untranslated.ts")
 ENDFOREACH(ts_file)
-QT4_ADD_TRANSLATION(QM_FILES ${FILTERED_TRANSLATION_FILES})
+qt5_add_translation(QM_FILES ${FILTERED_TRANSLATION_FILES})
 ADD_CUSTOM_TARGET(compile_translations ALL DEPENDS ${QM_FILES})
 
 INSTALL(FILES ${QM_FILES} DESTINATION "${TRANSLATIONS_DIR_REL}/")
@@ -768,14 +879,14 @@ IF(WIN32)
 	COPY_TO_BUILD_DIR("${QT_QJPEG_PLUGIN_DEBUG}" SUBDIR imageformats CONFIGURATIONS Debug)
 	
 	IF(MINGW)
-		SET(zlib_dll "${QT_BIN_DIR}/libz.dll")
+		SET(zlib_dll "${QT_BIN_DIR}/zlib1.dll")
 	ELSE()
 		SET(zlib_dll "${QT_BIN_DIR}/zdll.dll")
 	ENDIF()
 	SET(
 		libs_copy_all_confs
-		"${QT_BIN_DIR}/libpng.dll" "${QT_BIN_DIR}/libjpeg.dll"
-		"${QT_BIN_DIR}/libtiff.dll" "${zlib_dll}"
+		"${QT_BIN_DIR}/libpng16-16.dll" "${QT_BIN_DIR}/libjpeg-8.dll"
+		"${QT_BIN_DIR}/libtiff-6.dll" "${zlib_dll}"
 	)
 	COPY_TO_BUILD_DIR(${libs_copy_all_confs})
 	
@@ -783,5 +894,17 @@ IF(WIN32)
 	GENERATE_COPY_TO_BUILD_DIR_TARGET(copy_to_build_dir)
 	
 	# Installer for Windows.  Must go the last.
-	ADD_SUBDIRECTORY(packaging/windows)
+	FIND_PROGRAM(MAKENSIS_EXE makensis)
+	IF(MAKENSIS_EXE)
+		ADD_SUBDIRECTORY(packaging/windows)
+	ENDIF()
 ENDIF(WIN32)
+
+IF(APPLE)
+	# macOS packaging: runs macdeployqt to bundle Qt frameworks.
+	# Requires macdeployqt to be on PATH (provided by Homebrew qt@5 on macOS).
+	FIND_PROGRAM(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${QT_BIN_DIR}")
+	IF(MACDEPLOYQT_EXECUTABLE)
+		ADD_SUBDIRECTORY(packaging/osx)
+	ENDIF()
+ENDIF(APPLE)

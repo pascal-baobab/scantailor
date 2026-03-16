@@ -17,11 +17,13 @@
 */
 
 #include "SettingsDialog.h"
-#include "SettingsDialog.h.moc"
 #include "OpenGLSupport.h"
+#include "UnitsProvider.h"
 #include "config.h"
 #include <QSettings>
 #include <QVariant>
+#include <QMessageBox>
+#include <tiff.h>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
 :	QDialog(parent)
@@ -46,6 +48,54 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 	}
 #endif
 
+	// TIFF B&W compression
+	ui.tiffCompressionBW->addItem(tr("None"), COMPRESSION_NONE);
+	ui.tiffCompressionBW->addItem(tr("LZW"), COMPRESSION_LZW);
+	ui.tiffCompressionBW->addItem(tr("Deflate"), COMPRESSION_DEFLATE);
+	ui.tiffCompressionBW->addItem(tr("CCITT G4"), COMPRESSION_CCITTFAX4);
+	{
+		int bwComp = settings.value("settings/tiff_bw_compression", (int)COMPRESSION_CCITTFAX4).toInt();
+		int idx = ui.tiffCompressionBW->findData(bwComp);
+		if (idx >= 0) ui.tiffCompressionBW->setCurrentIndex(idx);
+	}
+
+	// TIFF color compression
+	ui.tiffCompressionColor->addItem(tr("None"), COMPRESSION_NONE);
+	ui.tiffCompressionColor->addItem(tr("LZW"), COMPRESSION_LZW);
+	ui.tiffCompressionColor->addItem(tr("Deflate"), COMPRESSION_DEFLATE);
+	ui.tiffCompressionColor->addItem(tr("JPEG"), COMPRESSION_JPEG);
+	{
+		int colorComp = settings.value("settings/tiff_color_compression", (int)COMPRESSION_LZW).toInt();
+		int idx = ui.tiffCompressionColor->findData(colorComp);
+		if (idx >= 0) ui.tiffCompressionColor->setCurrentIndex(idx);
+	}
+
+	// Measurement units
+	ui.unitsComboBox->addItem(tr("Pixels"), "px");
+	ui.unitsComboBox->addItem(tr("Millimetres (mm)"), "mm");
+	ui.unitsComboBox->addItem(tr("Centimetres (cm)"), "cm");
+	ui.unitsComboBox->addItem(tr("Inches (in)"), "in");
+	{
+		QString cur = unitsToString(UnitsProvider::getInstance().getUnits());
+		int idx = ui.unitsComboBox->findData(cur);
+		if (idx >= 0) ui.unitsComboBox->setCurrentIndex(idx);
+	}
+
+	// Thumbnail quality
+	ui.thumbnailQualitySB->setValue(
+		settings.value("settings/thumbnail_quality", 200).toInt()
+	);
+
+	// Color scheme
+	ui.colorSchemeBox->addItem(tr("Dark"), "dark");
+	ui.colorSchemeBox->addItem(tr("Light"), "light");
+	ui.colorSchemeBox->addItem(tr("Native"), "native");
+	{
+		QString scheme = settings.value("settings/color_scheme", "native").toString();
+		int idx = ui.colorSchemeBox->findData(scheme);
+		if (idx >= 0) ui.colorSchemeBox->setCurrentIndex(idx);
+	}
+
 	connect(ui.buttonBox, SIGNAL(accepted()), SLOT(commitChanges()));
 }
 
@@ -60,4 +110,19 @@ SettingsDialog::commitChanges()
 #ifdef ENABLE_OPENGL
 	settings.setValue("settings/use_3d_acceleration", ui.use3DAcceleration->isChecked());
 #endif
+	settings.setValue("settings/tiff_bw_compression", ui.tiffCompressionBW->currentData().toInt());
+	settings.setValue("settings/tiff_color_compression", ui.tiffCompressionColor->currentData().toInt());
+	UnitsProvider::getInstance().setUnits(
+		unitsFromString(ui.unitsComboBox->currentData().toString())
+	);
+	settings.setValue("settings/thumbnail_quality", ui.thumbnailQualitySB->value());
+	QString const newScheme = ui.colorSchemeBox->currentData().toString();
+	QString const oldScheme = settings.value("settings/color_scheme", "native").toString();
+	if (newScheme != oldScheme) {
+		settings.setValue("settings/color_scheme", newScheme);
+		QMessageBox::information(
+			this, tr("Color Scheme"),
+			tr("The color scheme change will take effect after restarting the application.")
+		);
+	}
 }

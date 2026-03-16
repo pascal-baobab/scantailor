@@ -21,6 +21,7 @@
 
 #include "RefCountable.h"
 #include "NonCopyable.h"
+#include "DeviationProvider.h"
 #include "PageId.h"
 #include "Params.h"
 #include <QMutex>
@@ -52,11 +53,14 @@ public:
 	std::auto_ptr<Params> getPageParams(PageId const& page_id) const;
 	
 	void setDegress(std::set<PageId> const& pages, Params const& params);
+
+	DeviationProvider<PageId> const& deviationProvider() const { return m_deviationProvider; }
 private:
 	typedef std::map<PageId, Params> PerPageParams;
 	
 	mutable QMutex m_mutex;
 	PerPageParams m_perPageParams;
+	DeviationProvider<PageId> m_deviationProvider;
 };
 
 } // namespace deskew

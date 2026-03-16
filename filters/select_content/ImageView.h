@@ -25,12 +25,15 @@
 #include "DraggablePoint.h"
 #include "DraggableLineSegment.h"
 #include "ObjectDragHandler.h"
+#include "InteractionState.h"
 #include <QRectF>
 #include <QSizeF>
 #include <QString>
 
 class ImageTransformation;
+class InteractionState;
 class QMenu;
+class QMouseEvent;
 
 namespace select_content
 {
@@ -43,63 +46,101 @@ class ImageView :
 public:
 	/**
 	 * \p content_rect is in virtual image coordinates.
+	 * \p page_rect is in virtual image coordinates (may be null).
 	 */
 	ImageView(
 		QImage const& image, QImage const& downscaled_image,
 		ImageTransformation const& xform,
-		QRectF const& content_rect);
-	
+		QRectF const& content_rect,
+		QRectF const& page_rect = QRectF());
+
 	virtual ~ImageView();
 signals:
 	void manualContentRectSet(QRectF const& content_rect);
+
+	void manualPageRectSet(QRectF const& page_rect);
 private slots:
 	void createContentBox();
-	
+
 	void removeContentBox();
+
+	void createPageBox();
+
+	void removePageBox();
 private:
 	enum Edge { LEFT = 1, RIGHT = 2, TOP = 4, BOTTOM = 8 };
 
 	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
 
+	void onMouseDoubleClickEvent(QMouseEvent* event, InteractionState& interaction);
+
+	void onMousePressEvent(QMouseEvent* event, InteractionState& interaction);
+
+	void onMouseMoveEvent(QMouseEvent* event, InteractionState& interaction);
+
+	void onMouseReleaseEvent(QMouseEvent* event, InteractionState& interaction);
+
 	void onContextMenuEvent(QContextMenuEvent* event, InteractionState& interaction);
 
-	QPointF cornerPosition(int edge_mask) const;
+	QPointF contentCornerPosition(int edge_mask) const;
 
-	void cornerMoveRequest(int edge_mask, QPointF const& pos);
+	void contentCornerMoveRequest(int edge_mask, QPointF const& pos);
 
-	QLineF edgePosition(int edge) const;
+	QLineF contentEdgePosition(int edge) const;
 
-	void edgeMoveRequest(int edge, QLineF const& line);
+	void contentEdgeMoveRequest(int edge, QLineF const& line);
 
-	void dragFinished();
+	void contentDragFinished();
+
+	QPointF pageCornerPosition(int edge_mask) const;
+
+	void pageCornerMoveRequest(int edge_mask, QPointF const& pos);
+
+	QLineF pageEdgePosition(int edge) const;
+
+	void pageEdgeMoveRequest(int edge, QLineF const& line);
+
+	void pageDragFinished();
 
 	void forceInsideImage(QRectF& widget_rect, int edge_mask) const;
-	
-	DraggablePoint m_corners[4];
-	ObjectDragHandler m_cornerHandlers[4];
 
-	DraggableLineSegment m_edges[4];
-	ObjectDragHandler m_edgeHandlers[4];
+	void forceInsidePageRect(QRectF& widget_rect, int edge_mask) const;
+
+	DraggablePoint m_contentCorners[4];
+	ObjectDragHandler m_contentCornerHandlers[4];
+
+	DraggableLineSegment m_contentEdges[4];
+	ObjectDragHandler m_contentEdgeHandlers[4];
+
+	DraggablePoint m_pageCorners[4];
+	ObjectDragHandler m_pageCornerHandlers[4];
+
+	DraggableLineSegment m_pageEdges[4];
+	ObjectDragHandler m_pageEdgeHandlers[4];
 
 	DragHandler m_dragHandler;
 	ZoomHandler m_zoomHandler;
-	
-	/**
-	 * The context menu to be shown if there is no content box.
-	 */
+
 	QMenu* m_pNoContentMenu;
-	
-	/**
-	 * The context menu to be shown if there exists a content box.
-	 */
 	QMenu* m_pHaveContentMenu;
-	
+
 	/**
 	 * Content box in virtual image coordinates.
 	 */
 	QRectF m_contentRect;
 
+	/**
+	 * Page box in virtual image coordinates (null if page detection is off).
+	 */
+	QRectF m_pageRect;
+
 	QSizeF m_minBoxSize;
+
+	enum BoxDragTarget { DRAG_NONE, DRAG_CONTENT, DRAG_PAGE };
+	BoxDragTarget m_boxDragTarget;
+	QPointF m_boxDragStartPos;
+	QRectF m_boxDragStartRect;
+	InteractionState::Captor m_boxDragCaptor;
 };
 
 } // namespace select_content

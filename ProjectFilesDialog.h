@@ -48,7 +48,9 @@ private slots:
 	static QString sanitizePath(QString const& path);
 	
 	void inpDirBrowse();
-	
+
+	void importPdfBrowse();
+
 	void outDirBrowse();
 	
 	void inpDirEdited(QString const& text);

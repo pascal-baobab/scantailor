@@ -17,7 +17,6 @@
 */
 
 #include "ChangeDpiDialog.h"
-#include "ChangeDpiDialog.h.moc"
 #include "PageSelectionAccessor.h"
 #include "Dpi.h"
 #include <QButtonGroup>

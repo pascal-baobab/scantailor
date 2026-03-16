@@ -1,6 +1,7 @@
 /*
     Scan Tailor - Interactive post-processing tool for scanned pages.
     Copyright (C) Joseph Artsimovich <joseph.artsimovich@gmail.com>
+    Copyright (C) 2019 4lex4 <4lex49@zoho.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,19 +31,18 @@ public:
 private slots:
 	void sliderPressed();
 
-	void sliderMoved(int prio);
+	void sliderMoved(int threads);
 
-	void valueChanged(int prio);
+	void valueChanged(int threads);
 
-	void decreasePriority();
+	void decreaseLoad();
 
-	void increasePriority();
+	void increaseLoad();
 private:
-	void showHideToolTip(int prio);
-
-	static QString tooltipText(int prio);
+	void showHideToolTip(int threads);
 
 	Ui::SystemLoadWidget ui;
+	int m_maxThreads;
 };
 
 #endif

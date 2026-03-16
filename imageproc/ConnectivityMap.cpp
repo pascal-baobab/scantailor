@@ -572,4 +572,110 @@ ConnectivityMap::remapIds(std::vector<uint32_t> const& map)
 	}
 }
 
+void
+ConnectivityMap::addComponents(BinaryImage const& image, Connectivity const conn)
+{
+	if (m_size != image.size()) {
+		throw std::invalid_argument("ConnectivityMap::addComponents: sizes don't match");
+	}
+	if (m_size.isEmpty()) {
+		return;
+	}
+	addComponents(ConnectivityMap(image, conn));
+}
+
+void
+ConnectivityMap::addComponents(ConnectivityMap const& other)
+{
+	if (m_size != other.m_size) {
+		throw std::invalid_argument("ConnectivityMap::addComponents: sizes don't match");
+	}
+	if (m_size.isEmpty()) {
+		return;
+	}
+
+	const int width = m_size.width();
+	const int height = m_size.height();
+
+	uint32_t* dstLine = m_pData;
+	const int dstStride = m_stride;
+
+	const uint32_t* srcLine = other.m_pData;
+	const int srcStride = other.m_stride;
+
+	uint32_t newMaxLabel = m_maxLabel;
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			const uint32_t srcLabel = srcLine[x];
+			if (srcLabel == 0) {
+				continue;
+			}
+			const uint32_t dstLabel = m_maxLabel + srcLabel;
+			if (dstLabel > newMaxLabel) {
+				newMaxLabel = dstLabel;
+			}
+			dstLine[x] = dstLabel;
+		}
+		srcLine += srcStride;
+		dstLine += dstStride;
+	}
+	m_maxLabel = newMaxLabel;
+}
+
+void
+ConnectivityMap::removeComponents(std::unordered_set<uint32_t> const& labelsSet)
+{
+	if (m_size.isEmpty() || labelsSet.empty()) {
+		return;
+	}
+
+	std::vector<uint32_t> map(m_maxLabel, 0);
+	uint32_t nextLabel = 1;
+	for (uint32_t i = 0; i < m_maxLabel; ++i) {
+		if (labelsSet.find(i + 1) == labelsSet.end()) {
+			map[i] = nextLabel;
+			++nextLabel;
+		}
+	}
+
+	for (uint32_t& label : m_data) {
+		if (label != 0 && label != BACKGROUND) {
+			label = map[label - 1];
+		}
+	}
+
+	m_maxLabel = nextLabel - 1;
+}
+
+BinaryImage
+ConnectivityMap::getBinaryMask() const
+{
+	if (m_size.isEmpty()) {
+		return BinaryImage();
+	}
+
+	BinaryImage dst(m_size, WHITE);
+
+	const int width = m_size.width();
+	const int height = m_size.height();
+
+	uint32_t* dstLine = dst.data();
+	const int dstStride = dst.wordsPerLine();
+
+	const uint32_t* srcLine = m_pData;
+	const int srcStride = m_stride;
+
+	const uint32_t msb = uint32_t(1) << 31;
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			if (srcLine[x] != 0) {
+				dstLine[x >> 5] |= (msb >> (x & 31));
+			}
+		}
+		srcLine += srcStride;
+		dstLine += dstStride;
+	}
+	return dst;
+}
+
 } // namespace imageproc

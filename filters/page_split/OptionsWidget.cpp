@@ -17,7 +17,6 @@
 */
 
 #include "OptionsWidget.h"
-#include "OptionsWidget.h.moc"
 #include "Filter.h"
 #include "SplitModeDialog.h"
 #include "Settings.h"
@@ -26,6 +25,7 @@
 #include "PageId.h"
 #include "ProjectPages.h"
 #include "ScopedIncDec.h"
+#include <QButtonGroup>
 #include <QPixmap>
 #ifndef Q_MOC_RUN
 #include <boost/foreach.hpp>

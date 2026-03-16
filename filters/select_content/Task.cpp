@@ -101,8 +101,10 @@ Task::process(TaskStatus const& status, FilterData const& data)
 
 	if (params.get()) {
 		ui_data.setContentRect(params->contentRect());
+		ui_data.setPageRect(params->pageRect());
 		ui_data.setDependencies(deps);
 		ui_data.setMode(params->mode());
+		ui_data.setPageDetectMode(params->pageDetectMode());
 
 		if (!params->dependencies().matches(deps)) {
 			QRectF content_rect = ui_data.contentRect();
@@ -111,13 +113,19 @@ Task::process(TaskStatus const& status, FilterData const& data)
 
 			content_rect.translate(new_center - old_center);
 			ui_data.setContentRect(content_rect);
+
+			QRectF page_rect = ui_data.pageRect();
+			if (!page_rect.isNull()) {
+				page_rect.translate(new_center - old_center);
+				ui_data.setPageRect(page_rect);
+			}
 		}
 
 		if ((params->contentSizeMM().isEmpty() && !params->contentRect().isEmpty()) || !params->dependencies().matches(deps)) {
-			// Backwards compatibility: put the missing data where it belongs.
 			Params const new_params(
 				ui_data.contentRect(), ui_data.contentSizeMM(),
-				deps, params->mode()
+				deps, params->mode(),
+				ui_data.pageRect(), params->pageDetectMode()
 			);
 			m_ptrSettings->setPageParams(m_pageId, new_params);
 		}
@@ -132,7 +140,8 @@ Task::process(TaskStatus const& status, FilterData const& data)
 		ui_data.setMode(MODE_AUTO);
 
 		Params const new_params(
-			ui_data.contentRect(), ui_data.contentSizeMM(), deps, MODE_AUTO
+			ui_data.contentRect(), ui_data.contentSizeMM(), deps, MODE_AUTO,
+			QRectF(), MODE_DISABLED
 		);
 		m_ptrSettings->setPageParams(m_pageId, new_params);
 	}
@@ -190,13 +199,17 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	
 	ImageView* view = new ImageView(
 		m_image, m_downscaledImage,
-		m_xform, m_uiData.contentRect()
+		m_xform, m_uiData.contentRect(), m_uiData.pageRect()
 	);
 	ui->setImageWidget(view, ui->TRANSFER_OWNERSHIP, m_ptrDbg.get());
-	
+
 	QObject::connect(
 		view, SIGNAL(manualContentRectSet(QRectF const&)),
 		opt_widget, SLOT(manualContentRectSet(QRectF const&))
+	);
+	QObject::connect(
+		view, SIGNAL(manualPageRectSet(QRectF const&)),
+		opt_widget, SLOT(manualPageRectSet(QRectF const&))
 	);
 }
 

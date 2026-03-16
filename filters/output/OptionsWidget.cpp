@@ -17,7 +17,7 @@
 */
 
 #include "OptionsWidget.h"
-#include "OptionsWidget.h.moc"
+#include "BlackWhiteOptions.h"
 #include "ChangeDpiDialog.h"
 #include "ChangeDewarpingDialog.h"
 #include "ApplyColorsDialog.h"
@@ -44,6 +44,8 @@
 #include <QSize>
 #include <Qt>
 #include <QDebug>
+#include <QSpinBox>
+#include <QHBoxLayout>
 
 namespace output
 {
@@ -65,6 +67,49 @@ OptionsWidget::OptionsWidget(
 	colorModeSelector->addItem(tr("Black and White"), ColorParams::BLACK_AND_WHITE);
 	colorModeSelector->addItem(tr("Color / Grayscale"), ColorParams::COLOR_GRAYSCALE);
 	colorModeSelector->addItem(tr("Mixed"), ColorParams::MIXED);
+
+	thresholdMethodBox->addItem(tr("Otsu"), OTSU);
+	thresholdMethodBox->addItem(tr("Sauvola"), SAUVOLA);
+	thresholdMethodBox->addItem(tr("Wolf"), WOLF);
+
+	// Window size spinbox for Sauvola/Wolf binarization
+	m_windowSizeLabel = new QLabel(tr("Window size:"), this);
+	m_windowSizeSB = new QSpinBox(this);
+	m_windowSizeSB->setRange(3, 999);
+	m_windowSizeSB->setSingleStep(2);
+	m_windowSizeSB->setValue(51);
+	QHBoxLayout* windowSizeLayout = new QHBoxLayout();
+	windowSizeLayout->addWidget(m_windowSizeLabel);
+	windowSizeLayout->addWidget(m_windowSizeSB);
+	// Insert after the binarization method row
+	QLayout* parentLayout = thresholdMethodBox->parentWidget()->layout();
+	if (QBoxLayout* box = qobject_cast<QBoxLayout*>(parentLayout)) {
+		// Find the binarization layout and insert after it
+		int idx = -1;
+		for (int i = 0; i < box->count(); ++i) {
+			QLayoutItem* item = box->itemAt(i);
+			if (item->layout()) {
+				// Check if this layout contains thresholdMethodBox
+				for (int j = 0; j < item->layout()->count(); ++j) {
+					if (item->layout()->itemAt(j)->widget() == thresholdMethodBox) {
+						idx = i;
+						break;
+					}
+				}
+			}
+			if (idx >= 0) break;
+		}
+		if (idx >= 0) {
+			box->insertLayout(idx + 1, windowSizeLayout);
+		} else {
+			box->addLayout(windowSizeLayout);
+		}
+	}
+	m_windowSizeLabel->setVisible(false);
+	m_windowSizeSB->setVisible(false);
+
+	fillColorBox->addItem(tr("White"), FILL_WHITE);
+	fillColorBox->addItem(tr("Background"), FILL_BACKGROUND);
 	
 	darkerThresholdLink->setText(
 		Utils::richTextForLink(darkerThresholdLink->text())
@@ -105,6 +150,26 @@ OptionsWidget::OptionsWidget(
 	connect(
 		neutralThresholdBtn, SIGNAL(clicked()),
 		this, SLOT(setNeutralThreshold())
+	);
+	connect(
+		fillColorBox, SIGNAL(currentIndexChanged(int)),
+		this, SLOT(fillColorChanged(int))
+	);
+	connect(
+		bwWhiteMarginsCB, SIGNAL(clicked(bool)),
+		this, SLOT(bwWhiteMarginsToggled(bool))
+	);
+	connect(
+		bwEqualizeIlluminationCB, SIGNAL(clicked(bool)),
+		this, SLOT(bwEqualizeIlluminationToggled(bool))
+	);
+	connect(
+		thresholdMethodBox, SIGNAL(currentIndexChanged(int)),
+		this, SLOT(thresholdMethodChanged(int))
+	);
+	connect(
+		m_windowSizeSB, SIGNAL(valueChanged(int)),
+		this, SLOT(windowSizeChanged(int))
 	);
 	connect(
 		thresholdSlider, SIGNAL(valueChanged(int)),
@@ -154,7 +219,80 @@ OptionsWidget::OptionsWidget(
 		depthPerceptionSlider, SIGNAL(valueChanged(int)),
 		this, SLOT(depthPerceptionChangedSlot(int))
 	);
-	
+
+	connect(
+		colorSegmentationPanel, SIGNAL(toggled(bool)),
+		this, SLOT(colorSegmentationToggled(bool))
+	);
+	connect(
+		noiseReductionSB, SIGNAL(valueChanged(int)),
+		this, SLOT(noiseReductionChanged(int))
+	);
+	connect(
+		redAdjSB, SIGNAL(valueChanged(int)),
+		this, SLOT(redAdjChanged(int))
+	);
+	connect(
+		greenAdjSB, SIGNAL(valueChanged(int)),
+		this, SLOT(greenAdjChanged(int))
+	);
+	connect(
+		blueAdjSB, SIGNAL(valueChanged(int)),
+		this, SLOT(blueAdjChanged(int))
+	);
+	connect(
+		posterizationPanel, SIGNAL(toggled(bool)),
+		this, SLOT(posterizationToggled(bool))
+	);
+	connect(
+		posterizeLevelSB, SIGNAL(valueChanged(int)),
+		this, SLOT(posterizeLevelChanged(int))
+	);
+	connect(
+		posterizeNormalizeCB, SIGNAL(toggled(bool)),
+		this, SLOT(posterizeNormalizeToggled(bool))
+	);
+	connect(
+		posterizeForceBWCB, SIGNAL(toggled(bool)),
+		this, SLOT(posterizeForceBWToggled(bool))
+	);
+	connect(
+		splittingPanel, SIGNAL(toggled(bool)),
+		this, SLOT(splitOutputToggled(bool))
+	);
+	connect(
+		bwForegroundRB, SIGNAL(toggled(bool)),
+		this, SLOT(bwForegroundToggled(bool))
+	);
+	connect(
+		colorForegroundRB, SIGNAL(toggled(bool)),
+		this, SLOT(colorForegroundToggled(bool))
+	);
+	connect(
+		originalBackgroundCB, SIGNAL(toggled(bool)),
+		this, SLOT(originalBackgroundToggled(bool))
+	);
+	connect(
+		exportImagesBtn, SIGNAL(clicked()),
+		this, SIGNAL(exportImagesRequested())
+	);
+	connect(
+		exportPdfBtn, SIGNAL(clicked()),
+		this, SIGNAL(exportPdfRequested())
+	);
+	connect(
+		exportBothBtn, SIGNAL(clicked()),
+		this, SIGNAL(exportBothRequested())
+	);
+	connect(
+		autoGeneratePdfCB, SIGNAL(toggled(bool)),
+		this, SIGNAL(autoGeneratePdfChanged(bool))
+	);
+	connect(
+		vectorizePdfBtn, SIGNAL(clicked()),
+		this, SIGNAL(vectorizePdfRequested())
+	);
+
 	thresholdSlider->setMinimum(-50);
 	thresholdSlider->setMaximum(50);
 	thresholLabel->setText(QString::number(thresholdSlider->value()));
@@ -171,12 +309,32 @@ OptionsWidget::preUpdateUI(PageId const& page_id)
 	m_pageId = page_id;
 	m_outputDpi = params.outputDpi();
 	m_colorParams = params.colorParams();
+	m_splittingOptions = params.splittingOptions();
 	m_dewarpingMode = params.dewarpingMode();
 	m_depthPerception = params.depthPerception();
 	m_despeckleLevel = params.despeckleLevel();
 	updateDpiDisplay();
 	updateColorsDisplay();
 	updateDewarpingDisplay();
+	splittingPanel->setChecked(m_splittingOptions.isSplitOutput());
+	bwForegroundRB->setChecked(m_splittingOptions.getSplittingMode() == BLACK_AND_WHITE_FOREGROUND);
+	colorForegroundRB->setChecked(m_splittingOptions.getSplittingMode() == COLOR_FOREGROUND);
+	originalBackgroundCB->setChecked(m_splittingOptions.isOriginalBackgroundEnabled());
+
+	BlackWhiteOptions::ColorSegmenterOptions const& segOpts =
+		m_colorParams.blackWhiteOptions().getColorSegmenterOptions();
+	colorSegmentationPanel->setChecked(segOpts.isEnabled());
+	noiseReductionSB->setValue(segOpts.getNoiseReduction());
+	redAdjSB->setValue(segOpts.getRedThresholdAdjustment());
+	greenAdjSB->setValue(segOpts.getGreenThresholdAdjustment());
+	blueAdjSB->setValue(segOpts.getBlueThresholdAdjustment());
+
+	ColorGrayscaleOptions::PosterizationOptions const& postOpts =
+		m_colorParams.colorGrayscaleOptions().getPosterizationOptions();
+	posterizationPanel->setChecked(postOpts.isEnabled());
+	posterizeLevelSB->setValue(postOpts.getLevel());
+	posterizeNormalizeCB->setChecked(postOpts.isNormalizationEnabled());
+	posterizeForceBWCB->setChecked(postOpts.isForceBlackAndWhite());
 }
 
 void
@@ -300,6 +458,70 @@ OptionsWidget::bwThresholdChanged()
 	emit reloadRequested();
 	
 	emit invalidateThumbnail(m_pageId);
+}
+
+void
+OptionsWidget::bwWhiteMarginsToggled(bool const checked)
+{
+	BlackWhiteOptions opt(m_colorParams.blackWhiteOptions());
+	opt.setWhiteMargins(checked);
+	if (!checked) {
+		opt.setNormalizeIllumination(false);
+		bwEqualizeIlluminationCB->setChecked(false);
+	}
+	m_colorParams.setBlackWhiteOptions(opt);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	bwEqualizeIlluminationCB->setEnabled(checked);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::bwEqualizeIlluminationToggled(bool const checked)
+{
+	BlackWhiteOptions opt(m_colorParams.blackWhiteOptions());
+	opt.setNormalizeIllumination(checked);
+	m_colorParams.setBlackWhiteOptions(opt);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::fillColorChanged(int const idx)
+{
+	FillingColor const color = (FillingColor)fillColorBox->itemData(idx).toInt();
+	m_colorParams.setFillingColor(color);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::thresholdMethodChanged(int const idx)
+{
+	int const method_int = thresholdMethodBox->itemData(idx).toInt();
+	BinarizationMethod const method = (BinarizationMethod)method_int;
+	BlackWhiteOptions opt(m_colorParams.blackWhiteOptions());
+	opt.setBinarizationMethod(method);
+	m_colorParams.setBlackWhiteOptions(opt);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+
+	bool const show_window = (method == SAUVOLA || method == WOLF);
+	m_windowSizeLabel->setVisible(show_window);
+	m_windowSizeSB->setVisible(show_window);
+
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::windowSizeChanged(int const val)
+{
+	BlackWhiteOptions opt(m_colorParams.blackWhiteOptions());
+	// Ensure odd window size
+	int ws = val;
+	if (ws % 2 == 0) ws++;
+	opt.setWindowSize(ws);
+	m_colorParams.setBlackWhiteOptions(opt);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
 }
 
 void
@@ -582,7 +804,7 @@ OptionsWidget::updateDpiDisplay()
 {
 	if (m_outputDpi.horizontal() != m_outputDpi.vertical()) {
 		dpiLabel->setText(
-			QString::fromAscii("%1 x %2")
+			QString::fromLatin1("%1 x %2")
 			.arg(m_outputDpi.horizontal()).arg(m_outputDpi.vertical())
 		);
 	} else {
@@ -628,6 +850,11 @@ OptionsWidget::updateColorsDisplay()
 	despecklePanel->setVisible(bw_options_visible && m_lastTab != TAB_DEWARPING);
 
 	if (bw_options_visible) {
+		BlackWhiteOptions const& bwOpt(m_colorParams.blackWhiteOptions());
+		bwWhiteMarginsCB->setChecked(bwOpt.whiteMargins());
+		bwEqualizeIlluminationCB->setChecked(bwOpt.normalizeIllumination());
+		bwEqualizeIlluminationCB->setEnabled(bwOpt.whiteMargins());
+
 		switch (m_despeckleLevel) {
 			case DESPECKLE_OFF:
 				despeckleOffBtn->setChecked(true);
@@ -647,8 +874,30 @@ OptionsWidget::updateColorsDisplay()
 		thresholdSlider->setValue(
 			m_colorParams.blackWhiteOptions().thresholdAdjustment()
 		);
+
+		int const method_idx = thresholdMethodBox->findData(
+			(int)m_colorParams.blackWhiteOptions().binarizationMethod()
+		);
+		thresholdMethodBox->blockSignals(true);
+		if (method_idx >= 0) thresholdMethodBox->setCurrentIndex(method_idx);
+		thresholdMethodBox->blockSignals(false);
+
+		BinarizationMethod const method = m_colorParams.blackWhiteOptions().binarizationMethod();
+		bool const show_window = (method == SAUVOLA || method == WOLF);
+		m_windowSizeLabel->setVisible(show_window);
+		m_windowSizeSB->setVisible(show_window);
+		m_windowSizeSB->blockSignals(true);
+		m_windowSizeSB->setValue(m_colorParams.blackWhiteOptions().windowSize());
+		m_windowSizeSB->blockSignals(false);
 	}
 	
+	{
+		int const fc_idx = fillColorBox->findData((int)m_colorParams.fillingColor());
+		fillColorBox->blockSignals(true);
+		if (fc_idx >= 0) fillColorBox->setCurrentIndex(fc_idx);
+		fillColorBox->blockSignals(false);
+	}
+
 	colorModeSelector->blockSignals(false);
 }
 
@@ -672,6 +921,148 @@ OptionsWidget::updateDewarpingDisplay()
 	depthPerceptionSlider->blockSignals(true);
 	depthPerceptionSlider->setValue(qRound(m_depthPerception.value() * 10));
 	depthPerceptionSlider->blockSignals(false);
+}
+
+void
+OptionsWidget::colorSegmentationToggled(bool const checked)
+{
+	BlackWhiteOptions bwOpts(m_colorParams.blackWhiteOptions());
+	BlackWhiteOptions::ColorSegmenterOptions segOpts(bwOpts.getColorSegmenterOptions());
+	segOpts.setEnabled(checked);
+	bwOpts.setColorSegmenterOptions(segOpts);
+	m_colorParams.setBlackWhiteOptions(bwOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::noiseReductionChanged(int const val)
+{
+	BlackWhiteOptions bwOpts(m_colorParams.blackWhiteOptions());
+	BlackWhiteOptions::ColorSegmenterOptions segOpts(bwOpts.getColorSegmenterOptions());
+	segOpts.setNoiseReduction(val);
+	bwOpts.setColorSegmenterOptions(segOpts);
+	m_colorParams.setBlackWhiteOptions(bwOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::redAdjChanged(int const val)
+{
+	BlackWhiteOptions bwOpts(m_colorParams.blackWhiteOptions());
+	BlackWhiteOptions::ColorSegmenterOptions segOpts(bwOpts.getColorSegmenterOptions());
+	segOpts.setRedThresholdAdjustment(val);
+	bwOpts.setColorSegmenterOptions(segOpts);
+	m_colorParams.setBlackWhiteOptions(bwOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::greenAdjChanged(int const val)
+{
+	BlackWhiteOptions bwOpts(m_colorParams.blackWhiteOptions());
+	BlackWhiteOptions::ColorSegmenterOptions segOpts(bwOpts.getColorSegmenterOptions());
+	segOpts.setGreenThresholdAdjustment(val);
+	bwOpts.setColorSegmenterOptions(segOpts);
+	m_colorParams.setBlackWhiteOptions(bwOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::blueAdjChanged(int const val)
+{
+	BlackWhiteOptions bwOpts(m_colorParams.blackWhiteOptions());
+	BlackWhiteOptions::ColorSegmenterOptions segOpts(bwOpts.getColorSegmenterOptions());
+	segOpts.setBlueThresholdAdjustment(val);
+	bwOpts.setColorSegmenterOptions(segOpts);
+	m_colorParams.setBlackWhiteOptions(bwOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::posterizationToggled(bool const checked)
+{
+	ColorGrayscaleOptions cgOpts(m_colorParams.colorGrayscaleOptions());
+	ColorGrayscaleOptions::PosterizationOptions postOpts(cgOpts.getPosterizationOptions());
+	postOpts.setEnabled(checked);
+	cgOpts.setPosterizationOptions(postOpts);
+	m_colorParams.setColorGrayscaleOptions(cgOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::posterizeLevelChanged(int const val)
+{
+	ColorGrayscaleOptions cgOpts(m_colorParams.colorGrayscaleOptions());
+	ColorGrayscaleOptions::PosterizationOptions postOpts(cgOpts.getPosterizationOptions());
+	postOpts.setLevel(val);
+	cgOpts.setPosterizationOptions(postOpts);
+	m_colorParams.setColorGrayscaleOptions(cgOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::posterizeNormalizeToggled(bool const checked)
+{
+	ColorGrayscaleOptions cgOpts(m_colorParams.colorGrayscaleOptions());
+	ColorGrayscaleOptions::PosterizationOptions postOpts(cgOpts.getPosterizationOptions());
+	postOpts.setNormalizationEnabled(checked);
+	cgOpts.setPosterizationOptions(postOpts);
+	m_colorParams.setColorGrayscaleOptions(cgOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::posterizeForceBWToggled(bool const checked)
+{
+	ColorGrayscaleOptions cgOpts(m_colorParams.colorGrayscaleOptions());
+	ColorGrayscaleOptions::PosterizationOptions postOpts(cgOpts.getPosterizationOptions());
+	postOpts.setForceBlackAndWhite(checked);
+	cgOpts.setPosterizationOptions(postOpts);
+	m_colorParams.setColorGrayscaleOptions(cgOpts);
+	m_ptrSettings->setColorParams(m_pageId, m_colorParams);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::splitOutputToggled(bool const checked)
+{
+	m_splittingOptions.setSplitOutput(checked);
+	m_ptrSettings->setSplittingOptions(m_pageId, m_splittingOptions);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::bwForegroundToggled(bool const checked)
+{
+	if (!checked) return;
+	m_splittingOptions.setSplittingMode(BLACK_AND_WHITE_FOREGROUND);
+	m_ptrSettings->setSplittingOptions(m_pageId, m_splittingOptions);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::colorForegroundToggled(bool const checked)
+{
+	if (!checked) return;
+	m_splittingOptions.setSplittingMode(COLOR_FOREGROUND);
+	m_ptrSettings->setSplittingOptions(m_pageId, m_splittingOptions);
+	emit reloadRequested();
+}
+
+void
+OptionsWidget::originalBackgroundToggled(bool const checked)
+{
+	m_splittingOptions.setOriginalBackgroundEnabled(checked);
+	m_ptrSettings->setSplittingOptions(m_pageId, m_splittingOptions);
+	emit reloadRequested();
 }
 
 } // namespace output

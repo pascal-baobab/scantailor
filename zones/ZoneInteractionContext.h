@@ -22,6 +22,7 @@
 #include "EditableSpline.h"
 #include "SplineVertex.h"
 #include "EditableZoneSet.h"
+#include "ZoneCreationMode.h"
 #ifndef Q_MOC_RUN
 #include <boost/function.hpp>
 #endif
@@ -109,6 +110,10 @@ public:
 	void setShowPropertiesCommand(ShowPropertiesCommand const& command) {
 		m_showPropertiesCommand = command;
 	}
+
+	ZoneCreationMode getZoneCreationMode() const { return m_zoneCreationMode; }
+
+	void setZoneCreationMode(ZoneCreationMode mode) { m_zoneCreationMode = mode; }
 private:
 	/**
 	 * Creates an instance of ZoneDefaultInteraction.
@@ -141,6 +146,7 @@ private:
 	VertexDragInteractionCreator m_vertexDragInteractionCreator;
 	ContextMenuInteractionCreator m_contextMenuInteractionCreator;
 	ShowPropertiesCommand m_showPropertiesCommand;
+	ZoneCreationMode m_zoneCreationMode;
 };
 
 #endif

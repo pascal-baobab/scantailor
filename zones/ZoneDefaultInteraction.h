@@ -44,6 +44,8 @@ protected:
 
 	virtual void onProximityUpdate(QPointF const& mouse_pos, InteractionState& interaction);
 
+	virtual void onKeyPressEvent(QKeyEvent* event, InteractionState& interaction);
+
 	virtual void onMousePressEvent(QMouseEvent* event, InteractionState& interaction);
 
 	virtual void onMouseReleaseEvent(QMouseEvent* event, InteractionState& interaction);

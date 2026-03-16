@@ -41,6 +41,7 @@ Settings::clear()
 {
 	QMutexLocker locker(&m_mutex);
 	m_perPageParams.clear();
+	m_deviationProvider.clear();
 }
 
 void
@@ -57,6 +58,12 @@ Settings::performRelinking(AbstractRelinker const& relinker)
 	}
 
 	m_perPageParams.swap(new_params);
+
+	m_deviationProvider.clear();
+	for (PerPageParams::const_iterator it = m_perPageParams.begin();
+	     it != m_perPageParams.end(); ++it) {
+		m_deviationProvider.addOrUpdate(it->first, it->second.deskewAngle());
+	}
 }
 
 void
@@ -64,6 +71,7 @@ Settings::setPageParams(PageId const& page_id, Params const& params)
 {
 	QMutexLocker locker(&m_mutex);
 	Utils::mapSetValue(m_perPageParams, page_id, params);
+	m_deviationProvider.addOrUpdate(page_id, params.deskewAngle());
 }
 
 void
@@ -71,6 +79,7 @@ Settings::clearPageParams(PageId const& page_id)
 {
 	QMutexLocker locker(&m_mutex);
 	m_perPageParams.erase(page_id);
+	m_deviationProvider.remove(page_id);
 }
 
 std::auto_ptr<Params>
@@ -92,6 +101,7 @@ Settings::setDegress(std::set<PageId> const& pages, Params const& params)
 	QMutexLocker const locker(&m_mutex);
 	BOOST_FOREACH(PageId const& page, pages) {
 		Utils::mapSetValue(m_perPageParams, page, params);
+		m_deviationProvider.addOrUpdate(page, params.deskewAngle());
 	}
 }
 

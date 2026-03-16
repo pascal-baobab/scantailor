@@ -28,6 +28,7 @@
 #include <QPainterPath>
 #include <QColor>
 #include <QLinearGradient>
+#include <QKeyEvent>
 #include <Qt>
 #include <QMouseEvent>
 #ifndef Q_MOC_RUN
@@ -188,6 +189,27 @@ ZoneDefaultInteraction::onProximityUpdate(QPointF const& mouse_pos, InteractionS
 	if (has_zone_under_mouse) {
 		Proximity const zone_area_proximity(std::min(best_vertex_proximity, best_segment_proximity));
 		interaction.updateProximity(m_zoneAreaProximity, zone_area_proximity, -1, zone_area_proximity);
+	}
+}
+
+void
+ZoneDefaultInteraction::onKeyPressEvent(QKeyEvent* event, InteractionState& interaction)
+{
+	switch (event->key()) {
+		case Qt::Key_Z:
+			m_rContext.setZoneCreationMode(ZoneCreationMode::POLYGONAL);
+			event->accept();
+			break;
+		case Qt::Key_X:
+			m_rContext.setZoneCreationMode(ZoneCreationMode::LASSO);
+			event->accept();
+			break;
+		case Qt::Key_C:
+			m_rContext.setZoneCreationMode(ZoneCreationMode::RECTANGULAR);
+			event->accept();
+			break;
+		default:
+			break;
 	}
 }
 

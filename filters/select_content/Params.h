@@ -36,29 +36,37 @@ class Params
 public:
 	// Member-wise copying is OK.
 	
-	Params(QRectF const& rect, QSizeF const& size_mm,
-		Dependencies const& deps, AutoManualMode mode);
-	
+	Params(QRectF const& content_rect, QSizeF const& content_size_mm,
+		Dependencies const& deps, AutoManualMode content_detect_mode,
+		QRectF const& page_rect = QRectF(),
+		AutoManualMode page_detect_mode = MODE_DISABLED);
+
 	Params(Dependencies const& deps);
-	
+
 	Params(QDomElement const& filter_el);
-	
+
 	~Params();
-	
+
 	QRectF const& contentRect() const { return m_contentRect; }
 
 	QSizeF const& contentSizeMM() const { return m_contentSizeMM; }
-	
+
 	Dependencies const& dependencies() const { return m_deps; }
-	
+
 	AutoManualMode mode() const { return m_mode; }
-	
+
+	QRectF const& pageRect() const { return m_pageRect; }
+
+	AutoManualMode pageDetectMode() const { return m_pageDetectMode; }
+
 	QDomElement toXml(QDomDocument& doc, QString const& name) const;
 private:
 	QRectF m_contentRect;
 	QSizeF m_contentSizeMM;
+	QRectF m_pageRect;
 	Dependencies m_deps;
 	AutoManualMode m_mode;
+	AutoManualMode m_pageDetectMode;
 };
 
 } // namespace select_content

@@ -22,6 +22,7 @@
 #include "imageproc/Connectivity.h"
 #include "Dpi.h"
 #include "ColorParams.h"
+#include "SplittingOptions.h"
 #include "DepthPerception.h"
 #include "DespeckleLevel.h"
 #include "DewarpingMode.h"
@@ -68,6 +69,7 @@ class OutputGenerator
 public:
 	OutputGenerator(
 		Dpi const& dpi, ColorParams const& color_params,
+		SplittingOptions const& splitting_options,
 		DespeckleLevel despeckle_level,
 		ImageTransformation const& xform,
 		QPolygonF const& content_rect_phys);
@@ -104,7 +106,8 @@ public:
 		DepthPerception const& depth_perception,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0,
+		QImage* foreground_img = 0) const;
 	
 	QSize outputImageSize() const;
 	
@@ -121,7 +124,8 @@ private:
 		DepthPerception const& depth_perception,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0,
+		QImage* foreground_img = 0) const;
 
 	QImage processAsIs(
 		FilterData const& input, TaskStatus const& status,
@@ -134,7 +138,8 @@ private:
 		ZoneSet const& picture_zones, ZoneSet const& fill_zones,
 		imageproc::BinaryImage* auto_picture_mask = 0,
 		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = 0,
+		QImage* foreground_img = 0) const;
 
 	QImage processWithDewarping(
 		TaskStatus const& status, FilterData const& input,
@@ -243,6 +248,7 @@ private:
 	
 	Dpi m_dpi;
 	ColorParams m_colorParams;
+	SplittingOptions m_splittingOptions;
 	
 	/**
 	 * Transformation from the input to the output image coordinates.

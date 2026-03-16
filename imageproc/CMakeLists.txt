@@ -50,6 +50,9 @@ SET(
 	FindPeaksGeneric.h
 	ColorMixer.h
 	ColorForId.h
+	ImageCombination.cpp ImageCombination.h
+	ColorSegmenter.cpp ColorSegmenter.h
+	Posterizer.cpp Posterizer.h
 )
 
 SOURCE_GROUP(Sources FILES ${sources})

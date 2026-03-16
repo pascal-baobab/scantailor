@@ -80,8 +80,8 @@ CacheDrivenTask::process(
 			}
 
 			OutputGenerator const generator(
-				params.outputDpi(), params.colorParams(), params.despeckleLevel(),
-				new_xform, content_rect_phys
+				params.outputDpi(), params.colorParams(), params.splittingOptions(),
+				params.despeckleLevel(), new_xform, content_rect_phys
 			);
 			OutputImageParams const new_output_image_params(
 				generator.outputImageSize(), generator.outputContentRect(),

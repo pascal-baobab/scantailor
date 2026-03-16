@@ -17,12 +17,10 @@
 */
 
 #include "CrashReportDialog.h"
-#include "CrashReportDialog.h.moc"
 #include "MultipartFormData.h"
 #include "version.h"
 #include <QDir>
 #include <QUrl>
-#include <QTextDocument> // for Qt::escape()
 #include <QToolTip>
 #include <QEvent>
 #include <QApplication>
@@ -73,8 +71,8 @@ CrashReportDialog::CrashReportDialog(
 	));
 	ui.dumpFile->setText(
 		QString("<a href=\"%1\">%2</a> (%3)").arg(
-			Qt::escape(QUrl::fromLocalFile(m_dumpFileInfo.absoluteFilePath()).toString()),
-			Qt::escape(tr("Dump file")),
+			QUrl::fromLocalFile(m_dumpFileInfo.absoluteFilePath(.toHtmlEscaped()).toString()),
+			tr("Dump file".toHtmlEscaped()),
 			formatFileSize(m_dumpFileInfo.size())
 		)
 	);

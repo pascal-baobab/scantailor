@@ -15,13 +15,14 @@ SET(
 	ZoneInteractionContext.cpp ZoneInteractionContext.h
 	ZoneDefaultInteraction.cpp ZoneDefaultInteraction.h
 	ZoneCreationInteraction.cpp ZoneCreationInteraction.h
+	ZoneCreationMode.h
 	ZoneVertexDragInteraction.cpp ZoneVertexDragInteraction.h
 	ZoneContextMenuInteraction.cpp ZoneContextMenuInteraction.h
 	ZoneContextMenuItem.h
 )
 
 SOURCE_GROUP(Sources FILES ${sources})
-QT4_AUTOMOC(${sources})
+# AUTOMOC handled globally by CMAKE_AUTOMOC ON
 
 ADD_LIBRARY(zones STATIC ${sources})
 

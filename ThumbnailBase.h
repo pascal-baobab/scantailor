@@ -80,6 +80,8 @@ protected:
 	 * Extended clipping area only includes the cropping area, so it's possible
 	 * to draw outside of the image but inside the crop area.
 	 */
+	void paintDeviant(QPainter& painter);
+
 	void setExtendedClipArea(bool enabled) { m_extendedClipArea = enabled; }
 	
 	void setImageXform(ImageTransformation const& image_xform);

@@ -17,14 +17,15 @@
 */
 
 #include "ImageView.h"
-#include "ImageView.h.moc"
 #include "OptionsWidget.h"
 #include "Margins.h"
 #include "Settings.h"
 #include "ImageTransformation.h"
 #include "ImagePresentation.h"
 #include "Utils.h"
+#include "Guide.h"
 #include "imageproc/PolygonUtils.h"
+#include "foundation/Proximity.h"
 #include <QPointF>
 #include <QLineF>
 #include <QPolygonF>
@@ -32,16 +33,21 @@
 #include <QSize>
 #include <QString>
 #include <QPainter>
+#include <QPainterPath>
 #include <QBrush>
 #include <QPen>
 #include <QColor>
 #include <QDebug>
+#include <QMenu>
+#include <QAction>
+#include <QContextMenuEvent>
 #include <Qt>
 #ifndef Q_MOC_RUN
 #include <boost/bind.hpp>
 #include <boost/lambda/lambda.hpp>
 #endif
 #include <algorithm>
+#include <cmath>
 #include <math.h>
 #include <assert.h>
 
@@ -70,7 +76,15 @@ ImageView::ImageView(
 	m_committedAggregateHardSizeMM(m_aggregateHardSizeMM),
 	m_alignment(opt_widget.alignment()),
 	m_leftRightLinked(opt_widget.leftRightLinked()),
-	m_topBottomLinked(opt_widget.topBottomLinked())
+	m_topBottomLinked(opt_widget.topBottomLinked()),
+	m_guidesFreeIndex(0),
+	m_contextMenu(new QMenu(this)),
+	m_addHorizontalGuideAction(0),
+	m_addVerticalGuideAction(0),
+	m_removeAllGuidesAction(0),
+	m_removeGuideUnderMouseAction(0),
+	m_lastContextMenuPos(),
+	m_guideUnderMouse(-1)
 {
 	setMouseTracking(true);
 	
@@ -179,11 +193,22 @@ ImageView::ImageView(
 	rootInteractionHandler().makeLastFollower(m_dragHandler);
 	rootInteractionHandler().makeLastFollower(m_zoomHandler);
 
+	setupContextMenuInteraction();
+	setupGuides();
+
 	recalcBoxesAndFit(opt_widget.marginsMM());
 }
 
 ImageView::~ImageView()
 {
+	for (std::map<int, DraggableLineSegment*>::iterator it = m_draggableGuides.begin();
+	     it != m_draggableGuides.end(); ++it) {
+		delete it->second;
+	}
+	for (std::map<int, ObjectDragHandler*>::iterator it = m_draggableGuideHandlers.begin();
+	     it != m_draggableGuideHandlers.end(); ++it) {
+		delete it->second;
+	}
 }
 
 void
@@ -251,9 +276,12 @@ ImageView::alignmentChanged(Alignment const& alignment)
 
 	Settings::AggregateSizeChanged const size_changed =
 		m_ptrSettings->setPageAlignment(m_pageId, alignment);
-	
+
 	recalcBoxesAndFit(calcHardMarginsMM());
-	
+
+	enableGuidesInteraction(!m_alignment.isNull());
+	forceInscribeGuides();
+
 	if (size_changed == Settings::AGGREGATE_SIZE_CHANGED) {
 		emit invalidateAllThumbnails();
 	} else {
@@ -314,6 +342,24 @@ ImageView::onPaint(QPainter& painter, InteractionState const& interaction)
 		pen.setStyle(Qt::DashLine);
 		painter.setPen(pen);
 		painter.drawRect(m_outerRect);
+
+		// Draw guides.
+		if (!m_guides.empty()) {
+			painter.setWorldTransform(QTransform());
+
+			QPen guide_pen(QColor(0x00, 0x9d, 0x9f));
+			guide_pen.setStyle(Qt::DashLine);
+			guide_pen.setCosmetic(true);
+			guide_pen.setWidthF(2.0);
+			painter.setPen(guide_pen);
+			painter.setBrush(Qt::NoBrush);
+
+			for (std::map<int, Guide>::const_iterator it = m_guides.begin();
+			     it != m_guides.end(); ++it) {
+				QLineF const guide(widgetGuideLine(it->first));
+				painter.drawLine(guide);
+			}
+		}
 	}
 }
 
@@ -570,6 +616,8 @@ ImageView::recalcBoxesAndFit(Margins const& margins_mm)
 
 	m_middleRect = middle_rect;
 	m_outerRect = outer_rect;
+
+	forceInscribeGuides();
 }
 
 /**
@@ -672,6 +720,8 @@ ImageView::recalcOuterRect()
 	Utils::extendPolyRectWithMargins(poly_mm, soft_margins_mm);
 	
 	m_outerRect = mm_to_virt.map(poly_mm).boundingRect();
+
+	forceInscribeGuides();
 }
 
 QSizeF
@@ -713,6 +763,304 @@ ImageView::invalidateThumbnails(AggregateSizeChanged const agg_size_changed)
 		emit invalidateAllThumbnails();
 	} else {
 		emit invalidateThumbnail(m_pageId);
+	}
+}
+
+void
+ImageView::setupContextMenuInteraction()
+{
+	m_addHorizontalGuideAction = m_contextMenu->addAction(tr("Add a horizontal guide"));
+	m_addVerticalGuideAction = m_contextMenu->addAction(tr("Add a vertical guide"));
+	m_removeAllGuidesAction = m_contextMenu->addAction(tr("Remove all the guides"));
+	m_removeGuideUnderMouseAction = m_contextMenu->addAction(tr("Remove this guide"));
+
+	connect(m_addHorizontalGuideAction, &QAction::triggered, [this]() {
+		addHorizontalGuide(widgetToGuideCs().map(m_lastContextMenuPos).y());
+	});
+	connect(m_addVerticalGuideAction, &QAction::triggered, [this]() {
+		addVerticalGuide(widgetToGuideCs().map(m_lastContextMenuPos).x());
+	});
+	connect(m_removeAllGuidesAction, &QAction::triggered, [this]() {
+		removeAllGuides();
+	});
+	connect(m_removeGuideUnderMouseAction, &QAction::triggered, [this]() {
+		removeGuide(m_guideUnderMouse);
+	});
+}
+
+void
+ImageView::onContextMenuEvent(QContextMenuEvent* event, InteractionState& interaction)
+{
+	if (interaction.captured()) {
+		return; // No context menus during resizing.
+	}
+	if (m_alignment.isNull()) {
+		return;
+	}
+
+	QPointF const event_pos(QPointF(0.5, 0.5) + event->pos());
+	if (!m_outerRect.contains(widgetToVirtual().map(event_pos))) {
+		return;
+	}
+
+	m_guideUnderMouse = getGuideUnderMouse(event_pos, interaction);
+	if (m_guideUnderMouse == -1) {
+		m_addHorizontalGuideAction->setVisible(true);
+		m_addVerticalGuideAction->setVisible(true);
+		m_removeAllGuidesAction->setVisible(!m_guides.empty());
+		m_removeGuideUnderMouseAction->setVisible(false);
+		m_lastContextMenuPos = event_pos;
+	} else {
+		m_addHorizontalGuideAction->setVisible(false);
+		m_addVerticalGuideAction->setVisible(false);
+		m_removeAllGuidesAction->setVisible(false);
+		m_removeGuideUnderMouseAction->setVisible(true);
+	}
+
+	m_contextMenu->popup(event->globalPos());
+}
+
+void
+ImageView::setupGuides()
+{
+	QTransform const mm_to_virt(m_physXform.mmToPixels() * imageToVirtual());
+	for (std::vector<Guide>::const_iterator it = m_ptrSettings->guides().begin();
+	     it != m_ptrSettings->guides().end(); ++it) {
+		m_guides[m_guidesFreeIndex] = Guide(mm_to_virt.map(static_cast<QLineF>(*it)));
+		setupGuideInteraction(m_guidesFreeIndex++);
+	}
+}
+
+void
+ImageView::addHorizontalGuide(double y)
+{
+	if (m_alignment.isNull()) return;
+	m_guides[m_guidesFreeIndex] = Guide(Qt::Horizontal, y);
+	setupGuideInteraction(m_guidesFreeIndex++);
+	update();
+	syncGuidesSettings();
+}
+
+void
+ImageView::addVerticalGuide(double x)
+{
+	if (m_alignment.isNull()) return;
+	m_guides[m_guidesFreeIndex] = Guide(Qt::Vertical, x);
+	setupGuideInteraction(m_guidesFreeIndex++);
+	update();
+	syncGuidesSettings();
+}
+
+void
+ImageView::removeAllGuides()
+{
+	if (m_alignment.isNull()) return;
+
+	for (std::map<int, ObjectDragHandler*>::iterator it = m_draggableGuideHandlers.begin();
+	     it != m_draggableGuideHandlers.end(); ++it) {
+		it->second->unlink();
+		delete it->second;
+	}
+	for (std::map<int, DraggableLineSegment*>::iterator it = m_draggableGuides.begin();
+	     it != m_draggableGuides.end(); ++it) {
+		delete it->second;
+	}
+	m_draggableGuideHandlers.clear();
+	m_draggableGuides.clear();
+	m_guides.clear();
+	m_guidesFreeIndex = 0;
+	update();
+	syncGuidesSettings();
+}
+
+void
+ImageView::removeGuide(int index)
+{
+	if (m_alignment.isNull()) return;
+	if (m_guides.find(index) == m_guides.end()) return;
+
+	std::map<int, ObjectDragHandler*>::iterator hit = m_draggableGuideHandlers.find(index);
+	if (hit != m_draggableGuideHandlers.end()) {
+		hit->second->unlink();
+		delete hit->second;
+		m_draggableGuideHandlers.erase(hit);
+	}
+	std::map<int, DraggableLineSegment*>::iterator dit = m_draggableGuides.find(index);
+	if (dit != m_draggableGuides.end()) {
+		delete dit->second;
+		m_draggableGuides.erase(dit);
+	}
+	m_guides.erase(index);
+	update();
+	syncGuidesSettings();
+}
+
+QTransform
+ImageView::widgetToGuideCs() const
+{
+	QTransform xform(widgetToVirtual());
+	xform *= QTransform().translate(-m_outerRect.center().x(), -m_outerRect.center().y());
+	return xform;
+}
+
+QTransform
+ImageView::guideToWidgetCs() const
+{
+	return widgetToGuideCs().inverted();
+}
+
+void
+ImageView::syncGuidesSettings()
+{
+	QTransform const virt_to_mm(virtualToImage() * m_physXform.pixelsToMM());
+	m_ptrSettings->guides().clear();
+	for (std::map<int, Guide>::const_iterator it = m_guides.begin();
+	     it != m_guides.end(); ++it) {
+		m_ptrSettings->guides().push_back(
+			Guide(virt_to_mm.map(static_cast<QLineF>(it->second)))
+		);
+	}
+}
+
+void
+ImageView::setupGuideInteraction(int const index)
+{
+	DraggableLineSegment* draggable = new DraggableLineSegment();
+	draggable->setProximityPriority(1);
+	draggable->setPositionCallback(
+		boost::bind(&ImageView::guidePosition, this, index)
+	);
+	draggable->setMoveRequestCallback(
+		boost::bind(&ImageView::guideMoveRequest, this, index, _1)
+	);
+	draggable->setDragFinishedCallback(
+		boost::bind(&ImageView::guideDragFinished, this, _1)
+	);
+	m_draggableGuides[index] = draggable;
+
+	ObjectDragHandler* handler = new ObjectDragHandler(draggable);
+	Qt::CursorShape const cursor_shape =
+		(m_guides[index].getOrientation() == Qt::Horizontal)
+		? Qt::SplitVCursor : Qt::SplitHCursor;
+	handler->setProximityCursor(cursor_shape);
+	handler->setInteractionCursor(cursor_shape);
+	handler->setProximityStatusTip(tr("Drag the guide."));
+	m_draggableGuideHandlers[index] = handler;
+
+	if (!m_alignment.isNull()) {
+		makeLastFollower(*handler);
+	}
+}
+
+QLineF
+ImageView::guidePosition(int const index) const
+{
+	return widgetGuideLine(index);
+}
+
+void
+ImageView::guideMoveRequest(int const index, QLineF const& line)
+{
+	QRectF const valid_area(virtualToWidget().mapRect(m_outerRect));
+
+	QLineF moved = line;
+	if (m_guides.at(index).getOrientation() == Qt::Horizontal) {
+		double const line_pos = moved.y1();
+		double const top = valid_area.top() - line_pos;
+		double const bottom = line_pos - valid_area.bottom();
+		if (top > 0.0) {
+			moved.translate(0.0, top);
+		} else if (bottom > 0.0) {
+			moved.translate(0.0, -bottom);
+		}
+	} else {
+		double const line_pos = moved.x1();
+		double const left = valid_area.left() - line_pos;
+		double const right = line_pos - valid_area.right();
+		if (left > 0.0) {
+			moved.translate(left, 0.0);
+		} else if (right > 0.0) {
+			moved.translate(-right, 0.0);
+		}
+	}
+
+	m_guides[index] = Guide(widgetToGuideCs().map(moved));
+	update();
+}
+
+void
+ImageView::guideDragFinished(QPointF const&)
+{
+	syncGuidesSettings();
+}
+
+QLineF
+ImageView::widgetGuideLine(int const index) const
+{
+	QRectF const widget_rect(viewport()->rect());
+	Guide const& guide = m_guides.at(index);
+	QLineF guide_line(guideToWidgetCs().map(static_cast<QLineF>(guide)));
+	if (guide.getOrientation() == Qt::Horizontal) {
+		guide_line = QLineF(widget_rect.left(), guide_line.y1(), widget_rect.right(), guide_line.y2());
+	} else {
+		guide_line = QLineF(guide_line.x1(), widget_rect.top(), guide_line.x2(), widget_rect.bottom());
+	}
+	return guide_line;
+}
+
+int
+ImageView::getGuideUnderMouse(QPointF const& screen_mouse_pos, InteractionState const& state) const
+{
+	for (std::map<int, Guide>::const_iterator it = m_guides.begin();
+	     it != m_guides.end(); ++it) {
+		QLineF const guide(widgetGuideLine(it->first));
+		if (Proximity::pointAndLineSegment(screen_mouse_pos, guide) <= state.proximityThreshold()) {
+			return it->first;
+		}
+	}
+	return -1;
+}
+
+void
+ImageView::enableGuidesInteraction(bool const state)
+{
+	if (state) {
+		for (std::map<int, ObjectDragHandler*>::iterator it = m_draggableGuideHandlers.begin();
+		     it != m_draggableGuideHandlers.end(); ++it) {
+			makeLastFollower(*(it->second));
+		}
+	} else {
+		for (std::map<int, ObjectDragHandler*>::iterator it = m_draggableGuideHandlers.begin();
+		     it != m_draggableGuideHandlers.end(); ++it) {
+			it->second->unlink();
+		}
+	}
+}
+
+void
+ImageView::forceInscribeGuides()
+{
+	if (m_alignment.isNull()) return;
+
+	bool need_sync = false;
+	for (std::map<int, Guide>::iterator it = m_guides.begin();
+	     it != m_guides.end(); ++it) {
+		Guide& guide = it->second;
+		double const pos = guide.getPosition();
+		if (guide.getOrientation() == Qt::Vertical) {
+			if (std::abs(pos) > (m_outerRect.width() / 2)) {
+				guide.setPosition(std::copysign(m_outerRect.width() / 2, pos));
+				need_sync = true;
+			}
+		} else {
+			if (std::abs(pos) > (m_outerRect.height() / 2)) {
+				guide.setPosition(std::copysign(m_outerRect.height() / 2, pos));
+				need_sync = true;
+			}
+		}
+	}
+	if (need_sync) {
+		syncGuidesSettings();
 	}
 }
 

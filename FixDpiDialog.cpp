@@ -17,7 +17,6 @@
 */
 
 #include "FixDpiDialog.h"
-#include "FixDpiDialog.h.moc"
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
 #include <QModelIndex>

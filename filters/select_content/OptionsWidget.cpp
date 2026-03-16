@@ -17,7 +17,6 @@
 */
 
 #include "OptionsWidget.h"
-#include "OptionsWidget.h.moc"
 #include "ApplyDialog.h"
 #include "Settings.h"
 #include "Params.h"
@@ -107,11 +106,22 @@ OptionsWidget::updateModeIndication(AutoManualMode const mode)
 }
 
 void
+OptionsWidget::manualPageRectSet(QRectF const& page_rect)
+{
+	m_uiData.setPageRect(page_rect);
+	m_uiData.setPageDetectMode(MODE_MANUAL);
+	commitCurrentParams();
+
+	emit invalidateThumbnail(m_pageId);
+}
+
+void
 OptionsWidget::commitCurrentParams()
 {
 	Params const params(
 		m_uiData.contentRect(), m_uiData.contentSizeMM(),
-		m_uiData.dependencies(), m_uiData.mode()
+		m_uiData.dependencies(), m_uiData.mode(),
+		m_uiData.pageRect(), m_uiData.pageDetectMode()
 	);
 	m_ptrSettings->setPageParams(m_pageId, params);
 }
@@ -136,10 +146,11 @@ OptionsWidget::applySelection(std::set<PageId> const& pages)
 	if (pages.empty()) {
 		return;
 	}
-	
+
 	Params const params(
 		m_uiData.contentRect(), m_uiData.contentSizeMM(),
-		m_uiData.dependencies(), m_uiData.mode()
+		m_uiData.dependencies(), m_uiData.mode(),
+		m_uiData.pageRect(), m_uiData.pageDetectMode()
 	);
 
 	BOOST_FOREACH(PageId const& page_id, pages) {
@@ -151,7 +162,8 @@ OptionsWidget::applySelection(std::set<PageId> const& pages)
 /*========================= OptionsWidget::UiData ======================*/
 
 OptionsWidget::UiData::UiData()
-:	m_mode(MODE_AUTO)
+:	m_mode(MODE_AUTO),
+	m_pageDetectMode(MODE_DISABLED)
 {
 }
 
@@ -205,6 +217,30 @@ AutoManualMode
 OptionsWidget::UiData::mode() const
 {
 	return m_mode;
+}
+
+void
+OptionsWidget::UiData::setPageRect(QRectF const& page_rect)
+{
+	m_pageRect = page_rect;
+}
+
+QRectF const&
+OptionsWidget::UiData::pageRect() const
+{
+	return m_pageRect;
+}
+
+void
+OptionsWidget::UiData::setPageDetectMode(AutoManualMode const mode)
+{
+	m_pageDetectMode = mode;
+}
+
+AutoManualMode
+OptionsWidget::UiData::pageDetectMode() const
+{
+	return m_pageDetectMode;
 }
 
 } // namespace select_content

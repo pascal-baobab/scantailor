@@ -17,7 +17,6 @@
 */
 
 #include "ProjectPages.h"
-#include "ProjectPages.h.moc"
 #include "ImageFileInfo.h"
 #include "ImageMetadata.h"
 #include "ImageInfo.h"

@@ -25,6 +25,7 @@
 #include <QColor>
 #include <Qt>
 #include <vector>
+#include <unordered_set>
 #include <stdint.h>
 
 class QImage;
@@ -167,6 +168,14 @@ public:
 	 * altering the map.
 	 */
 	void setMaxLabel(uint32_t max_label) { m_maxLabel = max_label; }
+
+	void addComponents(BinaryImage const& image, Connectivity conn);
+
+	void addComponents(ConnectivityMap const& other);
+
+	void removeComponents(std::unordered_set<uint32_t> const& labelsSet);
+
+	BinaryImage getBinaryMask() const;
 	
 	/**
 	 * \brief Visualizes each label with a different color.

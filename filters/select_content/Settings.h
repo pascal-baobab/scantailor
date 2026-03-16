@@ -21,6 +21,7 @@
 
 #include "RefCountable.h"
 #include "NonCopyable.h"
+#include "DeviationProvider.h"
 #include "PageId.h"
 #include "Params.h"
 #include <QMutex>
@@ -49,11 +50,14 @@ public:
 	void clearPageParams(PageId const& page_id);
 	
 	std::auto_ptr<Params> getPageParams(PageId const& page_id) const;
+
+	DeviationProvider<PageId> const& deviationProvider() const { return m_deviationProvider; }
 private:
 	typedef std::map<PageId, Params> PageParams;
 	
 	mutable QMutex m_mutex;
 	PageParams m_pageParams;
+	DeviationProvider<PageId> m_deviationProvider;
 };
 
 } // namespace select_content

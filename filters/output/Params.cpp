@@ -52,6 +52,7 @@ Params::Params(QDomElement const& el)
 	m_colorParams.setBlackWhiteOptions(
 		BlackWhiteOptions(cp.namedItem("bw").toElement())
 	);
+	m_splittingOptions = SplittingOptions(el.namedItem("splitting").toElement());
 }
 
 QDomElement
@@ -80,7 +81,8 @@ Params::toXml(QDomDocument& doc, QString const& name) const
 	cp.appendChild(m_colorParams.blackWhiteOptions().toXml(doc, "bw"));
 	
 	el.appendChild(cp);
-	
+	el.appendChild(m_splittingOptions.toXml(doc, "splitting"));
+
 	return el;
 }
 
@@ -116,7 +118,7 @@ Params::formatColorMode(ColorParams::ColorMode const mode)
 			str = "mixed";
 			break;
 	}
-	return QString::fromAscii(str);
+	return QString::fromLatin1(str);
 }
 
 } // namespace output

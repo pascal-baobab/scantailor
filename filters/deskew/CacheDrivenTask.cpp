@@ -74,12 +74,13 @@ CacheDrivenTask::process(
 	}
 	
 	if (ThumbnailCollector* thumb_col = dynamic_cast<ThumbnailCollector*>(collector)) {
+		bool const deviant = m_ptrSettings->deviationProvider().isDeviant(page_info.id());
 		thumb_col->processThumbnail(
 			std::auto_ptr<QGraphicsItem>(
 				new Thumbnail(
 					thumb_col->thumbnailCache(),
 					thumb_col->maxLogicalThumbSize(),
-					page_info.imageId(), new_xform
+					page_info.imageId(), new_xform, deviant
 				)
 			)
 		);

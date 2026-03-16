@@ -41,7 +41,8 @@ ZoneInteractionContext::ZoneInteractionContext(
 	m_contextMenuInteractionCreator(
 		boost::bind(&ZoneInteractionContext::createStdContextMenuInteraction, this, _1)
 	),
-	m_showPropertiesCommand(&ZoneInteractionContext::showPropertiesStub)
+	m_showPropertiesCommand(&ZoneInteractionContext::showPropertiesStub),
+	m_zoneCreationMode(ZoneCreationMode::POLYGONAL)
 {
 }
 

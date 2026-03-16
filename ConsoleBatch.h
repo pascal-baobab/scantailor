@@ -23,6 +23,7 @@
 
 #include <QString>
 #include <vector>
+#include <memory>
 
 #include "IntrusivePtr.h"
 #include "BackgroundTask.h"
@@ -52,6 +53,14 @@ public:
 
 	void process();
 	void saveProject(QString const project_file);
+
+	/**
+	 * Export processed pages as image files + manifest.json for RAG ingestion.
+	 * \param outputDir   Destination directory (created if absent).
+	 * \param projectName Written into manifest (e.g. basename of .ScanTailor).
+	 * \return Empty string on success; error message on failure.
+	 */
+	QString exportRag(QString const& outputDir, QString const& projectName);
 
 private:
 	bool batch;

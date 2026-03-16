@@ -21,8 +21,12 @@
 
 #include "NonCopyable.h"
 #include "RefCountable.h"
+#include "DeviationProvider.h"
+#include "PageId.h"
 #include "Margins.h"
+#include "Guide.h"
 #include <memory>
+#include <vector>
 
 class PageId;
 class Margins;
@@ -155,7 +159,19 @@ public:
 	QSizeF getAggregateHardSizeMM(
 		PageId const& page_id, QSizeF const& hard_size_mm,
 		Alignment const& alignment) const;
+
+	/**
+	 * \brief Returns a reference to the list of guides for this project.
+	 *
+	 * Guides are stored globally (not per-page) and drawn in the page layout view.
+	 */
+	std::vector<Guide>& guides();
+
+	DeviationProvider<PageId> const& deviationProvider() const { return m_deviationProvider; }
+
 private:
+	void updateDeviationProvider(PageId const& page_id);
+
 	class Impl;
 	class Item;
 	class ModifyMargins;
@@ -163,6 +179,7 @@ private:
 	class ModifyContentSize;
 	
 	std::auto_ptr<Impl> m_ptrImpl;
+	DeviationProvider<PageId> m_deviationProvider;
 };
 
 } // namespace page_layout

@@ -30,11 +30,11 @@ SET(
 	MultipartFormData.cpp MultipartFormData.h
 )
 SOURCE_GROUP("Sources" FILES ${crash_reporter_sources})
-QT4_AUTOMOC(${crash_reporter_sources})
+# AUTOMOC handled globally by CMAKE_AUTOMOC ON
 
 FILE(GLOB ui_files "ui/*.ui")
 SOURCE_GROUP("Ui Files" FILES ${ui_files})
-QT4_WRAP_UI(ui_sources ${ui_files})
+qt5_wrap_ui(ui_sources ${ui_files})
 SET_SOURCE_FILES_PROPERTIES(${ui_sources} PROPERTIES GENERATED TRUE)
 ADD_SUBDIRECTORY(ui)
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}") # for ui files

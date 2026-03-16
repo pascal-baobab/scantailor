@@ -27,7 +27,8 @@ namespace output
 ColorParams::ColorParams(QDomElement const& el)
 :	m_colorMode(parseColorMode(el.attribute("colorMode"))),
 	m_colorGrayscaleOptions(el.namedItem("color-or-grayscale").toElement()),
-	m_bwOptions(el.namedItem("bw").toElement())
+	m_bwOptions(el.namedItem("bw").toElement()),
+	m_fillingColor(el.attribute("fillingColor") == "background" ? FILL_BACKGROUND : FILL_WHITE)
 {
 }
 
@@ -36,6 +37,7 @@ ColorParams::toXml(QDomDocument& doc, QString const& name) const
 {
 	QDomElement el(doc.createElement(name));
 	el.setAttribute("colorMode", formatColorMode(m_colorMode));
+	el.setAttribute("fillingColor", m_fillingColor == FILL_BACKGROUND ? "background" : "white");
 	el.appendChild(m_colorGrayscaleOptions.toXml(doc, "color-or-grayscale"));
 	el.appendChild(m_bwOptions.toXml(doc, "bw"));
 	return el;
@@ -73,7 +75,7 @@ ColorParams::formatColorMode(ColorParams::ColorMode const mode)
 			str = "mixed";
 			break;
 	}
-	return QString::fromAscii(str);
+	return QString::fromLatin1(str);
 }
 
 } // namespace output

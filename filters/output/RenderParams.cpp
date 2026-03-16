@@ -19,19 +19,28 @@
 #include "RenderParams.h"
 #include "ColorParams.h"
 #include "ColorGrayscaleOptions.h"
+#include "BlackWhiteOptions.h"
+#include "SplittingOptions.h"
 #include "DespeckleLevel.h"
 
 namespace output
 {
 
-RenderParams::RenderParams(ColorParams const& cp)
+RenderParams::RenderParams(ColorParams const& cp, SplittingOptions const* splitting)
 :	m_mask(0)
 {
 	switch (cp.colorMode()) {
-		case ColorParams::BLACK_AND_WHITE:
-			m_mask |= WHITE_MARGINS|NORMALIZE_ILLUMINATION
-					|NEED_BINARIZATION;
+		case ColorParams::BLACK_AND_WHITE: {
+			BlackWhiteOptions const& bw(cp.blackWhiteOptions());
+			m_mask |= NEED_BINARIZATION;
+			if (bw.whiteMargins()) {
+				m_mask |= WHITE_MARGINS;
+				if (bw.normalizeIllumination()) {
+					m_mask |= NORMALIZE_ILLUMINATION;
+				}
+			}
 			break;
+		}
 		case ColorParams::COLOR_GRAYSCALE: {
 			ColorGrayscaleOptions const opt(
 				cp.colorGrayscaleOptions()
@@ -44,10 +53,41 @@ RenderParams::RenderParams(ColorParams const& cp)
 			}
 			break;
 		}
-		case ColorParams::MIXED:
-			m_mask |= WHITE_MARGINS|NORMALIZE_ILLUMINATION
-					|NEED_BINARIZATION|MIXED_OUTPUT;
+		case ColorParams::MIXED: {
+			BlackWhiteOptions const& bw(cp.blackWhiteOptions());
+			m_mask |= NEED_BINARIZATION|MIXED_OUTPUT;
+			if (bw.whiteMargins()) {
+				m_mask |= WHITE_MARGINS;
+				if (bw.normalizeIllumination()) {
+					m_mask |= NORMALIZE_ILLUMINATION;
+				}
+			}
 			break;
+		}
+	}
+
+	if (splitting && splitting->isSplitOutput()) {
+		m_mask |= SPLIT_OUTPUT;
+		if (splitting->getSplittingMode() == output::COLOR_FOREGROUND) {
+			m_mask |= COLOR_FOREGROUND;
+		}
+		if (splitting->isOriginalBackgroundEnabled()) {
+			m_mask |= ORIGINAL_BACKGROUND;
+		}
+	}
+
+	// Color segmentation: available in BLACK_AND_WHITE and MIXED modes
+	if (cp.colorMode() == ColorParams::BLACK_AND_WHITE || cp.colorMode() == ColorParams::MIXED) {
+		if (cp.blackWhiteOptions().getColorSegmenterOptions().isEnabled()) {
+			m_mask |= COLOR_SEGMENTATION;
+		}
+	}
+
+	// Posterization: available in COLOR_GRAYSCALE mode
+	if (cp.colorMode() == ColorParams::COLOR_GRAYSCALE) {
+		if (cp.colorGrayscaleOptions().getPosterizationOptions().isEnabled()) {
+			m_mask |= POSTERIZE;
+		}
 	}
 }
 

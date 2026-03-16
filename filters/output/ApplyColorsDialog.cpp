@@ -17,7 +17,6 @@
 */
 
 #include "ApplyColorsDialog.h"
-#include "ApplyColorsDialog.h.moc"
 #include "PageSelectionAccessor.h"
 #include <QButtonGroup>
 

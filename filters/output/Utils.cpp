@@ -43,6 +43,18 @@ Utils::specklesDir(QString const& out_dir)
 	return QDir(out_dir).absoluteFilePath("cache/speckles");
 }
 
+QString
+Utils::foregroundDir(QString const& out_dir)
+{
+	return QDir(out_dir).absoluteFilePath("foreground");
+}
+
+QString
+Utils::backgroundDir(QString const& out_dir)
+{
+	return QDir(out_dir).absoluteFilePath("background");
+}
+
 QTransform
 Utils::scaleFromToDpi(Dpi const& from, Dpi const& to)
 {

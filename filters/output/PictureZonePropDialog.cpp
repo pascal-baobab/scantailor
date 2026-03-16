@@ -17,7 +17,6 @@
 */
 
 #include "PictureZonePropDialog.h"
-#include "PictureZonePropDialog.h.moc"
 #include "Property.h"
 #include "PictureLayerProperty.h"
 

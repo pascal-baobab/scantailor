@@ -23,13 +23,15 @@ namespace output
 {
 
 class ColorParams;
+class SplittingOptions;
 
 class RenderParams
 {
 public:
 	RenderParams() : m_mask(0) {}
-	
-	RenderParams(ColorParams const& color_params);
+
+	RenderParams(ColorParams const& color_params,
+		SplittingOptions const* splitting = nullptr);
 	
 	bool whiteMargins() const { return (m_mask & WHITE_MARGINS) != 0; }
 	
@@ -49,12 +51,27 @@ public:
 		return (m_mask & (NEED_BINARIZATION|MIXED_OUTPUT))
 				== NEED_BINARIZATION;
 	}
+
+	bool splitOutput() const { return (m_mask & SPLIT_OUTPUT) != 0; }
+
+	bool colorForeground() const { return (m_mask & COLOR_FOREGROUND) != 0; }
+
+	bool colorSegmentation() const { return (m_mask & COLOR_SEGMENTATION) != 0; }
+
+	bool posterize() const { return (m_mask & POSTERIZE) != 0; }
+
+	bool originalBackground() const { return (m_mask & ORIGINAL_BACKGROUND) != 0; }
 private:
 	enum {
 		WHITE_MARGINS = 1,
 		NORMALIZE_ILLUMINATION = 2,
 		NEED_BINARIZATION = 4,
-		MIXED_OUTPUT = 8
+		MIXED_OUTPUT = 8,
+		SPLIT_OUTPUT = 16,
+		COLOR_FOREGROUND = 32,
+		COLOR_SEGMENTATION = 64,
+		POSTERIZE = 128,
+		ORIGINAL_BACKGROUND = 256
 	};
 	
 	int m_mask;

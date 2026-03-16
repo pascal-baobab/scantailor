@@ -26,17 +26,23 @@
 #include "DragHandler.h"
 #include "ZoomHandler.h"
 #include "DraggableObject.h"
+#include "DraggableLineSegment.h"
 #include "ObjectDragHandler.h"
 #include "Alignment.h"
 #include "IntrusivePtr.h"
 #include "PageId.h"
+#include "Guide.h"
 #include <QTransform>
 #include <QSizeF>
 #include <QRectF>
 #include <QPointF>
 #include <QPoint>
+#include <QMenu>
+#include <map>
 
 class Margins;
+class QContextMenuEvent;
+class QAction;
 
 namespace page_layout
 {
@@ -110,6 +116,8 @@ private:
 	
 	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
 
+	virtual void onContextMenuEvent(QContextMenuEvent* event, InteractionState& interaction);
+
 	Proximity cornerProximity(int edge_mask, QRectF const* box, QPointF const& mouse_pos) const;
 
 	Proximity edgeProximity(int edge_mask, QRectF const* box, QPointF const& mouse_pos) const;
@@ -135,8 +143,42 @@ private:
 	QSizeF origRectToSizeMM(QRectF const& rect) const;
 	
 	AggregateSizeChanged commitHardMargins(Margins const& margins_mm);
-	
+
 	void invalidateThumbnails(AggregateSizeChanged agg_size_changed);
+
+	void setupContextMenuInteraction();
+
+	void setupGuides();
+
+	void addHorizontalGuide(double y);
+
+	void addVerticalGuide(double x);
+
+	void removeAllGuides();
+
+	void removeGuide(int index);
+
+	QTransform widgetToGuideCs() const;
+
+	QTransform guideToWidgetCs() const;
+
+	void syncGuidesSettings();
+
+	void setupGuideInteraction(int index);
+
+	QLineF guidePosition(int index) const;
+
+	void guideMoveRequest(int index, QLineF const& line);
+
+	void guideDragFinished(QPointF const&);
+
+	QLineF widgetGuideLine(int index) const;
+
+	int getGuideUnderMouse(QPointF const& screen_mouse_pos, InteractionState const& state) const;
+
+	void enableGuidesInteraction(bool state);
+
+	void forceInscribeGuides();
 	
 	DraggableObject m_innerCorners[4];
 	ObjectDragHandler m_innerCornerHandlers[4];
@@ -214,8 +256,24 @@ private:
 	StateBeforeResizing m_beforeResizing;
 	
 	bool m_leftRightLinked;
-	
+
 	bool m_topBottomLinked;
+
+	/** Guides: map from index to Guide (guide coordinate space = centered on outerRect, virtual pixels). */
+	std::map<int, Guide> m_guides;
+	int m_guidesFreeIndex;
+
+	/** Draggable objects for guides (owned, deleted in destructor). */
+	std::map<int, DraggableLineSegment*> m_draggableGuides;
+	std::map<int, ObjectDragHandler*> m_draggableGuideHandlers;
+
+	QMenu* m_contextMenu;
+	QAction* m_addHorizontalGuideAction;
+	QAction* m_addVerticalGuideAction;
+	QAction* m_removeAllGuidesAction;
+	QAction* m_removeGuideUnderMouseAction;
+	QPointF m_lastContextMenuPos;
+	int m_guideUnderMouse;
 };
 
 } // namespace page_layout

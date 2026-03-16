@@ -22,6 +22,10 @@
 #include "PngMetadataLoader.h"
 #include "TiffMetadataLoader.h"
 #include "JpegMetadataLoader.h"
+#include "PdfMetadataLoader.h"
+#include "ColorSchemeManager.h"
+#include "DarkColorScheme.h"
+#include "LightColorScheme.h"
 #include <QMetaType>
 #include <QtPlugin>
 #include <QLocale>
@@ -144,6 +148,8 @@ int main(int argc, char** argv)
 #ifdef _WIN32
 	// Get rid of all references to Qt's installation directory.
 	app.setLibraryPaths(QStringList(app.applicationDirPath()));
+	// On macOS, macdeployqt handles plugin paths inside the .app bundle automatically.
+	// On Linux, no override is needed; Qt finds plugins via the standard rpath.
 #endif
 
 	// parse command line arguments
@@ -179,10 +185,26 @@ int main(int argc, char** argv)
 	app.setOrganizationName("Scan Tailor");
 	app.setOrganizationDomain("scantailor.sourceforge.net");
 	QSettings settings;
-	
+
+	// Apply color scheme
+	{
+		QString const scheme = settings.value("settings/color_scheme", "native").toString();
+		if (scheme == "dark") {
+			DarkColorScheme darkScheme;
+			ColorSchemeManager::instance().setColorScheme(darkScheme);
+		} else if (scheme == "light") {
+			LightColorScheme lightScheme;
+			ColorSchemeManager::instance().setColorScheme(lightScheme);
+		}
+		// "native" = do nothing, use OS defaults
+	}
+
 	PngMetadataLoader::registerMyself();
 	TiffMetadataLoader::registerMyself();
 	JpegMetadataLoader::registerMyself();
+#ifdef HAVE_POPPLER
+	PdfMetadataLoader::registerMyself();
+#endif
 	
 	MainWindow* main_wnd = new MainWindow();
 	main_wnd->setAttribute(Qt::WA_DeleteOnClose);

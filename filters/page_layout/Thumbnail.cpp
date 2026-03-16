@@ -22,6 +22,7 @@
 #include <QPolygonF>
 #include <QTransform>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QBrush>
 #include <QColor>
@@ -34,11 +35,13 @@ namespace page_layout
 Thumbnail::Thumbnail(
 	IntrusivePtr<ThumbnailPixmapCache> const& thumbnail_cache,
 	QSizeF const& max_size, ImageId const& image_id, Params const& params,
-	ImageTransformation const& xform, QPolygonF const& phys_content_rect)
+	ImageTransformation const& xform, QPolygonF const& phys_content_rect,
+	bool deviant)
 :	ThumbnailBase(thumbnail_cache, max_size, image_id, xform),
 	m_params(params),
 	m_virtContentRect(xform.transform().map(phys_content_rect).boundingRect()),
-	m_virtOuterRect(xform.resultingPostCropArea().boundingRect())
+	m_virtOuterRect(xform.resultingPostCropArea().boundingRect()),
+	m_deviant(deviant)
 {
 	setExtendedClipArea(true);
 }
@@ -98,6 +101,10 @@ Thumbnail::paintOverImage(
 	// For some reason, if we let Qt round the coordinates,
 	// the result is slightly different.
 	painter.drawRect(inner_rect.toRect());
+
+	if (m_deviant) {
+		paintDeviant(painter);
+	}
 }
 
 } // namespace page_layout

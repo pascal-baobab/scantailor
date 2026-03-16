@@ -17,13 +17,13 @@
 */
 
 #include "OptionsWidget.h"
-#include "OptionsWidget.h.moc"
 #include "Settings.h"
 #include "ApplyDialog.h"
 #include "../../Utils.h"
 #include "ScopedIncDec.h"
 #include "PageInfo.h"
 #include "PageId.h"
+#include "UnitsProvider.h"
 #include "imageproc/Constants.h"
 #ifndef Q_MOC_RUN
 #include <boost/foreach.hpp>
@@ -57,10 +57,10 @@ OptionsWidget::OptionsWidget(
 	}
 
 	m_chainIcon.addPixmap(
-		QPixmap(QString::fromAscii(":/icons/stock-vchain-24.png"))
+		QPixmap(QString::fromLatin1(":/icons/stock-vchain-24.png"))
 	);
 	m_brokenChainIcon.addPixmap(
-		QPixmap(QString::fromAscii(":/icons/stock-vchain-broken-24.png"))
+		QPixmap(QString::fromLatin1(":/icons/stock-vchain-broken-24.png"))
 	);
 	
 	setupUi(this);
@@ -153,10 +153,26 @@ OptionsWidget::OptionsWidget(
 			this, SLOT(alignmentButtonClicked())
 		);
 	}
+
+	UnitsProvider::getInstance().addListener(this);
+
+	// Initialize from global units
+	Units const currentUnits = UnitsProvider::getInstance().getUnits();
+	if (currentUnits == INCHES) {
+		m_mmToUnit = MM2INCH;
+		m_unitToMM = INCH2MM;
+	}
+	if (unitsComboBox->count() > 0) {
+		int const idx = (currentUnits == INCHES) ? 1 : 0;
+		unitsComboBox->blockSignals(true);
+		unitsComboBox->setCurrentIndex(idx);
+		unitsComboBox->blockSignals(false);
+	}
 }
 
 OptionsWidget::~OptionsWidget()
 {
+	UnitsProvider::getInstance().removeListener(this);
 }
 
 void
@@ -232,6 +248,42 @@ OptionsWidget::unitsChanged(int const idx)
 	rightMarginSpinBox->setDecimals(decimals);
 	rightMarginSpinBox->setSingleStep(step);
 	
+	updateMarginsDisplay();
+}
+
+void
+OptionsWidget::onUnitsChanged(Units units)
+{
+	int idx = 0;
+	switch (units) {
+		case INCHES:
+			idx = 1;
+			m_mmToUnit = MM2INCH;
+			m_unitToMM = INCH2MM;
+			break;
+		default:
+			idx = 0;
+			m_mmToUnit = 1.0;
+			m_unitToMM = 1.0;
+			break;
+	}
+
+	unitsComboBox->blockSignals(true);
+	unitsComboBox->setCurrentIndex(idx);
+	unitsComboBox->blockSignals(false);
+
+	// Reapply decimals and step
+	int decimals = (units == INCHES) ? 2 : 1;
+	double step = (units == INCHES) ? 0.01 : 1.0;
+	topMarginSpinBox->setDecimals(decimals);
+	topMarginSpinBox->setSingleStep(step);
+	bottomMarginSpinBox->setDecimals(decimals);
+	bottomMarginSpinBox->setSingleStep(step);
+	leftMarginSpinBox->setDecimals(decimals);
+	leftMarginSpinBox->setSingleStep(step);
+	rightMarginSpinBox->setDecimals(decimals);
+	rightMarginSpinBox->setSingleStep(step);
+
 	updateMarginsDisplay();
 }
 

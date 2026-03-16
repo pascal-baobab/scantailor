@@ -53,23 +53,33 @@ public:
 		void setSizeCalc(PhysSizeCalc const& calc);
 
 		void setContentRect(QRectF const& content_rect);
-		
+
 		QRectF const& contentRect() const;
 
 		QSizeF contentSizeMM() const;
-		
+
+		void setPageRect(QRectF const& page_rect);
+
+		QRectF const& pageRect() const;
+
 		void setDependencies(Dependencies const& deps);
-		
+
 		Dependencies const& dependencies() const;
-		
+
 		void setMode(AutoManualMode mode);
-		
+
 		AutoManualMode mode() const;
+
+		void setPageDetectMode(AutoManualMode mode);
+
+		AutoManualMode pageDetectMode() const;
 	private:
 		QRectF m_contentRect; // In virtual image coordinates.
+		QRectF m_pageRect;    // In virtual image coordinates.
 		PhysSizeCalc m_sizeCalc;
 		Dependencies m_deps;
 		AutoManualMode m_mode;
+		AutoManualMode m_pageDetectMode;
 	};
 	
 	OptionsWidget(IntrusivePtr<Settings> const& settings,
@@ -82,6 +92,8 @@ public:
 	void postUpdateUI(UiData const& ui_data);
 public slots:
 	void manualContentRectSet(QRectF const& content_rect);
+
+	void manualPageRectSet(QRectF const& page_rect);
 private slots:
 	void showApplyToDialog();
 

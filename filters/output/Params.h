@@ -21,6 +21,7 @@
 
 #include "Dpi.h"
 #include "ColorParams.h"
+#include "SplittingOptions.h"
 #include "DewarpingMode.h"
 #include "dewarping/DistortionModel.h"
 #include "DepthPerception.h"
@@ -46,6 +47,10 @@ public:
 	ColorParams const& colorParams() const { return m_colorParams; }
 
 	void setColorParams(ColorParams const& params) { m_colorParams = params; }
+
+	SplittingOptions const& splittingOptions() const { return m_splittingOptions; }
+
+	void setSplittingOptions(SplittingOptions const& opt) { m_splittingOptions = opt; }
 
 	DewarpingMode const& dewarpingMode() const { return m_dewarpingMode; }
 
@@ -73,6 +78,7 @@ private:
 	
 	Dpi m_dpi;
 	ColorParams m_colorParams;
+	SplittingOptions m_splittingOptions;
 	dewarping::DistortionModel m_distortionModel;
 	DepthPerception m_depthPerception;
 	DewarpingMode m_dewarpingMode;

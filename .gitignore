@@ -3,4 +3,7 @@ CMakeFiles
 *.qm
 *.h.moc
 build/
+build-qt5/
+.claude/
+plans/
 *~

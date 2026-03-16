@@ -17,7 +17,6 @@
 */
 
 #include "ImageViewBase.h"
-#include "ImageViewBase.h.moc"
 #include "NonCopyable.h"
 #include "ImagePresentation.h"
 #include "OpenGLSupport.h"
@@ -581,6 +580,23 @@ ImageViewBase::mouseReleaseEvent(QMouseEvent* event)
 
 	event->setAccepted(false);
 	m_rootInteractionHandler.mouseReleaseEvent(event, m_interactionState);
+	event->setAccepted(true);
+	updateStatusTipAndCursor();
+	maybeQueueRedraw();
+}
+
+void
+ImageViewBase::mouseDoubleClickEvent(QMouseEvent* event)
+{
+	m_interactionState.resetProximity();
+	if (!m_interactionState.captured()) {
+		m_rootInteractionHandler.proximityUpdate(
+			QPointF(0.5, 0.5) + event->pos(), m_interactionState
+		);
+	}
+
+	event->setAccepted(false);
+	m_rootInteractionHandler.mouseDoubleClickEvent(event, m_interactionState);
 	event->setAccepted(true);
 	updateStatusTipAndCursor();
 	maybeQueueRedraw();

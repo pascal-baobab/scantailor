@@ -16,8 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "ProjectFilesDialog.h"
-#include "ProjectFilesDialog.h.moc"
 #include "NonCopyable.h"
 #include "ImageMetadata.h"
 #include "ImageMetadataLoader.h"
@@ -220,12 +220,16 @@ ProjectFilesDialog::ProjectFilesDialog(QWidget* parent)
 	m_supportedExtensions.insert("jpeg");
 	m_supportedExtensions.insert("tif");
 	m_supportedExtensions.insert("tiff");
+#ifdef HAVE_POPPLER
+	m_supportedExtensions.insert("pdf");
+#endif
 	
 	setupUi(this);
 	offProjectList->setModel(m_ptrOffProjectFilesSorted->model());
 	inProjectList->setModel(m_ptrInProjectFilesSorted->model());
 	
 	connect(inpDirBrowseBtn, SIGNAL(clicked()), this, SLOT(inpDirBrowse()));
+	connect(importPdfBtn, SIGNAL(clicked()), this, SLOT(importPdfBrowse()));
 	connect(outDirBrowseBtn, SIGNAL(clicked()), this, SLOT(outDirBrowse()));
 	connect(
 		inpDirLine, SIGNAL(textEdited(QString const&)),
@@ -339,6 +343,44 @@ ProjectFilesDialog::inpDirBrowse()
 		setInputDir(dir);
 		settings.setValue("lastInputDir", dir);
 	}
+}
+
+void
+ProjectFilesDialog::importPdfBrowse()
+{
+	QSettings settings;
+
+	QString initial_dir(inpDirLine->text());
+	if (initial_dir.isEmpty() || !QDir(initial_dir).exists()) {
+		initial_dir = settings.value("lastInputDir").toString();
+	}
+	if (initial_dir.isEmpty() || !QDir(initial_dir).exists()) {
+		initial_dir = QDir::home().absolutePath();
+	}
+
+	QString const pdfPath = QFileDialog::getOpenFileName(
+		this, tr("Import PDF"), initial_dir,
+		tr("PDF Files (*.pdf)")
+	);
+	if (pdfPath.isEmpty()) {
+		return;
+	}
+
+	QFileInfo const pdfInfo(pdfPath);
+	QString const dir = pdfInfo.absolutePath();
+	settings.setValue("lastInputDir", dir);
+
+	// Set the input directory to the PDF's parent folder.
+	inpDirLine->setText(QDir::toNativeSeparators(dir));
+	if (m_autoOutDir) {
+		setOutputDir(QDir::cleanPath(QDir(dir).filePath("out")));
+	}
+
+	// Create an Item for the PDF and add it directly to the project list.
+	Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+	std::vector<Item> items;
+	items.push_back(Item(pdfInfo, flags));
+	m_ptrInProjectFiles->append(items.begin(), items.end());
 }
 
 void

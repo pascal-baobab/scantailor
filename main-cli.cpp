@@ -18,6 +18,7 @@
 */
 
 #include <QCoreApplication>
+#include <QFileInfo>
 #include <QString>
 #include <QStringList>
 #include <iostream>
@@ -60,4 +61,20 @@ int main(int argc, char **argv)
 
 	if (cli.hasOutputProject())
 		cbatch->saveProject(cli.outputProjectFile());
+
+	if (cli.hasExportRag()) {
+		QString const ragDir = cli.exportRagDir();
+		QString const projectName = cli.projectFile().isEmpty()
+			? QString::fromLatin1("export")
+			: QFileInfo(cli.projectFile()).completeBaseName();
+		QString const err = cbatch->exportRag(ragDir, projectName);
+		if (err.isEmpty()) {
+			std::cout << "RAG export complete: " << ragDir.toLocal8Bit().constData() << "\n";
+		} else {
+			std::cerr << "RAG export failed: " << err.toLocal8Bit().constData() << "\n";
+			return 1;
+		}
+	}
+
+	return 0;
 }

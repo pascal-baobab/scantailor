@@ -26,6 +26,7 @@
 #include "Margins.h"
 #include "Alignment.h"
 #include "PageId.h"
+#include "UnitsListener.h"
 #include <QIcon>
 #include <memory>
 #include <map>
@@ -41,7 +42,8 @@ class Settings;
 
 class OptionsWidget :
 	public FilterOptionsWidget,
-	public Ui::PageLayoutOptionsWidget
+	public Ui::PageLayoutOptionsWidget,
+	public UnitsListener
 {
 	Q_OBJECT
 public:
@@ -100,10 +102,12 @@ private slots:
 private:
 	typedef std::map<QToolButton*, Alignment> AlignmentByButton;
 	
+	void onUnitsChanged(Units units) override;
+
 	void updateMarginsDisplay();
-	
+
 	void updateLinkDisplay(QToolButton* button, bool linked);
-	
+
 	void enableDisableAlignmentButtons();
 	
 	IntrusivePtr<Settings> m_ptrSettings;

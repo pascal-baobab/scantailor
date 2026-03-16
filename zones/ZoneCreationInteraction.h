@@ -26,9 +26,11 @@
 #include "ZoomHandler.h"
 #include "BasicSplineVisualizer.h"
 #include "EditableSpline.h"
+#include "ZoneCreationMode.h"
 #include <QPointF>
 #include <QDateTime>
 #include <QCoreApplication>
+#include <Qt>
 
 class ZoneInteractionContext;
 
@@ -45,11 +47,17 @@ protected:
 
 	virtual void onKeyPressEvent(QKeyEvent* event, InteractionState& interaction);
 
+	virtual void onMousePressEvent(QMouseEvent* event, InteractionState& interaction);
+
 	virtual void onMouseReleaseEvent(QMouseEvent* event, InteractionState& interaction);
 
 	virtual void onMouseMoveEvent(QMouseEvent* event, InteractionState& interaction);
 private:
 	void updateStatusTip();
+
+	bool isDragHandlerPermitted(InteractionState const& interaction) const;
+
+	ZoneCreationMode currentZoneCreationMode() const;
 
 	ZoneInteractionContext& m_rContext;
 
@@ -78,6 +86,11 @@ private:
 	InteractionState::Captor m_interaction;
 	EditableSpline::Ptr m_ptrSpline;
 	QPointF m_nextVertexImagePos;
+	QPointF m_nextVertexImagePos_mid1;
+	QPointF m_nextVertexImagePos_mid2;
+	ZoneCreationMode m_initialZoneCreationMode;
+	bool m_leftMouseButtonPressed;
+	Qt::KeyboardModifiers m_mouseButtonModifiers;
 };
 
 #endif

@@ -25,12 +25,18 @@
 #include "PageId.h"
 #include "PageSelectionAccessor.h"
 #include "ColorParams.h"
+#include "BlackWhiteOptions.h"
+#include "ColorGrayscaleOptions.h"
+#include "SplittingOptions.h"
 #include "DewarpingMode.h"
 #include "DepthPerception.h"
 #include "DespeckleLevel.h"
 #include "Dpi.h"
 #include "ImageViewTab.h"
 #include <set>
+
+class QSpinBox;
+class QLabel;
 
 namespace dewarping
 {
@@ -64,6 +70,16 @@ signals:
 	void despeckleLevelChanged(DespeckleLevel level, bool* handled);
 
 	void depthPerceptionChanged(double val);
+
+	void exportImagesRequested();
+
+	void exportPdfRequested();
+
+	void exportBothRequested();
+
+	void autoGeneratePdfChanged(bool enabled);
+
+	void vectorizePdfRequested();
 public slots:
 	void tabChanged(ImageViewTab tab);
 
@@ -91,6 +107,16 @@ private slots:
 	
 	void bwThresholdChanged();
 
+	void thresholdMethodChanged(int idx);
+
+	void windowSizeChanged(int val);
+
+	void fillColorChanged(int idx);
+
+	void bwWhiteMarginsToggled(bool checked);
+
+	void bwEqualizeIlluminationToggled(bool checked);
+
 	void despeckleOffSelected();
 
 	void despeckleCautiousSelected();
@@ -112,6 +138,32 @@ private slots:
 	void applyDepthPerceptionConfirmed(std::set<PageId> const& pages);
 
 	void depthPerceptionChangedSlot(int val);
+
+	void splitOutputToggled(bool checked);
+
+	void bwForegroundToggled(bool checked);
+
+	void colorForegroundToggled(bool checked);
+
+	void originalBackgroundToggled(bool checked);
+
+	void colorSegmentationToggled(bool checked);
+
+	void noiseReductionChanged(int val);
+
+	void redAdjChanged(int val);
+
+	void greenAdjChanged(int val);
+
+	void blueAdjChanged(int val);
+
+	void posterizationToggled(bool checked);
+
+	void posterizeLevelChanged(int val);
+
+	void posterizeNormalizeToggled(bool checked);
+
+	void posterizeForceBWToggled(bool checked);
 private:
 	void handleDespeckleLevelChange(DespeckleLevel level);
 
@@ -128,11 +180,14 @@ private:
 	PageId m_pageId;
 	Dpi m_outputDpi;
 	ColorParams m_colorParams;
+	SplittingOptions m_splittingOptions;
 	DepthPerception m_depthPerception;
 	DewarpingMode m_dewarpingMode;
 	DespeckleLevel m_despeckleLevel;
 	ImageViewTab m_lastTab;
 	int m_ignoreThresholdChanges;
+	QSpinBox* m_windowSizeSB;
+	QLabel* m_windowSizeLabel;
 };
 
 } // namespace output

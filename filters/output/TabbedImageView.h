@@ -21,7 +21,13 @@
 
 #include "ImageViewTab.h"
 #include <QTabWidget>
+#include <QScrollBar>
+#include <QPointF>
+#include <QRectF>
 #include <map>
+#include <memory>
+
+class ImageViewBase;
 
 namespace output
 {
@@ -30,9 +36,14 @@ class TabbedImageView : public QTabWidget
 {
 	Q_OBJECT
 public:
+	typedef std::map<ImageViewTab, QRectF> TabImageRectMap;
+
 	TabbedImageView(QWidget* parent = 0);
 
 	void addTab(QWidget* widget, QString const& label, ImageViewTab tab);
+
+	void setImageRectMap(std::auto_ptr<TabImageRectMap> tabImageRectMap);
+
 public slots:
 	void setCurrentTab(ImageViewTab tab);
 signals:
@@ -40,7 +51,15 @@ signals:
 private slots:
 	void tabChangedSlot(int idx);
 private:
+	void copyViewZoomAndPos(int oldIdx, int newIdx) const;
+	QPointF getFocus(QRectF const& rect, QScrollBar const& horBar, QScrollBar const& verBar) const;
+	void setFocus(QScrollBar& horBar, QScrollBar& verBar, QRectF const& rect, QPointF const& focal) const;
+
+	static ImageViewBase* findImageView(QWidget* widget);
+
 	std::map<QWidget*, ImageViewTab> m_registry;
+	std::auto_ptr<TabImageRectMap> m_tabImageRectMap;
+	int m_prevImageViewTabIndex;
 };
 
 } // namespace output

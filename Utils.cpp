@@ -21,8 +21,8 @@
 #include <QByteArray>
 #include <QFile>
 #include <QDir>
+#include <QSettings>
 #include <Qt>
-#include <QTextDocument> // Qt::escape() is actually declare there.
 
 #ifdef Q_WS_WIN
 #include <windows.h>
@@ -50,20 +50,20 @@ QString
 Utils::richTextForLink(
 	QString const& label, QString const& target)
 {
-	return QString::fromAscii(
+	return QString::fromLatin1(
 		"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\""
 		"\"http://www.w3.org/TR/REC-html40/strict.dtd\">"
 		"<html><head><meta name=\"qrichtext\" content=\"1\" />"
 		"</head><body><p style=\"margin-top:0px; margin-bottom:0px;"
 		"margin-left:0px; margin-right:0px; -qt-block-indent:0;"
 		"text-indent:0px;\"><a href=\"%1\">%2</a></p></body></html>"
-	).arg(Qt::escape(target), Qt::escape(label));
+	).arg(target.toHtmlEscaped(), label.toHtmlEscaped());
 }
 
 void
 Utils::maybeCreateCacheDir(QString const& output_dir)
 {
-	QDir(output_dir).mkdir(QString::fromAscii("cache"));
+	QDir(output_dir).mkdir(QString::fromLatin1("cache"));
 	
 	// QDir::mkdir() returns false if the directory already exists,
 	// so to prevent confusion this function return void.
@@ -78,7 +78,9 @@ Utils::outputDirToThumbDir(QString const& output_dir)
 IntrusivePtr<ThumbnailPixmapCache>
 Utils::createThumbnailCache(QString const& output_dir)
 {
-	QSize const max_pixmap_size(200, 200);
+	QSettings settings;
+	int const quality = settings.value("settings/thumbnail_quality", 200).toInt();
+	QSize const max_pixmap_size(quality, quality);
 	QString const thumbs_cache_path(outputDirToThumbDir(output_dir));
 	
 	return IntrusivePtr<ThumbnailPixmapCache>(

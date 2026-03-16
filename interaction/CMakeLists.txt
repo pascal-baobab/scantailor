@@ -17,7 +17,7 @@ SET(
 )
 
 SOURCE_GROUP(Sources FILES ${sources})
-QT4_AUTOMOC(${sources})
+# AUTOMOC handled globally by CMAKE_AUTOMOC ON
 
 ADD_LIBRARY(interaction STATIC ${sources})
 

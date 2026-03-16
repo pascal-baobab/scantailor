@@ -22,9 +22,11 @@
 #include "NonCopyable.h"
 #include "AbstractFilter.h"
 #include "PageView.h"
+#include "PageOrderOption.h"
 #include "IntrusivePtr.h"
 #include "FilterResult.h"
 #include "SafeDeletingQObjectPtr.h"
+#include <vector>
 
 class PageId;
 class QString;
@@ -76,6 +78,10 @@ public:
 	
 	OptionsWidget* optionsWidget() { return m_ptrOptionsWidget.get(); }
 	Settings* getSettings() { return m_ptrSettings.get(); };
+
+	virtual int selectedPageOrder() const;
+	virtual void selectPageOrder(int option);
+	virtual std::vector<PageOrderOption> pageOrderOptions() const;
 private:
 	void writePageSettings(
 		QDomDocument& doc, QDomElement& filter_el,
@@ -83,6 +89,8 @@ private:
 	
 	IntrusivePtr<Settings> m_ptrSettings;
 	SafeDeletingQObjectPtr<OptionsWidget> m_ptrOptionsWidget;
+	std::vector<PageOrderOption> m_pageOrderOptions;
+	int m_selectedPageOrder;
 };
 
 } // namespace deskew

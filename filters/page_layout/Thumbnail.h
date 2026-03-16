@@ -37,8 +37,9 @@ class Thumbnail : public ThumbnailBase
 public:
 	Thumbnail(IntrusivePtr<ThumbnailPixmapCache> const& thumbnail_cache,
 		QSizeF const& max_size, ImageId const& image_id, Params const& params,
-		ImageTransformation const& xform, QPolygonF const& phys_content_rect);
-	
+		ImageTransformation const& xform, QPolygonF const& phys_content_rect,
+		bool deviant = false);
+
 	virtual void paintOverImage(
 		QPainter& painter,
 		QTransform const& image_to_display,
@@ -47,6 +48,7 @@ private:
 	Params m_params;
 	QRectF m_virtContentRect;
 	QRectF m_virtOuterRect;
+	bool m_deviant;
 };
 
 } // namespace page_layout
