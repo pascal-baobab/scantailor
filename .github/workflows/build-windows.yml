@@ -7,7 +7,6 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
-# Cancel previous run on the same branch when a new push arrives
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -22,7 +21,7 @@ jobs:
         shell: msys2 {0}
 
     steps:
-      # ── 1. Set up MSYS2 FIRST (required before checkout to fix line endings) ─
+      # ── 1. MSYS2 prima del checkout (evita problemi line-ending) ──────────
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -46,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
 
       # ── 3. Configure ──────────────────────────────────────────────────────
-      - name: Configure (CMake)
+      - name: Configure
         run: |
           cmake -S . -B build \
             -G Ninja \
@@ -58,49 +57,53 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      # ── 5. Deploy Qt DLLs + plugins ───────────────────────────────────────
-      - name: Deploy Qt DLLs and plugins
+      # ── 5. Package ────────────────────────────────────────────────────────
+      # Non usiamo windeployqt (esce con errore per libGLESv2 in MSYS2 e non
+      # copia i plugin). Usiamo invece objdump per trovare tutte le DLL in
+      # modo ricorsivo, poi copiamo i plugin Qt direttamente da MSYS2.
+      - name: Package
         run: |
-          # windeployqt copies Qt DLLs; ignore libGLESv2 missing error
-          /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
+          mkdir -p dist/platforms dist/styles dist/imageformats dist/printsupport
 
-          # windeployqt may exit before copying plugins when libGLESv2 is missing.
-          # Copy the essential Qt plugin directories directly from MSYS2.
-          QT_PLUGINS=/mingw64/share/qt5/plugins
-          for dir in platforms styles imageformats printsupport; do
-            if [ -d "$QT_PLUGINS/$dir" ]; then
-              mkdir -p build/$dir
-              cp "$QT_PLUGINS"/$dir/*.dll build/$dir/ 2>/dev/null || true
-              echo "Copied $dir: $(ls build/$dir/*.dll 2>/dev/null | wc -l) DLLs"
-            fi
+          # Eseguibili
+          cp build/scantailor.exe dist/
+          cp build/scantailor-cli.exe dist/ 2>/dev/null || true
+
+          # Pass 1: DLL dirette dell'exe
+          objdump -p build/scantailor.exe \
+            | grep 'DLL Name:' | awk '{print $NF}' \
+            | while read dll; do
+                [ -f "/mingw64/bin/$dll" ] && cp -n "/mingw64/bin/$dll" dist/
+              done
+
+          # Pass 2: DLL transitive (dipendenze delle DLL già copiate)
+          for dll in dist/*.dll; do
+            objdump -p "$dll" 2>/dev/null | grep 'DLL Name:' | awk '{print $NF}' \
+              | while read dep; do
+                  [ -f "/mingw64/bin/$dep" ] && cp -n "/mingw64/bin/$dep" dist/
+                done
           done
 
-      # ── 5b. Copy ALL MinGW runtime DLLs (ldd finds every /mingw64 dependency)
-      - name: Copy MinGW runtime DLLs (via ldd)
-        run: |
-          ldd build/scantailor.exe \
-            | grep -i '/mingw64/bin' \
-            | awk '{print $3}' \
-            | xargs -I{} cp -n {} build/
-          echo "Non-Qt DLLs copied:"
-          ls build/*.dll | xargs -n1 basename | grep -iv '^Qt'
+          # Plugin Qt (obbligatori — senza platforms/qwindows.dll Qt non parte)
+          QT_PLUGINS=/mingw64/share/qt5/plugins
+          cp "$QT_PLUGINS/platforms/qwindows.dll"   dist/platforms/
+          cp "$QT_PLUGINS/platforms/qminimal.dll"   dist/platforms/ 2>/dev/null || true
+          cp "$QT_PLUGINS/imageformats/"*.dll       dist/imageformats/ 2>/dev/null || true
+          cp "$QT_PLUGINS/styles/"*.dll             dist/styles/      2>/dev/null || true
+          cp "$QT_PLUGINS/printsupport/"*.dll       dist/printsupport/ 2>/dev/null || true
 
-      # ── 6. Package ZIP (PowerShell — no 7z needed in MSYS2) ───────────────
-      - name: Package ZIP
+          # Riepilogo
+          echo "=== dist/ ==="
+          find dist -name '*.dll' -o -name '*.exe' | sort
+          echo "Totale DLL: $(find dist -name '*.dll' | wc -l)"
+
+      # ── 6. ZIP con PowerShell ──────────────────────────────────────────────
+      - name: Create ZIP
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Copy-Item build\scantailor.exe     dist\
-          Copy-Item build\scantailor-cli.exe dist\ -ErrorAction SilentlyContinue
-          Get-ChildItem build\*.dll -ErrorAction SilentlyContinue |
-            Copy-Item -Destination dist\
-          foreach ($d in @('platforms','styles','imageformats','translations')) {
-            if (Test-Path "build\$d") { Copy-Item -Recurse "build\$d" dist\ }
-          }
-          Compress-Archive -Path dist\* -DestinationPath ScanTailor-Windows-x64.zip
+        run: Compress-Archive -Path dist\* -DestinationPath ScanTailor-Windows-x64.zip
 
-      # ── 7. Upload artifact ────────────────────────────────────────────────
-      - name: Upload ZIP
+      # ── 7. Upload ─────────────────────────────────────────────────────────
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: ScanTailor-Windows-x64
