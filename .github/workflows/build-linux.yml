@@ -7,10 +7,17 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+# Cancel previous run on the same branch when a new push arrives
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-linux:
-    name: Linux x86_64 (Ubuntu 22.04, Qt5, AppImage)
-    runs-on: ubuntu-22.04
+    # IMPORTANT: linuxdeployqt requires ubuntu-20.04 — it fails on 22.04+
+    # because it checks the host glibc version and rejects "too new" systems.
+    name: Linux x86_64 (Ubuntu 20.04, Qt5, AppImage)
+    runs-on: ubuntu-20.04
     env:
       CMAKE_BUILD_TYPE: Release
 
@@ -33,6 +40,8 @@ jobs:
             patchelf
 
       # ── 3. Configure ──────────────────────────────────────────────────────
+      # CMAKE_POSITION_INDEPENDENT_CODE=ON is mandatory: Ubuntu Qt5 is built
+      # with -reduce-relocations, requiring all code to use -fPIC.
       - name: Configure (CMake)
         run: |
           cmake -S . -B build \
@@ -45,38 +54,41 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      # ── 5. Install into AppDir ─────────────────────────────────────────────
+      # ── 5. Install into AppDir with FHS layout ────────────────────────────
       - name: Install into AppDir
-        run: |
-          DESTDIR="$PWD/AppDir" cmake --install build
+        run: DESTDIR="$PWD/AppDir" cmake --install build
 
       # ── 6. Download linuxdeployqt ─────────────────────────────────────────
       - name: Download linuxdeployqt
         run: |
-          wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" \
+          wget -q \
+            "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" \
             -O linuxdeployqt
           chmod +x linuxdeployqt
 
       # ── 7. Build AppImage ─────────────────────────────────────────────────
       - name: Build AppImage
         run: |
-          # Create .desktop file (printf avoids YAML-indentation issues)
+          # .desktop file in FHS location (read by linuxdeployqt)
           mkdir -p AppDir/usr/share/applications
           printf '[Desktop Entry]\nName=ScanTailor\nExec=scantailor\nIcon=scantailor\nType=Application\nCategories=Graphics;\n' \
             > AppDir/usr/share/applications/scantailor.desktop
 
-          # Copy icon
+          # Icon
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           cp resources/icons/16x16/scantailor.png \
             AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || \
           convert -size 256x256 xc:gray \
             AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || true
 
-          # appimagetool (called by linuxdeployqt) looks for .desktop in AppDir root
+          # appimagetool (called by linuxdeployqt) looks for .desktop and icon
+          # in the AppDir ROOT — copy them there explicitly.
           cp AppDir/usr/share/applications/scantailor.desktop AppDir/
           cp AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png AppDir/ 2>/dev/null || true
 
-          export VERSION="$(git describe --tags --always)"
+          # VERSION env var sets the AppImage filename
+          export VERSION="$(git describe --tags --always --dirty)"
+
           ./linuxdeployqt AppDir/usr/bin/scantailor \
             -appimage \
             -no-strip \
@@ -86,8 +98,8 @@ jobs:
       # ── 8. Rename and upload ──────────────────────────────────────────────
       - name: Rename AppImage
         run: |
-          mv ScanTailor*.AppImage ScanTailor-Linux-x86_64.AppImage || \
-          mv *.AppImage ScanTailor-Linux-x86_64.AppImage
+          find . -maxdepth 1 -name '*.AppImage' ! -name 'linuxdeployqt' \
+            -exec mv {} ScanTailor-Linux-x86_64.AppImage \;
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4

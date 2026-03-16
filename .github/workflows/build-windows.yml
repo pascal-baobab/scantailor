@@ -7,6 +7,11 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+# Cancel previous run on the same branch when a new push arrives
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     name: Windows x64 (MSYS2 MinGW64 Qt5)
@@ -17,11 +22,7 @@ jobs:
         shell: msys2 {0}
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      # ── 2. Set up MSYS2 with MinGW64 and required packages ───────────────
+      # ── 1. Set up MSYS2 FIRST (required before checkout to fix line endings) ─
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -40,6 +41,10 @@ jobs:
             mingw-w64-x86_64-libpng
             mingw-w64-x86_64-zlib
 
+      # ── 2. Checkout ───────────────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       # ── 3. Configure ──────────────────────────────────────────────────────
       - name: Configure (CMake)
         run: |
@@ -54,23 +59,21 @@ jobs:
         run: cmake --build build --parallel
 
       # ── 5. Deploy Qt DLLs ─────────────────────────────────────────────────
+      # libGLESv2.dll is optional in MSYS2 Qt5 — ignore the exit code
       - name: Deploy Qt DLLs (windeployqt)
-        run: |
-          /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
+        run: /mingw64/bin/windeployqt-qt5.exe build/scantailor.exe || true
 
-      # ── 6. Collect all files into a zip (PowerShell, no 7z needed) ──────────
+      # ── 6. Package ZIP (PowerShell — no 7z needed in MSYS2) ───────────────
       - name: Package ZIP
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Copy-Item build\scantailor.exe dist\
+          Copy-Item build\scantailor.exe     dist\
           Copy-Item build\scantailor-cli.exe dist\ -ErrorAction SilentlyContinue
           Get-ChildItem build\*.dll -ErrorAction SilentlyContinue |
             Copy-Item -Destination dist\
           foreach ($d in @('platforms','styles','imageformats','translations')) {
-            if (Test-Path "build\$d") {
-              Copy-Item -Recurse "build\$d" dist\
-            }
+            if (Test-Path "build\$d") { Copy-Item -Recurse "build\$d" dist\ }
           }
           Compress-Archive -Path dist\* -DestinationPath ScanTailor-Windows-x64.zip
 
