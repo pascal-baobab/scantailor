@@ -2,9 +2,9 @@ name: Build Windows
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, modernization ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, modernization ]
   workflow_dispatch:
 
 concurrency:
@@ -70,7 +70,11 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      # ── 5. Package ────────────────────────────────────────────────────────
+      # ── 5. Test ───────────────────────────────────────────────────────────
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+      # ── 6. Package ────────────────────────────────────────────────────────
       # windeployqt exits with error on MSYS2 (missing libGLESv2.dll) and
       # doesn't copy plugins. We use an iterative objdump loop that keeps
       # resolving DLL dependencies until no new DLLs are found (convergence).
@@ -131,12 +135,12 @@ jobs:
           find dist -name '*.dll' -o -name '*.exe' | sort
           echo "Total DLLs: $(find dist -name '*.dll' | wc -l)"
 
-      # ── 6. ZIP with PowerShell ─────────────────────────────────────────────
+      # ── 7. ZIP with PowerShell ─────────────────────────────────────────────
       - name: Create ZIP
         shell: pwsh
         run: Compress-Archive -Path dist\* -DestinationPath ScanTailor-Windows-x64.zip
 
-      # ── 7. Upload ─────────────────────────────────────────────────────────
+      # ── 8. Upload ─────────────────────────────────────────────────────────
       - name: Upload
         uses: actions/upload-artifact@v4
         with:

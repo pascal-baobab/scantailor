@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 
 IF(COMMAND cmake_policy)
 	# Suppress warnings.
@@ -15,6 +15,11 @@ SET(
 )
 
 PROJECT("Scan Tailor")
+
+# C++14 required (C++17 removes std::auto_ptr which is used extensively)
+SET(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_EXTENSIONS OFF)
 
 # This forces Visual Studio 2008 SP1 to actually link to the versions of the
 # libraries it ships with!  It's harmless on other platforms.
@@ -388,6 +393,8 @@ ENDIF()
 # goes in there.
 IF(MSVC)
 	OPTION(ENABLE_CRASH_REPORTER "Enable crash reporter (only for official builds)" OFF)
+	# Raise MSVC warning level (default is /W1)
+	ADD_COMPILE_OPTIONS(/W3)
 ENDIF(MSVC)
 
 # Prepare config.h

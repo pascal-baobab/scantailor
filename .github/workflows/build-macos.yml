@@ -2,9 +2,9 @@ name: Build macOS
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, modernization ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, modernization ]
   workflow_dispatch:
 
 concurrency:
@@ -55,7 +55,11 @@ jobs:
       - name: Build
         run: cmake --build build --parallel 4
 
-      # ── 6. Bundle non-Qt Homebrew dylibs into .app ───────────────────────
+      # ── 6. Test ─────────────────────────────────────────────────────────
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+      # ── 7. Bundle non-Qt Homebrew dylibs into .app ───────────────────────
       #    macdeployqt handles Qt frameworks but NOT third-party dylibs
       #    (potrace, tesseract, leptonica, libtiff, libjpeg, libpng, etc.)
       #    Same iterative approach as Windows objdump DLL loop.

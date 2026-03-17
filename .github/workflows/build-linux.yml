@@ -2,9 +2,9 @@ name: Build Linux
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, modernization ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, modernization ]
   workflow_dispatch:
 
 concurrency:
@@ -57,7 +57,11 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      # ── 5. Install into AppDir with FHS layout ───────────────────────────
+      # ── 5. Test ─────────────────────────────────────────────────────────
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+      # ── 6. Install into AppDir with FHS layout ───────────────────────────
       - name: Install into AppDir
         run: DESTDIR="$PWD/AppDir" cmake --install build
 

@@ -50,7 +50,7 @@ MACRO(ST_SET_DEFAULT_GCC_FLAGS)
 		ENDIF()
 		
 		IF(NOT COMPILER_FLAGS_OVERRIDDEN)
-			SET(default_flags_ "-Wall -Wno-unused -ffast-math ${no_inline_dllexport_cflags_}")
+			SET(default_flags_ "-Wall -Wextra -Wshadow -Wno-unused -ffast-math ${no_inline_dllexport_cflags_}")
 			# Flags common for all build configurations.
 			SET(
 				CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${default_flags_}"

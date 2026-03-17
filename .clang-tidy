@@ -1,0 +1,9 @@
+Checks: >
+  -*,
+  modernize-use-nullptr,
+  modernize-use-override,
+  readability-redundant-member-init
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: '.*'

@@ -1,0 +1,4 @@
+# Commits listed here will be ignored by `git blame`.
+# Configure with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Add bulk-reformat commit SHAs below (one per line):
