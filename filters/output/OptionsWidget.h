@@ -71,19 +71,11 @@ signals:
 
 	void depthPerceptionChanged(double val);
 
-	void exportImagesRequested();
+	void generatePdfChanged(bool enabled);
 
-	void exportPdfRequested();
+	void ocrLanguageChanged(QString const& languages);
 
-	void exportBothRequested();
-
-	void autoGeneratePdfChanged(bool enabled);
-
-	void jpegQualityChanged(int quality);
-
-	void autoVectorizePdfChanged(bool enabled);
-
-	void vectorizePdfRequested();
+	void pdfDpiChanged(int dpi);
 public slots:
 	void tabChanged(ImageViewTab tab);
 
@@ -169,7 +161,11 @@ private slots:
 
 	void posterizeForceBWToggled(bool checked);
 
-	void jpegQualitySliderChanged(int val);
+	void generatePdfToggled(bool checked);
+
+	void ocrLanguageToggled();
+
+	void pdfDpiSpinChanged(int val);
 
 	void updatePdfSizeEstimate();
 private:

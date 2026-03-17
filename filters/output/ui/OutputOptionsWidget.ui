@@ -911,113 +911,118 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_export">
       <item>
-       <widget class="QCheckBox" name="autoGeneratePdfCB">
+       <widget class="QCheckBox" name="generatePdfCB">
         <property name="text">
-         <string>Generate PDF on batch run</string>
+         <string>Generate PDF</string>
         </property>
         <property name="toolTip">
-         <string>When checked, a PDF will be automatically generated in out/PDF/ after batch processing completes</string>
+         <string>Generate vectorized PDF after batch processing (Potrace + OCR)</string>
         </property>
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="jpegQualityLayout">
-        <item>
-         <widget class="QLabel" name="jpegQualityLabel">
-          <property name="text">
-           <string>JPEG Quality:</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSlider" name="jpegQualitySlider">
-          <property name="minimum">
-           <number>10</number>
-          </property>
-          <property name="maximum">
-           <number>100</number>
-          </property>
-          <property name="value">
-           <number>65</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="tickPosition">
-           <enum>QSlider::TicksBelow</enum>
-          </property>
-          <property name="tickInterval">
-           <number>10</number>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="jpegQualitySpin">
-          <property name="minimum">
-           <number>10</number>
-          </property>
-          <property name="maximum">
-           <number>100</number>
-          </property>
-          <property name="value">
-           <number>65</number>
-          </property>
-          <property name="suffix">
-           <string>%</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QLabel" name="pdfSizeEstLabel">
-        <property name="text">
-         <string/>
-        </property>
-        <property name="textFormat">
-         <enum>Qt::RichText</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="autoVectorizePdfCB">
-        <property name="text">
-         <string>Vectorize PDF (OCR)</string>
-        </property>
-        <property name="toolTip">
-         <string>When checked, the PDF will include an invisible OCR text overlay (searchable/selectable, requires Tesseract)</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="exportImagesBtn">
-        <property name="text">
-         <string>Export as Images ...</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="exportPdfBtn">
-        <property name="text">
-         <string>Export as PDF ...</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="exportBothBtn">
-        <property name="text">
-         <string>Export Both (Images + PDF)</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="vectorizePdfBtn">
-        <property name="text">
-         <string>Vectorize PDF (OCR) ...</string>
-        </property>
-        <property name="toolTip">
-         <string>Create a searchable PDF with OCR text overlay (requires Tesseract)</string>
-        </property>
+       <widget class="QWidget" name="pdfOptionsWidget" native="true">
+        <layout class="QVBoxLayout" name="pdfOptionsLayout">
+         <property name="margin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="ocrLanguageLabel">
+           <property name="text">
+            <string>OCR Languages:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QGridLayout" name="ocrLangGrid">
+           <item row="0" column="0">
+            <widget class="QCheckBox" name="ocrEngCB">
+             <property name="text">
+              <string>English</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QCheckBox" name="ocrItaCB">
+             <property name="text">
+              <string>Italiano</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QCheckBox" name="ocrFraCB">
+             <property name="text">
+              <string>Français</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QCheckBox" name="ocrDeuCB">
+             <property name="text">
+              <string>Deutsch</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QCheckBox" name="ocrSpaCB">
+             <property name="text">
+              <string>Español</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QCheckBox" name="ocrRusCB">
+             <property name="text">
+              <string>Русский</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="pdfDpiLayout">
+           <item>
+            <widget class="QLabel" name="pdfDpiLabel">
+             <property name="text">
+              <string>PDF DPI:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="pdfDpiSpin">
+             <property name="minimum">
+              <number>72</number>
+             </property>
+             <property name="maximum">
+              <number>600</number>
+             </property>
+             <property name="value">
+              <number>300</number>
+             </property>
+             <property name="singleStep">
+              <number>50</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="pdfSizeEstLabel">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="textFormat">
+            <enum>Qt::RichText</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>

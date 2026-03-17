@@ -35,7 +35,12 @@ jobs:
             libtiff-dev libjpeg-dev libpng-dev zlib1g-dev \
             libxrender-dev libx11-dev \
             libfuse2 patchelf \
-            librsvg2-bin
+            librsvg2-bin \
+            libpotrace-dev \
+            libtesseract-dev libleptonica-dev \
+            tesseract-ocr-eng tesseract-ocr-ita \
+            tesseract-ocr-fra tesseract-ocr-deu \
+            tesseract-ocr-spa tesseract-ocr-rus
 
       # ── 3. Configure ─────────────────────────────────────────────────────
       - name: Configure (CMake)
@@ -44,7 +49,9 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
             -DCMAKE_INSTALL_PREFIX=/usr \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DENABLE_POTRACE=ON \
+            -DENABLE_TESSERACT=ON
 
       # ── 4. Build ─────────────────────────────────────────────────────────
       - name: Build
@@ -81,6 +88,15 @@ jobs:
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           rsvg-convert -w 256 -h 256 resources/appicon.svg \
             -o AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png
+
+          # Bundle Tesseract language data for OCR
+          TESSDATA_DST="AppDir/usr/bin/tessdata"
+          mkdir -p "$TESSDATA_DST"
+          for lang in eng ita fra deu spa rus; do
+            src=$(find /usr/share/tesseract-ocr -name "${lang}.traineddata" 2>/dev/null | head -1)
+            [ -n "$src" ] && cp "$src" "$TESSDATA_DST/"
+          done
+          echo "Tessdata files: $(find "$TESSDATA_DST" -name '*.traineddata' | wc -l)"
 
           ./linuxdeploy \
             --appdir AppDir \

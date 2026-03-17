@@ -99,7 +99,6 @@ protected:
   virtual void timerEvent(QTimerEvent *event);
 public slots:
   void openProject(QString const &project_file);
-  void exportPdfTriggered();
 
 private:
   enum MainAreaAction { UPDATE_MAIN_AREA, CLEAR_MAIN_AREA };
@@ -171,19 +170,13 @@ private slots:
 
   void closeProject();
 
-  void exportImagesTriggered();
+  void generatePdfToggled(bool enabled);
 
-  void exportBothTriggered();
+  void ocrLanguageChanged(QString const& languages);
 
-  void autoGeneratePdfToggled(bool enabled);
+  void pdfDpiChanged(int dpi);
 
-  void jpegQualityChanged(int quality);
-
-  void autoVectorizePdfToggled(bool enabled);
-
-  void vectorizePdfTriggered();
-
-  void vectorizePdfStandalone();
+  void exportPdfTriggered();
 
   void openSettingsDialog();
 
@@ -230,10 +223,6 @@ private:
       IntrusivePtr<PageOrderProvider const> const &page_order_provider);
 
   void removeWidgetsFromLayout(QLayout *layout);
-
-  int doExportImages(QString const& dir);
-
-  bool doExportPdf(QString const& path);
 
   void removeFilterOptionsWidget();
 
@@ -332,9 +321,9 @@ private:
   bool m_debug;
   bool m_closing;
   bool m_beepOnBatchProcessingCompletion;
-  bool m_autoGeneratePdf;
-  int m_pdfJpegQuality;
-  bool m_autoVectorizePdf;
+  bool m_generatePdf;
+  QString m_ocrLanguage;
+  int m_pdfDpi;
 };
 
 #endif

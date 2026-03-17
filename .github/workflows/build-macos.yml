@@ -29,7 +29,7 @@ jobs:
 
       # ── 2. Install dependencies via Homebrew ─────────────────────────────
       - name: Install dependencies
-        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib
+        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib potrace tesseract tesseract-lang leptonica
 
       # ── 3. Put Qt5 bin on PATH and set CMAKE_PREFIX_PATH ─────────────────
       - name: Set Qt5 environment
@@ -47,17 +47,92 @@ jobs:
             -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH}" \
             -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" \
-            -DCMAKE_CXX_STANDARD=14
+            -DCMAKE_CXX_STANDARD=14 \
+            -DENABLE_POTRACE=ON \
+            -DENABLE_TESSERACT=ON
 
       # ── 5. Build (also runs macdeployqt via the macos_bundle ALL target) ──
       - name: Build
         run: cmake --build build --parallel 4
 
-      # ── 6. Produce .dmg ──────────────────────────────────────────────────
-      - name: Package DMG
-        run: cmake --build build --target dmg
+      # ── 6. Bundle non-Qt Homebrew dylibs into .app ───────────────────────
+      #    macdeployqt handles Qt frameworks but NOT third-party dylibs
+      #    (potrace, tesseract, leptonica, libtiff, libjpeg, libpng, etc.)
+      #    Same iterative approach as Windows objdump DLL loop.
+      - name: Bundle Homebrew dylibs
+        run: |
+          APP="build/ScanTailor.app"
+          FRAMEWORKS="$APP/Contents/Frameworks"
+          BINARY="$APP/Contents/MacOS/scantailor"
+          mkdir -p "$FRAMEWORKS"
 
-      # ── 7. Upload artifact ───────────────────────────────────────────────
+          # Iteratively copy and fix all non-system dylibs until convergence
+          prev_count=0
+          pass=0
+          while true; do
+            pass=$((pass + 1))
+            # Scan the main binary + all dylibs in Frameworks/
+            for file in "$BINARY" "$FRAMEWORKS"/*.dylib; do
+              [ -f "$file" ] || continue
+              otool -L "$file" 2>/dev/null \
+                | awk '/\/opt\/homebrew\/|\/usr\/local\// {print $1}' \
+                | while read -r dep; do
+                    base=$(basename "$dep")
+                    if [ ! -f "$FRAMEWORKS/$base" ]; then
+                      cp "$dep" "$FRAMEWORKS/$base"
+                      chmod 644 "$FRAMEWORKS/$base"
+                      install_name_tool -id "@executable_path/../Frameworks/$base" "$FRAMEWORKS/$base"
+                    fi
+                    install_name_tool -change "$dep" "@executable_path/../Frameworks/$base" "$file" 2>/dev/null || true
+                  done
+            done
+
+            curr_count=$(find "$FRAMEWORKS" -name "*.dylib" 2>/dev/null | wc -l | tr -d ' ')
+            echo "Pass $pass: $curr_count dylibs"
+            if [ "$curr_count" -eq "$prev_count" ]; then
+              echo "Convergence at pass $pass"
+              break
+            fi
+            prev_count=$curr_count
+          done
+
+          # Also fix @rpath references in the main binary
+          otool -L "$BINARY" 2>/dev/null \
+            | awk '/@rpath\// {print $1}' \
+            | while read -r dep; do
+                base=$(basename "$dep")
+                if [ -f "$FRAMEWORKS/$base" ]; then
+                  install_name_tool -change "$dep" "@executable_path/../Frameworks/$base" "$BINARY" 2>/dev/null || true
+                fi
+              done
+
+          echo "=== Bundled dylibs ==="
+          ls -la "$FRAMEWORKS"/*.dylib 2>/dev/null | awk '{print $NF}' || true
+
+      # ── 7. Bundle Tesseract language data ────────────────────────────────
+      - name: Bundle tessdata
+        run: |
+          APP="build/ScanTailor.app"
+          TESSDATA_SRC="$(brew --prefix tesseract)/share/tessdata"
+          TESSDATA_DST="$APP/Contents/MacOS/tessdata"
+          mkdir -p "$TESSDATA_DST"
+          for lang in eng ita fra deu spa rus; do
+            cp "$TESSDATA_SRC/$lang.traineddata" "$TESSDATA_DST/" 2>/dev/null || true
+          done
+          echo "Tessdata files: $(ls "$TESSDATA_DST"/*.traineddata 2>/dev/null | wc -l | tr -d ' ')"
+
+      # ── 8. Create DMG directly (avoid re-running macdeployqt) ────────────
+      - name: Package DMG
+        run: |
+          VERSION=$(git describe --tags --always --dirty)
+          hdiutil create \
+            -volname "ScanTailor" \
+            -srcfolder "build/ScanTailor.app" \
+            -ov -format UDZO \
+            "build/ScanTailor-${VERSION}.dmg"
+          echo "DMG: build/ScanTailor-${VERSION}.dmg"
+
+      # ── 9. Upload artifact ───────────────────────────────────────────────
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:

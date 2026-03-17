@@ -81,13 +81,6 @@ NewOpenProjectPanel::NewOpenProjectPanel(QWidget* parent)
 		this, SIGNAL(openProject())
 	);
 
-	vectorizePdfLabel->setText(
-		Utils::richTextForLink(vectorizePdfLabel->text())
-	);
-	connect(
-		vectorizePdfLabel, SIGNAL(linkActivated(QString const&)),
-		this, SIGNAL(vectorizePdf())
-	);
 }
 
 void

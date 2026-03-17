@@ -192,10 +192,8 @@
     <addaction name="actionSettings"/>
     <addaction name="actionDefaultParams"/>
     <addaction name="separator"/>
-    <addaction name="actionExportImages"/>
     <addaction name="actionExportPdf"/>
     <addaction name="actionExportRag"/>
-    <addaction name="actionVectorizePdf"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -369,11 +367,6 @@
     <string>Ctrl+I</string>
    </property>
   </action>
-  <action name="actionExportImages">
-   <property name="text">
-    <string>Export as Images ...</string>
-   </property>
-  </action>
   <action name="actionDefaultParams">
    <property name="text">
     <string>Default Parameters ...</string>
@@ -390,14 +383,6 @@
   <action name="actionExportRag">
    <property name="text">
     <string>Export for RAG ...</string>
-   </property>
-  </action>
-  <action name="actionVectorizePdf">
-   <property name="text">
-    <string>Vectorize PDF (OCR) ...</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Shift+E</string>
    </property>
   </action>
  </widget>

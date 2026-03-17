@@ -35,8 +35,6 @@ signals:
 	void openProject();
 	
 	void openRecentProject(QString const& project_file);
-
-	void vectorizePdf();
 protected:
 	virtual void paintEvent(QPaintEvent* event);
 private:

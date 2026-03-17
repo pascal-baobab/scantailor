@@ -440,13 +440,17 @@ IF(ENABLE_TESSERACT)
 		PKG_CHECK_MODULES(LEPTONICA lept REQUIRED)
 	ELSE()
 		FIND_LIBRARY(TESSERACT_LIBRARIES NAMES tesseract
-			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
+			HINTS /opt/homebrew/lib /usr/local/lib
+			      "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
 		FIND_PATH(TESSERACT_INCLUDE_DIRS tesseract/baseapi.h
-			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
+			HINTS /opt/homebrew/include /usr/local/include
+			      "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
 		FIND_LIBRARY(LEPTONICA_LIBRARIES NAMES leptonica lept
-			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
+			HINTS /opt/homebrew/lib /usr/local/lib
+			      "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
 		FIND_PATH(LEPTONICA_INCLUDE_DIRS leptonica/allheaders.h
-			HINTS "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
+			HINTS /opt/homebrew/include /usr/local/include
+			      "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
 		IF(NOT TESSERACT_LIBRARIES OR NOT TESSERACT_INCLUDE_DIRS)
 			MESSAGE(FATAL_ERROR "Tesseract not found. Install: pacman -S mingw-w64-x86_64-tesseract-ocr")
 		ENDIF()
@@ -459,6 +463,31 @@ IF(ENABLE_TESSERACT)
 	ENDIF()
 	SET(EXTRA_LIBS ${EXTRA_LIBS} ${TESSERACT_LIBRARIES} ${LEPTONICA_LIBRARIES})
 ENDIF(ENABLE_TESSERACT)
+
+# Potrace vectorization for PDF export (bitmap → bezier curves)
+OPTION(ENABLE_POTRACE "Enable text vectorization via Potrace for PDF export" OFF)
+IF(ENABLE_POTRACE)
+	FIND_PACKAGE(PkgConfig QUIET)
+	SET(POTRACE_FOUND FALSE)
+	IF(PkgConfig_FOUND)
+		PKG_CHECK_MODULES(POTRACE potrace)
+	ENDIF()
+	IF(NOT POTRACE_FOUND)
+		FIND_LIBRARY(POTRACE_LIBRARIES NAMES potrace REQUIRED
+			HINTS /opt/homebrew/lib /usr/local/lib
+			      "$ENV{VCPKG_ROOT}/installed/x64-windows/lib")
+		FIND_PATH(POTRACE_INCLUDE_DIRS potracelib.h
+			HINTS /opt/homebrew/include /usr/local/include
+			      "$ENV{VCPKG_ROOT}/installed/x64-windows/include")
+		IF(NOT POTRACE_LIBRARIES OR NOT POTRACE_INCLUDE_DIRS)
+			MESSAGE(FATAL_ERROR "Potrace not found. Install: pacman -S mingw-w64-x86_64-potrace")
+		ENDIF()
+		SET(POTRACE_FOUND TRUE)
+	ENDIF()
+	ADD_DEFINITIONS(-DHAVE_POTRACE)
+	INCLUDE_DIRECTORIES(${POTRACE_INCLUDE_DIRS})
+	SET(EXTRA_LIBS ${EXTRA_LIBS} ${POTRACE_LIBRARIES})
+ENDIF(ENABLE_POTRACE)
 
 CONFIGURE_FILE(config.h.in ${CMAKE_BINARY_DIR}/config.h @ONLY)
 
@@ -583,7 +612,7 @@ SET(
 	OutputFileNameGenerator.cpp OutputFileNameGenerator.h
 	RagExporter.cpp RagExporter.h
 	VectorPdfExporter.cpp VectorPdfExporter.h
-	VectorPdfDialog.cpp VectorPdfDialog.h
+	PotraceVectorizer.cpp PotraceVectorizer.h
 	DefaultParams.cpp DefaultParams.h
 	DefaultParamsProfileManager.cpp DefaultParamsProfileManager.h
 	DefaultParamsProvider.cpp DefaultParamsProvider.h

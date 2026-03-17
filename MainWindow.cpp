@@ -68,7 +68,6 @@
 #include "OutOfMemoryDialog.h"
 #include "RagExporter.h"
 #include "VectorPdfExporter.h"
-#include "VectorPdfDialog.h"
 #include "QtSignalForwarder.h"
 #include "filters/fix_orientation/Filter.h"
 #include "filters/fix_orientation/Task.h"
@@ -139,6 +138,7 @@
 #include <QResource>
 #include <Qt>
 #include <QDebug>
+#include <QProgressDialog>
 #include <algorithm>
 #include <vector>
 #include <stddef.h>
@@ -178,9 +178,9 @@ MainWindow::MainWindow()
 	m_ignorePageOrderingChanges(0),
 	m_debug(false),
 	m_closing(false),
-	m_autoGeneratePdf(false),
-	m_pdfJpegQuality(65),
-	m_autoVectorizePdf(false)
+	m_generatePdf(false),
+	m_ocrLanguage("eng+ita"),
+	m_pdfDpi(300)
 {
 	m_maxLogicalThumbSize = QSize(250, 160);
 	m_ptrThumbSequence.reset(new ThumbnailSequence(m_maxLogicalThumbSize));
@@ -322,10 +322,6 @@ MainWindow::MainWindow()
 	connect(
 		actionExportRag, SIGNAL(triggered(bool)),
 		this, SLOT(exportRagTriggered())
-	);
-	connect(
-		actionVectorizePdf, SIGNAL(triggered(bool)),
-		this, SLOT(vectorizePdfTriggered())
 	);
 	connect(
 		actionQuit, SIGNAL(triggered(bool)),
@@ -501,12 +497,6 @@ MainWindow::showNewOpenProjectPanel()
 		this, SLOT(openProject(QString const&)),
 		Qt::QueuedConnection
 	);
-	connect(
-		nop, SIGNAL(vectorizePdf()),
-		this, SLOT(vectorizePdfStandalone()),
-		Qt::QueuedConnection
-	);
-
 	layout->addWidget(nop, 1, 1);
 	layout->setColumnStretch(0, 1);
 	layout->setColumnStretch(2, 1);
@@ -769,16 +759,16 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 			this, SLOT(goToPage(PageId const&))
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(exportImagesRequested()),
-			this, SLOT(exportImagesTriggered())
+			m_ptrOptionsWidget, SIGNAL(generatePdfChanged(bool)),
+			this, SLOT(generatePdfToggled(bool))
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(exportPdfRequested()),
-			this, SLOT(exportPdfTriggered())
+			m_ptrOptionsWidget, SIGNAL(ocrLanguageChanged(QString const&)),
+			this, SLOT(ocrLanguageChanged(QString const&))
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(exportBothRequested()),
-			this, SLOT(exportBothTriggered())
+			m_ptrOptionsWidget, SIGNAL(pdfDpiChanged(int)),
+			this, SLOT(pdfDpiChanged(int))
 		);
 	}
 
@@ -821,34 +811,18 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 		this, SLOT(goToPage(PageId const&))
 	);
 
-	// Connect export signals if this is the output options widget.
+	// Connect PDF generation signals from output options widget.
 	connect(
-		widget, SIGNAL(exportImagesRequested()),
-		this, SLOT(exportImagesTriggered())
+		widget, SIGNAL(generatePdfChanged(bool)),
+		this, SLOT(generatePdfToggled(bool))
 	);
 	connect(
-		widget, SIGNAL(exportPdfRequested()),
-		this, SLOT(exportPdfTriggered())
+		widget, SIGNAL(ocrLanguageChanged(QString const&)),
+		this, SLOT(ocrLanguageChanged(QString const&))
 	);
 	connect(
-		widget, SIGNAL(exportBothRequested()),
-		this, SLOT(exportBothTriggered())
-	);
-	connect(
-		widget, SIGNAL(autoGeneratePdfChanged(bool)),
-		this, SLOT(autoGeneratePdfToggled(bool))
-	);
-	connect(
-		widget, SIGNAL(jpegQualityChanged(int)),
-		this, SLOT(jpegQualityChanged(int))
-	);
-	connect(
-		widget, SIGNAL(autoVectorizePdfChanged(bool)),
-		this, SLOT(autoVectorizePdfToggled(bool))
-	);
-	connect(
-		widget, SIGNAL(vectorizePdfRequested()),
-		this, SLOT(vectorizePdfTriggered())
+		widget, SIGNAL(pdfDpiChanged(int)),
+		this, SLOT(pdfDpiChanged(int))
 	);
 }
 
@@ -1401,34 +1375,90 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 			}
 
 			// Auto-generate PDF after output batch completes.
-			if (wasOutputFilter && m_autoGeneratePdf) {
+			if (wasOutputFilter && m_generatePdf) {
 				QString const outDir = m_outFileNameGen.outDir();
 				QString const pdfDir = QDir(outDir).filePath("PDF");
 				QDir().mkpath(pdfDir);
 
-				if (m_autoVectorizePdf) {
-					// Searchable PDF with OCR text overlay.
-					QString const pdfPath = QDir(pdfDir).filePath("output_searchable.pdf");
-					VectorPdfExporter::Options opts;
-					opts.jpegQuality = m_pdfJpegQuality;
-					opts.dpi = 300;
-					int const result = VectorPdfExporter::exportSearchablePdf(
-						m_ptrPages, m_outFileNameGen, pdfPath, opts);
-					if (result > 0) {
-						QMessageBox::information(this, tr("Export"),
-							tr("Batch complete.\nSearchable PDF (%1 pages):\n%2")
-								.arg(result).arg(pdfPath));
+				QString baseName = QFileInfo(m_projectFile).completeBaseName();
+				if (baseName.isEmpty() && m_ptrPages) {
+					PageSequence const seq = m_ptrPages->toPageSequence(PAGE_VIEW);
+					if (seq.numPages() > 0) {
+						baseName = QFileInfo(
+							seq.pageAt(0).id().imageId().filePath()
+						).completeBaseName();
 					}
+				}
+				if (baseName.isEmpty())
+					baseName = QDir(outDir).dirName();
+				if (baseName.isEmpty())
+					baseName = "output";
+				QString const pdfPath = QDir(pdfDir).filePath(baseName + ".pdf");
+
+				VectorPdfExporter::Options opts;
+				opts.language = m_ocrLanguage;
+				opts.dpi = m_pdfDpi;
+
+				// Tessdata path: find the directory that CONTAINS tessdata/.
+				// Tesseract Init() appends "/tessdata/" internally.
+				QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
+				if (QDir(appTessdata).exists()) {
+					opts.tessDataPath = QApplication::applicationDirPath();
 				} else {
-					// Compact JPEG-compressed PDF (no OCR).
-					QString const pdfPath = QDir(pdfDir).filePath("output.pdf");
-					int const result = VectorPdfExporter::exportCompactPdf(
-						m_ptrPages, m_outFileNameGen, pdfPath, m_pdfJpegQuality);
-					if (result > 0) {
-						QMessageBox::information(this, tr("Export"),
-							tr("Batch complete.\nPDF auto-generated (%1 pages):\n%2")
-								.arg(result).arg(pdfPath));
+					// Check system paths: each is the tessdata/ dir itself,
+					// so we pass the parent.
+					static QStringList const systemPaths = {
+						"C:/msys64/mingw64/share/tessdata",
+						"/usr/share/tessdata",
+						"/usr/local/share/tessdata"
+					};
+					for (QString const& p : systemPaths) {
+						if (QDir(p).exists()) {
+							opts.tessDataPath = QFileInfo(p).absolutePath();
+							break;
+						}
 					}
+				}
+
+				QProgressDialog progress(
+					tr("Generating PDF..."), tr("Cancel"), 0, 100, this);
+				progress.setWindowTitle(tr("PDF Export"));
+				progress.setWindowModality(Qt::WindowModal);
+				progress.setMinimumDuration(0);
+				progress.setValue(0);
+
+				VectorPdfExporter::ExportResult const er =
+					VectorPdfExporter::exportPdf(
+						m_ptrPages, m_outFileNameGen, pdfPath, opts,
+						[&progress](int cur, int tot) -> bool {
+							if (tot > 0)
+								progress.setValue(cur * 100 / tot);
+							QApplication::processEvents();
+							return progress.wasCanceled();
+						});
+
+				progress.setValue(100);
+
+				if (er.pageCount > 0) {
+					QFileInfo fi(pdfPath);
+					QString msg = tr("PDF generated: %1 pages, %2 KB\n%3")
+						.arg(er.pageCount)
+						.arg(fi.size() / 1024)
+						.arg(pdfPath);
+					if (er.tessInitOk) {
+						msg += tr("\nOCR: %1 words found").arg(er.ocrWordCount);
+					} else {
+						msg += tr("\nOCR: disabled (%1)").arg(er.errorDetail);
+					}
+					QMessageBox::information(this, tr("Export"), msg);
+				} else if (er.pageCount == 0) {
+					QMessageBox::warning(this, tr("Export"),
+						tr("No pages found in output directory.\n"
+						   "Run the batch first (step 6 Output)."));
+				} else {
+					QMessageBox::critical(this, tr("Export"),
+						tr("Failed to write PDF:\n%1\n%2")
+							.arg(pdfPath).arg(er.errorDetail));
 				}
 			}
 
@@ -1566,110 +1596,21 @@ MainWindow::saveProjectAsTriggered()
 }
 
 void
-MainWindow::exportImagesTriggered()
+MainWindow::generatePdfToggled(bool const enabled)
 {
-	if (!isProjectLoaded()) {
-		return;
-	}
-
-	QString const dir = QFileDialog::getExistingDirectory(
-		this, tr("Export Images — Select Directory"),
-		QFileInfo(m_projectFile).absolutePath()
-	);
-	if (dir.isEmpty()) {
-		return;
-	}
-
-	int const exported = doExportImages(dir);
-
-	if (exported == 0) {
-		QMessageBox::warning(this, tr("Export"),
-			tr("No processed output images found.\n"
-			   "Run batch processing first, then export."));
-		return;
-	}
-
-	QMessageBox::information(this, tr("Export"),
-		tr("Exported %1 image(s) to:\n%2").arg(exported).arg(dir));
+	m_generatePdf = enabled;
 }
 
 void
-MainWindow::exportBothTriggered()
+MainWindow::ocrLanguageChanged(QString const& languages)
 {
-	if (!isProjectLoaded()) {
-		return;
-	}
-
-	QString const dir = QFileDialog::getExistingDirectory(
-		this, tr("Export — Select Directory"),
-		QFileInfo(m_projectFile).absolutePath()
-	);
-	if (dir.isEmpty()) {
-		return;
-	}
-
-	int const imgCount = doExportImages(dir);
-
-	QString const pdfPath = QDir(dir).filePath("output.pdf");
-	bool const pdfOk = doExportPdf(pdfPath);
-
-	if (imgCount == 0 && !pdfOk) {
-		QMessageBox::warning(this, tr("Export"),
-			tr("No processed output images found.\n"
-			   "Run batch processing first, then export."));
-		return;
-	}
-
-	QString msg;
-	if (imgCount > 0) {
-		msg += tr("Exported %1 image(s).\n").arg(imgCount);
-	}
-	if (pdfOk) {
-		msg += tr("PDF saved: %1").arg(pdfPath);
-	}
-	QMessageBox::information(this, tr("Export"), msg);
+	m_ocrLanguage = languages;
 }
 
-int
-MainWindow::doExportImages(QString const& dir)
+void
+MainWindow::pdfDpiChanged(int const dpi)
 {
-	PageSequence const pages = m_ptrPages->toPageSequence(PAGE_VIEW);
-	int exported = 0;
-
-	for (size_t i = 0; i < pages.numPages(); ++i) {
-		PageInfo const& info = pages.pageAt(i);
-		QString const srcPath = m_outFileNameGen.filePathFor(info.id());
-		QImage img(srcPath);
-		if (img.isNull()) {
-			continue;
-		}
-
-		QString baseName = QFileInfo(srcPath).completeBaseName();
-		QString dstPath = QDir(dir).filePath(baseName + ".tif");
-
-		if (QFile::exists(dstPath)) {
-			int n = 1;
-			do {
-				dstPath = QDir(dir).filePath(
-					baseName + QString("_%1.tif").arg(n++)
-				);
-			} while (QFile::exists(dstPath));
-		}
-
-		if (img.save(dstPath, "TIFF")) {
-			++exported;
-		}
-	}
-
-	return exported;
-}
-
-bool
-MainWindow::doExportPdf(QString const& path)
-{
-	int const result = VectorPdfExporter::exportCompactPdf(
-		m_ptrPages, m_outFileNameGen, path, m_pdfJpegQuality);
-	return result > 0;
+	m_pdfDpi = dpi;
 }
 
 void
@@ -1689,136 +1630,67 @@ MainWindow::exportPdfTriggered()
 		return;
 	}
 
-	if (!doExportPdf(path)) {
+	VectorPdfExporter::Options opts;
+	opts.language = m_ocrLanguage;
+	opts.dpi = m_pdfDpi;
+
+	QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
+	if (QDir(appTessdata).exists()) {
+		opts.tessDataPath = QApplication::applicationDirPath();
+	} else {
+		static QStringList const systemPaths = {
+			"C:/msys64/mingw64/share/tessdata",
+			"/usr/share/tessdata",
+			"/usr/local/share/tessdata"
+		};
+		for (QString const& p : systemPaths) {
+			if (QDir(p).exists()) {
+				opts.tessDataPath = QFileInfo(p).absolutePath();
+				break;
+			}
+		}
+	}
+
+	QProgressDialog progress(
+		tr("Generating PDF..."), tr("Cancel"), 0, 100, this);
+	progress.setWindowTitle(tr("PDF Export"));
+	progress.setWindowModality(Qt::WindowModal);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+
+	VectorPdfExporter::ExportResult const er =
+		VectorPdfExporter::exportPdf(
+			m_ptrPages, m_outFileNameGen, path, opts,
+			[&progress](int cur, int tot) -> bool {
+				if (tot > 0)
+					progress.setValue(cur * 100 / tot);
+				QApplication::processEvents();
+				return progress.wasCanceled();
+			});
+
+	progress.setValue(100);
+
+	if (er.pageCount > 0) {
+		QFileInfo fi(path);
+		QString msg = tr("PDF generated: %1 pages, %2 KB\n%3")
+			.arg(er.pageCount)
+			.arg(fi.size() / 1024)
+			.arg(path);
+		if (er.tessInitOk) {
+			msg += tr("\nOCR: %1 words found").arg(er.ocrWordCount);
+		} else {
+			msg += tr("\nOCR: disabled (%1)").arg(er.errorDetail);
+		}
+		QMessageBox::information(this, tr("Export"), msg);
+	} else if (er.pageCount == 0) {
 		QMessageBox::warning(this, tr("Export"),
 			tr("No processed output images found.\n"
 			   "Run batch processing first, then export."));
-		return;
+	} else {
+		QMessageBox::critical(this, tr("Export"),
+			tr("Failed to write PDF:\n%1\n%2")
+				.arg(path).arg(er.errorDetail));
 	}
-
-	QMessageBox::information(this, tr("Export"),
-		tr("PDF saved:\n%1").arg(path));
-}
-
-void
-MainWindow::autoGeneratePdfToggled(bool const enabled)
-{
-	m_autoGeneratePdf = enabled;
-}
-
-void
-MainWindow::jpegQualityChanged(int const quality)
-{
-	m_pdfJpegQuality = quality;
-}
-
-void
-MainWindow::autoVectorizePdfToggled(bool const enabled)
-{
-	m_autoVectorizePdf = enabled;
-}
-
-void
-MainWindow::vectorizePdfTriggered()
-{
-	if (!isProjectLoaded()) {
-		return;
-	}
-
-	QString const outDir = m_outFileNameGen.outDir();
-	VectorPdfDialog* dlg = new VectorPdfDialog(outDir, this);
-	dlg->setAttribute(Qt::WA_DeleteOnClose);
-
-	connect(dlg, &VectorPdfDialog::exportRequested,
-		[this, dlg](QString const& path, QString const& lang,
-		            int jpegQuality, int dpi) {
-			VectorPdfExporter::Options opts;
-			opts.language = lang;
-			opts.dpi = dpi;
-			opts.jpegQuality = jpegQuality;
-
-			int const result = VectorPdfExporter::exportSearchablePdf(
-				m_ptrPages, m_outFileNameGen, path, opts,
-				[dlg](int current, int total) -> bool {
-					dlg->setProgress(current, total);
-					QApplication::processEvents();
-					return false; // don't cancel
-				}
-			);
-			dlg->exportFinished(result);
-		}
-	);
-
-	dlg->show();
-}
-
-void
-MainWindow::vectorizePdfStandalone()
-{
-	// Ask user to select an input PDF or images.
-	QStringList const filters = QStringList()
-		<< tr("PDF Files (*.pdf)")
-		<< tr("Images (*.png *.jpg *.jpeg *.tif *.tiff *.bmp)")
-		<< tr("All Files (*)");
-
-	QStringList const inputFiles = QFileDialog::getOpenFileNames(
-		this,
-		tr("Select PDF or Images to Vectorize"),
-		QDir::homePath(),
-		filters.join(";;")
-	);
-
-	if (inputFiles.isEmpty()) {
-		return;
-	}
-
-	// Determine a default output path: same dir as input, prefixed SCNTLR_.
-	QFileInfo const firstInfo(inputFiles.first());
-	QString const defaultOut = firstInfo.absolutePath()
-		+ "/SCNTLR_" + firstInfo.completeBaseName() + ".pdf";
-
-	VectorPdfDialog* dlg = new VectorPdfDialog(firstInfo.absolutePath(), this);
-	dlg->setAttribute(Qt::WA_DeleteOnClose);
-	dlg->setOutputPath(defaultOut);
-
-	connect(dlg, &VectorPdfDialog::exportRequested,
-		[this, dlg, inputFiles](QString const& path, QString const& lang,
-		                        int jpegQuality, int dpi) {
-			VectorPdfExporter::Options opts;
-			opts.language = lang;
-			opts.dpi = dpi;
-			opts.jpegQuality = jpegQuality;
-
-			int result = 0;
-
-			// Check if input is a single PDF.
-			if (inputFiles.size() == 1
-				&& inputFiles.first().toLower().endsWith(".pdf")) {
-				result = VectorPdfExporter::vectorizePdf(
-					inputFiles.first(), path, opts,
-					[dlg](int current, int total) -> bool {
-						dlg->setProgress(current, total);
-						QApplication::processEvents();
-						return false;
-					}
-				);
-			} else {
-				// Treat as image list.
-				result = VectorPdfExporter::vectorizeImages(
-					inputFiles, path, opts,
-					[dlg](int current, int total) -> bool {
-						dlg->setProgress(current, total);
-						QApplication::processEvents();
-						return false;
-					}
-				);
-			}
-
-			dlg->exportFinished(result);
-		}
-	);
-
-	dlg->show();
 }
 
 void

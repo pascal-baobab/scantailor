@@ -16,121 +16,65 @@
 #include <QString>
 #include <QStringList>
 #include <QImage>
+#include <QByteArray>
 #include <QList>
 #include <functional>
 
 /**
- * Creates a hybrid "sandwich" PDF:
- *   - Layer 1: raster image (the processed scan)
- *   - Layer 2: invisible OCR text overlay (searchable/selectable)
- *
- * Requires Tesseract OCR (compile with -DENABLE_TESSERACT=ON).
+ * Creates a compact searchable PDF from processed TIFF pages:
+ *   - Grayscale JPEG raster (DCTDecode) for compact file size
+ *   - Invisible OCR text overlay (searchable/selectable via Tesseract)
  */
 class VectorPdfExporter
 {
 public:
 	struct Options {
-		QString language;     ///< Tesseract language code (e.g. "eng", "ita")
-		QString tessDataPath; ///< Path to tessdata dir (empty = default)
-		int     dpi;          ///< Resolution for text placement (default 300)
-		int     jpegQuality;  ///< JPEG quality 1-100 (default 65, good for scans)
+		QString language;     ///< Tesseract language code (e.g. "eng", "eng+ita")
+		QString tessDataPath; ///< Parent dir containing tessdata/ (empty = default)
+		int     dpi;          ///< Resolution (default 300)
+		int     jpegQuality;  ///< JPEG quality 1-100
 
-		Options() : language("eng"), dpi(300), jpegQuality(65) {}
+		Options() : language("eng"), dpi(300), jpegQuality(70) {}
+	};
+
+	/// Result from export with diagnostic info.
+	struct ExportResult {
+		int pageCount;       ///< Number of pages exported (0 = no pages, -1 = error)
+		int ocrWordCount;    ///< Total OCR words found across all pages
+		bool tessInitOk;     ///< Whether Tesseract initialized successfully
+		QString errorDetail; ///< Error message if something went wrong
 	};
 
 	/// Progress callback: (currentPage, totalPages) -> should_cancel
 	typedef std::function<bool(int, int)> ProgressCallback;
 
 	/**
-	 * Export all processed pages to a searchable PDF.
-	 *
-	 * @param pages          Project pages
-	 * @param fileNameGen    Maps page IDs to output file paths
-	 * @param outputPdfPath  Where to write the PDF
-	 * @param opts           OCR options
-	 * @param progress       Optional progress callback
-	 * @return number of pages exported, or -1 on error
+	 * Export all processed pages to a compact searchable PDF.
+	 * Pipeline: load TIFFs → JPEG compress → Tesseract OCR → write PDF.
 	 */
-	static int exportSearchablePdf(
+	static ExportResult exportPdf(
 		IntrusivePtr<ProjectPages> const& pages,
 		OutputFileNameGenerator const& fileNameGen,
 		QString const& outputPdfPath,
-		Options const& opts = Options(),
-		ProgressCallback progress = ProgressCallback()
-	);
-
-	/**
-	 * Export all processed pages to a compact JPEG-compressed PDF (no OCR).
-	 *
-	 * @param pages          Project pages
-	 * @param fileNameGen    Maps page IDs to output file paths
-	 * @param outputPdfPath  Where to write the PDF
-	 * @param jpegQuality    JPEG quality 1-100 (default 65)
-	 * @param dpi            Resolution (default 300)
-	 * @param progress       Optional progress callback
-	 * @return number of pages exported, or -1 on error
-	 */
-	static int exportCompactPdf(
-		IntrusivePtr<ProjectPages> const& pages,
-		OutputFileNameGenerator const& fileNameGen,
-		QString const& outputPdfPath,
-		int jpegQuality = 65,
-		int dpi = 300,
-		ProgressCallback progress = ProgressCallback()
-	);
-
-	/**
-	 * Standalone: vectorize any PDF or list of images.
-	 * Renders each page/image, runs OCR, produces searchable PDF.
-	 *
-	 * @param inputImages   List of image file paths (TIFF, PNG, etc.)
-	 * @param outputPdfPath Where to write the PDF
-	 * @param opts          OCR options
-	 * @param progress      Optional progress callback
-	 * @return number of pages exported, or -1 on error
-	 */
-	static int vectorizeImages(
-		QStringList const& inputImages,
-		QString const& outputPdfPath,
-		Options const& opts = Options(),
-		ProgressCallback progress = ProgressCallback()
-	);
-
-	/**
-	 * Standalone: vectorize an existing PDF file.
-	 * Renders each PDF page to an image, runs OCR, produces searchable PDF.
-	 *
-	 * @param inputPdfPath  Path to input PDF
-	 * @param outputPdfPath Where to write the searchable PDF
-	 * @param opts          OCR options
-	 * @param progress      Optional progress callback
-	 * @return number of pages exported, or -1 on error
-	 */
-	static int vectorizePdf(
-		QString const& inputPdfPath,
-		QString const& outputPdfPath,
-		Options const& opts = Options(),
+		Options const& opts,
 		ProgressCallback progress = ProgressCallback()
 	);
 
 private:
 	struct OcrWord {
 		QString text;
-		int x, y, w, h;   ///< Bounding box in image pixels
+		int x, y, w, h;
 		float confidence;
 	};
 
-	/// Run OCR on a single image, return list of words with bounding boxes.
-	static QList<OcrWord> ocrImage(
-		QImage const& img,
-		Options const& opts
-	);
+	struct PageData {
+		QImage image;
+		QList<OcrWord> ocrWords;
+	};
 
-	/// Write compact PDF with JPEG image streams + invisible OCR text.
-	static bool writeCompactPdf(
+	static bool writePdf(
 		QString const& outputPdfPath,
-		QList<QImage> const& images,
-		QList<QList<OcrWord>> const& allWords,
+		QList<PageData> const& pages,
 		Options const& opts
 	);
 };

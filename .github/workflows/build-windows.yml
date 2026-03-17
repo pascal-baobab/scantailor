@@ -41,6 +41,15 @@ jobs:
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-poppler
             mingw-w64-x86_64-poppler-qt5
+            mingw-w64-x86_64-potrace
+            mingw-w64-x86_64-tesseract-ocr
+            mingw-w64-x86_64-leptonica
+            mingw-w64-x86_64-tesseract-data-eng
+            mingw-w64-x86_64-tesseract-data-ita
+            mingw-w64-x86_64-tesseract-data-fra
+            mingw-w64-x86_64-tesseract-data-deu
+            mingw-w64-x86_64-tesseract-data-spa
+            mingw-w64-x86_64-tesseract-data-rus
 
       # ── 2. Checkout ───────────────────────────────────────────────────────
       - name: Checkout source
@@ -53,7 +62,9 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=/mingw64 \
-            -DENABLE_POPPLER=ON
+            -DENABLE_POPPLER=ON \
+            -DENABLE_POTRACE=ON \
+            -DENABLE_TESSERACT=ON
 
       # ── 4. Build ──────────────────────────────────────────────────────────
       - name: Build
@@ -107,6 +118,13 @@ jobs:
           cp "$QT_PLUGINS/imageformats/"*.dll       dist/imageformats/ 2>/dev/null || true
           cp "$QT_PLUGINS/styles/"*.dll             dist/styles/      2>/dev/null || true
           cp "$QT_PLUGINS/printsupport/"*.dll       dist/printsupport/ 2>/dev/null || true
+
+          # Tesseract language data (required for OCR at runtime)
+          if [ -d /mingw64/share/tessdata ]; then
+            mkdir -p dist/tessdata
+            cp /mingw64/share/tessdata/*.traineddata dist/tessdata/ 2>/dev/null || true
+            echo "Tessdata files: $(find dist/tessdata -name '*.traineddata' | wc -l)"
+          fi
 
           # Summary
           echo "=== dist/ ==="

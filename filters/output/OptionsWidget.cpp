@@ -273,42 +273,39 @@ OptionsWidget::OptionsWidget(
 		this, SLOT(originalBackgroundToggled(bool))
 	);
 	connect(
-		exportImagesBtn, SIGNAL(clicked()),
-		this, SIGNAL(exportImagesRequested())
+		generatePdfCB, SIGNAL(toggled(bool)),
+		this, SLOT(generatePdfToggled(bool))
 	);
 	connect(
-		exportPdfBtn, SIGNAL(clicked()),
-		this, SIGNAL(exportPdfRequested())
+		ocrEngCB, SIGNAL(toggled(bool)),
+		this, SLOT(ocrLanguageToggled())
 	);
 	connect(
-		exportBothBtn, SIGNAL(clicked()),
-		this, SIGNAL(exportBothRequested())
+		ocrItaCB, SIGNAL(toggled(bool)),
+		this, SLOT(ocrLanguageToggled())
 	);
 	connect(
-		autoGeneratePdfCB, SIGNAL(toggled(bool)),
-		this, SIGNAL(autoGeneratePdfChanged(bool))
+		ocrFraCB, SIGNAL(toggled(bool)),
+		this, SLOT(ocrLanguageToggled())
 	);
 	connect(
-		jpegQualitySlider, SIGNAL(valueChanged(int)),
-		jpegQualitySpin, SLOT(setValue(int))
+		ocrDeuCB, SIGNAL(toggled(bool)),
+		this, SLOT(ocrLanguageToggled())
 	);
 	connect(
-		jpegQualitySpin, SIGNAL(valueChanged(int)),
-		jpegQualitySlider, SLOT(setValue(int))
+		ocrSpaCB, SIGNAL(toggled(bool)),
+		this, SLOT(ocrLanguageToggled())
 	);
 	connect(
-		jpegQualitySpin, SIGNAL(valueChanged(int)),
-		this, SLOT(jpegQualitySliderChanged(int))
+		ocrRusCB, SIGNAL(toggled(bool)),
+		this, SLOT(ocrLanguageToggled())
 	);
 	connect(
-		autoVectorizePdfCB, SIGNAL(toggled(bool)),
-		this, SIGNAL(autoVectorizePdfChanged(bool))
-	);
-	connect(
-		vectorizePdfBtn, SIGNAL(clicked()),
-		this, SIGNAL(vectorizePdfRequested())
+		pdfDpiSpin, SIGNAL(valueChanged(int)),
+		this, SLOT(pdfDpiSpinChanged(int))
 	);
 
+	pdfOptionsWidget->setVisible(generatePdfCB->isChecked());
 	updatePdfSizeEstimate();
 
 	thresholdSlider->setMinimum(-50);
@@ -1084,36 +1081,54 @@ OptionsWidget::originalBackgroundToggled(bool const checked)
 }
 
 void
-OptionsWidget::jpegQualitySliderChanged(int const val)
+OptionsWidget::generatePdfToggled(bool const checked)
+{
+	pdfOptionsWidget->setVisible(checked);
+	updatePdfSizeEstimate();
+	emit generatePdfChanged(checked);
+}
+
+void
+OptionsWidget::ocrLanguageToggled()
+{
+	QStringList langs;
+	if (ocrEngCB->isChecked()) langs << "eng";
+	if (ocrItaCB->isChecked()) langs << "ita";
+	if (ocrFraCB->isChecked()) langs << "fra";
+	if (ocrDeuCB->isChecked()) langs << "deu";
+	if (ocrSpaCB->isChecked()) langs << "spa";
+	if (ocrRusCB->isChecked()) langs << "rus";
+	emit ocrLanguageChanged(langs.join("+"));
+}
+
+void
+OptionsWidget::pdfDpiSpinChanged(int const val)
 {
 	updatePdfSizeEstimate();
-	emit jpegQualityChanged(val);
+	emit pdfDpiChanged(val);
 }
 
 void
 OptionsWidget::updatePdfSizeEstimate()
 {
-	double const q = jpegQualitySpin->value();
+	double const dpiVal = pdfDpiSpin->value();
 
-	// Estimate JPEG size for an A4 page (8.27 x 11.69 in) at 300 DPI.
-	// Rough JPEG compression ratio: cr = 20 - (q-10) * (17.5/90)
-	// => q=10 -> cr~20x, q=65 -> cr~9x, q=100 -> cr~2.5x
-	double const dpiVal = 300.0;
-	double const pxW    = 8.27  * dpiVal;
-	double const pxH    = 11.69 * dpiVal;
-	double const rawMB  = pxW * pxH * 3.0 / (1024.0 * 1024.0);
-	double cr           = 20.0 - (q - 10.0) * (17.5 / 90.0);
-	if (cr < 1.0) cr = 1.0;
-	double const jpegMB = rawMB / cr + 0.02; // +20 KB overhead per page
+	// Estimate lossless FlateDecode size for an A5 page (5.83 x 8.27 in).
+	// zlib compression ratio on scanned page images: ~3-5x for text, ~2x for photos.
+	// Use conservative 3x estimate.
+	double const pxW   = 5.83 * dpiVal;
+	double const pxH   = 8.27 * dpiVal;
+	double const rawMB = pxW * pxH * 3.0 / (1024.0 * 1024.0);
+	double const estMB = rawMB / 3.0 + 0.02; // +20 KB overhead per page
 
 	QString est;
-	if (jpegMB < 1.0)
-		est = tr("~%1 KB / page (A4)").arg(int(jpegMB * 1024));
+	if (estMB < 1.0)
+		est = tr("~%1 KB / page (A5)").arg(int(estMB * 1024));
 	else
-		est = tr("~%1 MB / page (A4)").arg(jpegMB, 0, 'f', 1);
+		est = tr("~%1 MB / page (A5)").arg(estMB, 0, 'f', 1);
 
 	// Color hint: green < 1 MB, orange 1-3 MB, red > 3 MB
-	QString color = jpegMB < 1.0 ? "#4CAF50" : (jpegMB < 3.0 ? "#FF8C00" : "#CC3333");
+	QString color = estMB < 1.0 ? "#4CAF50" : (estMB < 3.0 ? "#FF8C00" : "#CC3333");
 	pdfSizeEstLabel->setText(
 		QString("<small><span style='color:%1'>%2</span></small>").arg(color).arg(est));
 }
