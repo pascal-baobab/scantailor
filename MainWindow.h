@@ -177,6 +177,10 @@ private slots:
 
   void autoGeneratePdfToggled(bool enabled);
 
+  void jpegQualityChanged(int quality);
+
+  void autoVectorizePdfToggled(bool enabled);
+
   void vectorizePdfTriggered();
 
   void vectorizePdfStandalone();
@@ -329,6 +333,8 @@ private:
   bool m_closing;
   bool m_beepOnBatchProcessingCompletion;
   bool m_autoGeneratePdf;
+  int m_pdfJpegQuality;
+  bool m_autoVectorizePdf;
 };
 
 #endif

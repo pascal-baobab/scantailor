@@ -39,6 +39,7 @@ jobs:
             mingw-w64-x86_64-libjpeg-turbo
             mingw-w64-x86_64-libpng
             mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-poppler
 
       # ── 2. Checkout ───────────────────────────────────────────────────────
       - name: Checkout source
@@ -51,7 +52,7 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=/mingw64 \
-            -DENABLE_POPPLER=OFF
+            -DENABLE_POPPLER=ON
 
       # ── 4. Build ──────────────────────────────────────────────────────────
       - name: Build

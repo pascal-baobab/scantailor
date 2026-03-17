@@ -289,9 +289,27 @@ OptionsWidget::OptionsWidget(
 		this, SIGNAL(autoGeneratePdfChanged(bool))
 	);
 	connect(
+		jpegQualitySlider, SIGNAL(valueChanged(int)),
+		jpegQualitySpin, SLOT(setValue(int))
+	);
+	connect(
+		jpegQualitySpin, SIGNAL(valueChanged(int)),
+		jpegQualitySlider, SLOT(setValue(int))
+	);
+	connect(
+		jpegQualitySpin, SIGNAL(valueChanged(int)),
+		this, SLOT(jpegQualitySliderChanged(int))
+	);
+	connect(
+		autoVectorizePdfCB, SIGNAL(toggled(bool)),
+		this, SIGNAL(autoVectorizePdfChanged(bool))
+	);
+	connect(
 		vectorizePdfBtn, SIGNAL(clicked()),
 		this, SIGNAL(vectorizePdfRequested())
 	);
+
+	updatePdfSizeEstimate();
 
 	thresholdSlider->setMinimum(-50);
 	thresholdSlider->setMaximum(50);
@@ -1063,6 +1081,41 @@ OptionsWidget::originalBackgroundToggled(bool const checked)
 	m_splittingOptions.setOriginalBackgroundEnabled(checked);
 	m_ptrSettings->setSplittingOptions(m_pageId, m_splittingOptions);
 	emit reloadRequested();
+}
+
+void
+OptionsWidget::jpegQualitySliderChanged(int const val)
+{
+	updatePdfSizeEstimate();
+	emit jpegQualityChanged(val);
+}
+
+void
+OptionsWidget::updatePdfSizeEstimate()
+{
+	double const q = jpegQualitySpin->value();
+
+	// Estimate JPEG size for an A4 page (8.27 x 11.69 in) at 300 DPI.
+	// Rough JPEG compression ratio: cr = 20 - (q-10) * (17.5/90)
+	// => q=10 -> cr~20x, q=65 -> cr~9x, q=100 -> cr~2.5x
+	double const dpiVal = 300.0;
+	double const pxW    = 8.27  * dpiVal;
+	double const pxH    = 11.69 * dpiVal;
+	double const rawMB  = pxW * pxH * 3.0 / (1024.0 * 1024.0);
+	double cr           = 20.0 - (q - 10.0) * (17.5 / 90.0);
+	if (cr < 1.0) cr = 1.0;
+	double const jpegMB = rawMB / cr + 0.02; // +20 KB overhead per page
+
+	QString est;
+	if (jpegMB < 1.0)
+		est = tr("~%1 KB / page (A4)").arg(int(jpegMB * 1024));
+	else
+		est = tr("~%1 MB / page (A4)").arg(jpegMB, 0, 'f', 1);
+
+	// Color hint: green < 1 MB, orange 1-3 MB, red > 3 MB
+	QString color = jpegMB < 1.0 ? "#4CAF50" : (jpegMB < 3.0 ? "#FF8C00" : "#CC3333");
+	pdfSizeEstLabel->setText(
+		QString("<small><span style='color:%1'>%2</span></small>").arg(color).arg(est));
 }
 
 } // namespace output

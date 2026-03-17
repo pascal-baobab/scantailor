@@ -287,6 +287,64 @@ VectorPdfExporter::exportSearchablePdf(
 	return images.size();
 }
 
+// --------------- exportCompactPdf (no OCR) ---------------
+
+int
+VectorPdfExporter::exportCompactPdf(
+	IntrusivePtr<ProjectPages> const& pages,
+	OutputFileNameGenerator const& fileNameGen,
+	QString const& outputPdfPath,
+	int jpegQuality,
+	int dpi,
+	ProgressCallback progress)
+{
+	PageSequence const seq = pages->toPageSequence(PAGE_VIEW);
+	int const totalPages = static_cast<int>(seq.numPages());
+
+	if (totalPages == 0) {
+		return 0;
+	}
+
+	QDir().mkpath(QFileInfo(outputPdfPath).absolutePath());
+
+	QList<QImage> images;
+	QList<QList<OcrWord>> emptyWords;
+
+	for (int i = 0; i < totalPages; ++i) {
+		if (progress && progress(i, totalPages)) {
+			break; // cancelled
+		}
+
+		PageInfo const& info = seq.pageAt(i);
+		QString const imgPath = fileNameGen.filePathFor(info.id());
+		QImage img(imgPath);
+		if (img.isNull()) {
+			continue;
+		}
+
+		images.append(img);
+		emptyWords.append(QList<OcrWord>());
+	}
+
+	if (images.isEmpty()) {
+		return 0;
+	}
+
+	Options opts;
+	opts.jpegQuality = jpegQuality;
+	opts.dpi = dpi;
+
+	if (!writeCompactPdf(outputPdfPath, images, emptyWords, opts)) {
+		return -1;
+	}
+
+	if (progress) {
+		progress(totalPages, totalPages);
+	}
+
+	return images.size();
+}
+
 // --------------- vectorizeImages ---------------
 
 int

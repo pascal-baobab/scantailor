@@ -129,8 +129,6 @@
 #include <QModelIndex>
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QPrinter>
-#include <QPainter>
 #include <QPalette>
 #include <QStyle>
 #include <QSettings>
@@ -180,7 +178,9 @@ MainWindow::MainWindow()
 	m_ignorePageOrderingChanges(0),
 	m_debug(false),
 	m_closing(false),
-	m_autoGeneratePdf(false)
+	m_autoGeneratePdf(false),
+	m_pdfJpegQuality(65),
+	m_autoVectorizePdf(false)
 {
 	m_maxLogicalThumbSize = QSize(250, 160);
 	m_ptrThumbSequence.reset(new ThumbnailSequence(m_maxLogicalThumbSize));
@@ -839,6 +839,14 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 		this, SLOT(autoGeneratePdfToggled(bool))
 	);
 	connect(
+		widget, SIGNAL(jpegQualityChanged(int)),
+		this, SLOT(jpegQualityChanged(int))
+	);
+	connect(
+		widget, SIGNAL(autoVectorizePdfChanged(bool)),
+		this, SLOT(autoVectorizePdfToggled(bool))
+	);
+	connect(
 		widget, SIGNAL(vectorizePdfRequested()),
 		this, SLOT(vectorizePdfTriggered())
 	);
@@ -1397,10 +1405,30 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 				QString const outDir = m_outFileNameGen.outDir();
 				QString const pdfDir = QDir(outDir).filePath("PDF");
 				QDir().mkpath(pdfDir);
-				QString const pdfPath = QDir(pdfDir).filePath("output.pdf");
-				if (doExportPdf(pdfPath)) {
-					QMessageBox::information(this, tr("Export"),
-						tr("Batch complete.\nPDF auto-generated:\n%1").arg(pdfPath));
+
+				if (m_autoVectorizePdf) {
+					// Searchable PDF with OCR text overlay.
+					QString const pdfPath = QDir(pdfDir).filePath("output_searchable.pdf");
+					VectorPdfExporter::Options opts;
+					opts.jpegQuality = m_pdfJpegQuality;
+					opts.dpi = 300;
+					int const result = VectorPdfExporter::exportSearchablePdf(
+						m_ptrPages, m_outFileNameGen, pdfPath, opts);
+					if (result > 0) {
+						QMessageBox::information(this, tr("Export"),
+							tr("Batch complete.\nSearchable PDF (%1 pages):\n%2")
+								.arg(result).arg(pdfPath));
+					}
+				} else {
+					// Compact JPEG-compressed PDF (no OCR).
+					QString const pdfPath = QDir(pdfDir).filePath("output.pdf");
+					int const result = VectorPdfExporter::exportCompactPdf(
+						m_ptrPages, m_outFileNameGen, pdfPath, m_pdfJpegQuality);
+					if (result > 0) {
+						QMessageBox::information(this, tr("Export"),
+							tr("Batch complete.\nPDF auto-generated (%1 pages):\n%2")
+								.arg(result).arg(pdfPath));
+					}
 				}
 			}
 
@@ -1639,53 +1667,9 @@ MainWindow::doExportImages(QString const& dir)
 bool
 MainWindow::doExportPdf(QString const& path)
 {
-	PageSequence const pages = m_ptrPages->toPageSequence(PAGE_VIEW);
-
-	QPrinter printer(QPrinter::HighResolution);
-	printer.setOutputFormat(QPrinter::PdfFormat);
-	printer.setOutputFileName(path);
-	printer.setResolution(300);
-	printer.setFullPage(true);
-
-	QPainter painter;
-	bool painterStarted = false;
-	int exported = 0;
-
-	for (size_t i = 0; i < pages.numPages(); ++i) {
-		PageInfo const& info = pages.pageAt(i);
-		QString const imgPath = m_outFileNameGen.filePathFor(info.id());
-		QImage img(imgPath);
-		if (img.isNull()) {
-			continue;
-		}
-
-		qreal const w_in = img.width()  / 300.0;
-		qreal const h_in = img.height() / 300.0;
-		printer.setPaperSize(QSizeF(w_in * 25.4, h_in * 25.4), QPrinter::Millimeter);
-
-		if (!painterStarted) {
-			if (!painter.begin(&printer)) {
-				return false;
-			}
-			painterStarted = true;
-		} else {
-			printer.newPage();
-		}
-
-		painter.drawImage(painter.viewport(), img);
-		++exported;
-	}
-
-	if (painterStarted) {
-		painter.end();
-	}
-
-	if (exported == 0) {
-		QFile::remove(path);
-		return false;
-	}
-
-	return true;
+	int const result = VectorPdfExporter::exportCompactPdf(
+		m_ptrPages, m_outFileNameGen, path, m_pdfJpegQuality);
+	return result > 0;
 }
 
 void
@@ -1720,6 +1704,18 @@ void
 MainWindow::autoGeneratePdfToggled(bool const enabled)
 {
 	m_autoGeneratePdf = enabled;
+}
+
+void
+MainWindow::jpegQualityChanged(int const quality)
+{
+	m_pdfJpegQuality = quality;
+}
+
+void
+MainWindow::autoVectorizePdfToggled(bool const enabled)
+{
+	m_autoVectorizePdf = enabled;
 }
 
 void

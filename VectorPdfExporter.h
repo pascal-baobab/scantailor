@@ -60,6 +60,26 @@ public:
 	);
 
 	/**
+	 * Export all processed pages to a compact JPEG-compressed PDF (no OCR).
+	 *
+	 * @param pages          Project pages
+	 * @param fileNameGen    Maps page IDs to output file paths
+	 * @param outputPdfPath  Where to write the PDF
+	 * @param jpegQuality    JPEG quality 1-100 (default 65)
+	 * @param dpi            Resolution (default 300)
+	 * @param progress       Optional progress callback
+	 * @return number of pages exported, or -1 on error
+	 */
+	static int exportCompactPdf(
+		IntrusivePtr<ProjectPages> const& pages,
+		OutputFileNameGenerator const& fileNameGen,
+		QString const& outputPdfPath,
+		int jpegQuality = 65,
+		int dpi = 300,
+		ProgressCallback progress = ProgressCallback()
+	);
+
+	/**
 	 * Standalone: vectorize any PDF or list of images.
 	 * Renders each page/image, runs OCR, produces searchable PDF.
 	 *

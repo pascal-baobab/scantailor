@@ -79,6 +79,10 @@ signals:
 
 	void autoGeneratePdfChanged(bool enabled);
 
+	void jpegQualityChanged(int quality);
+
+	void autoVectorizePdfChanged(bool enabled);
+
 	void vectorizePdfRequested();
 public slots:
 	void tabChanged(ImageViewTab tab);
@@ -164,6 +168,10 @@ private slots:
 	void posterizeNormalizeToggled(bool checked);
 
 	void posterizeForceBWToggled(bool checked);
+
+	void jpegQualitySliderChanged(int val);
+
+	void updatePdfSizeEstimate();
 private:
 	void handleDespeckleLevelChange(DespeckleLevel level);
 
