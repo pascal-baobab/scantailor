@@ -13,12 +13,11 @@ concurrency:
 
 jobs:
   build-macos:
-    name: macOS arm64 (Homebrew Qt5)
-    runs-on: macos-latest        # macOS 14 Sonoma, arm64 (Apple Silicon)
+    name: macOS x86_64 (Homebrew Qt5)
+    runs-on: macos-13
+    timeout-minutes: 30
     env:
       CMAKE_BUILD_TYPE: Release
-      # Speed up Homebrew: skip auto-update, dependent checks and cleanup.
-      # The runner's formula database is fresh enough for our packages.
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_CLEANUP: "1"
       HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
@@ -30,40 +29,35 @@ jobs:
 
       # ── 2. Install dependencies via Homebrew ─────────────────────────────
       - name: Install dependencies
-        run: brew install qt@5 boost libtiff libjpeg-turbo libpng zlib
+        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib
 
-      # ── 3. Put Qt5 bin on PATH and set CMAKE_PREFIX_PATH ──────────────────
-      # brew --prefix returns the architecture-correct path
-      # (e.g. /opt/homebrew/opt/qt@5 on Apple Silicon)
+      # ── 3. Put Qt5 bin on PATH and set CMAKE_PREFIX_PATH ─────────────────
       - name: Set Qt5 environment
         run: |
           QT_PREFIX="$(brew --prefix qt@5)"
           echo "${QT_PREFIX}/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=${QT_PREFIX}" >> "$GITHUB_ENV"
 
-      # ── 4. Configure ──────────────────────────────────────────────────────
+      # ── 4. Configure ─────────────────────────────────────────────────────
       - name: Configure (CMake)
         run: |
           cmake -S . -B build \
+            -G Ninja \
             -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
             -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH}" \
-            -DCMAKE_OSX_ARCHITECTURES="arm64" \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" \
             -DCMAKE_CXX_STANDARD=14
-            # C++14: keeps std::auto_ptr (removed in C++17) and avoids
-            # hundreds of deprecation warnings from the legacy codebase.
 
       # ── 5. Build (also runs macdeployqt via the macos_bundle ALL target) ──
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel 4
 
-      # ── 6. Produce .dmg ───────────────────────────────────────────────────
-      # The 'dmg' target runs macdeployqt -dmg and renames the output to
-      # ScanTailor-<VERSION>.dmg inside the build directory.
+      # ── 6. Produce .dmg ──────────────────────────────────────────────────
       - name: Package DMG
         run: cmake --build build --target dmg
 
-      # ── 7. Upload artifact ────────────────────────────────────────────────
+      # ── 7. Upload artifact ───────────────────────────────────────────────
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:

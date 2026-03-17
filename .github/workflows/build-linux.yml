@@ -15,6 +15,7 @@ jobs:
   build-linux:
     name: Linux x86_64 (Ubuntu 22.04, Qt5, AppImage)
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     env:
       CMAKE_BUILD_TYPE: Release
 
@@ -23,7 +24,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # ── 2. Install dependencies ───────────────────────────────────────────
+      # ── 2. Install dependencies ──────────────────────────────────────────
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -33,11 +34,10 @@ jobs:
             libboost-dev libboost-test-dev \
             libtiff-dev libjpeg-dev libpng-dev zlib1g-dev \
             libxrender-dev libx11-dev \
-            libfuse2 patchelf
+            libfuse2 patchelf \
+            librsvg2-bin
 
-      # ── 3. Configure ──────────────────────────────────────────────────────
-      # CMAKE_POSITION_INDEPENDENT_CODE=ON: Ubuntu Qt5 uses -reduce-relocations,
-      # requiring all code to be compiled with -fPIC.
+      # ── 3. Configure ─────────────────────────────────────────────────────
       - name: Configure (CMake)
         run: |
           cmake -S . -B build \
@@ -46,19 +46,15 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
-      # ── 4. Build ──────────────────────────────────────────────────────────
+      # ── 4. Build ─────────────────────────────────────────────────────────
       - name: Build
         run: cmake --build build --parallel
 
-      # ── 5. Install into AppDir with FHS layout ────────────────────────────
+      # ── 5. Install into AppDir with FHS layout ───────────────────────────
       - name: Install into AppDir
         run: DESTDIR="$PWD/AppDir" cmake --install build
 
-      # ── 6. Download linuxdeploy + Qt plugin ───────────────────────────────
-      # linuxdeploy is the modern successor to linuxdeployqt and works on
-      # Ubuntu 22.04+. The Qt plugin bundles all required Qt libraries/plugins.
-      # Both tools are placed in the current directory so linuxdeploy can
-      # auto-discover the plugin (it searches the directory of its own binary).
+      # ── 6. Download linuxdeploy + Qt plugin ──────────────────────────────
       - name: Download deployment tools
         run: |
           wget -q \
@@ -69,15 +65,11 @@ jobs:
             -O linuxdeploy-plugin-qt
           chmod +x linuxdeploy linuxdeploy-plugin-qt
 
-      # ── 7. Build AppImage ─────────────────────────────────────────────────
+      # ── 7. Build AppImage ────────────────────────────────────────────────
       - name: Build AppImage
         env:
-          # QMAKE: used by linuxdeploy-plugin-qt to locate the Qt installation
           QMAKE: /usr/bin/qmake
-          # OUTPUT: final AppImage filename
           OUTPUT: ScanTailor-Linux-x86_64.AppImage
-          # APPIMAGE_EXTRACT_AND_RUN: run AppImage tools without FUSE
-          # (avoids the need for the fuse kernel module on the runner)
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           # .desktop file (required by linuxdeploy)
@@ -85,10 +77,10 @@ jobs:
           printf '[Desktop Entry]\nName=ScanTailor\nExec=scantailor\nIcon=scantailor\nType=Application\nCategories=Graphics;\n' \
             > AppDir/usr/share/applications/scantailor.desktop
 
-          # Icon (linuxdeploy uses it for the AppImage icon)
+          # Icon: convert SVG to 256x256 PNG (linuxdeploy requires standard icon sizes)
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-          cp resources/icons/appicon-about.png \
-            AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png 2>/dev/null || true
+          rsvg-convert -w 256 -h 256 resources/appicon.svg \
+            -o AppDir/usr/share/icons/hicolor/256x256/apps/scantailor.png
 
           ./linuxdeploy \
             --appdir AppDir \
@@ -98,7 +90,7 @@ jobs:
             --plugin qt \
             --output appimage
 
-      # ── 8. Upload ─────────────────────────────────────────────────────────
+      # ── 8. Upload ────────────────────────────────────────────────────────
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
