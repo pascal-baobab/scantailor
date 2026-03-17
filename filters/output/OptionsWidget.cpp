@@ -31,9 +31,6 @@
 #include "../../Utils.h"
 #include "ScopedIncDec.h"
 #include "config.h"
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
 #include <QtGlobal>
 #include <QVariant>
 #include <QColorDialog>
@@ -570,7 +567,7 @@ OptionsWidget::applyColorsButtonClicked()
 void
 OptionsWidget::dpiChanged(std::set<PageId> const& pages, Dpi const& dpi)
 {
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		m_ptrSettings->setDpi(page_id, dpi);
 		emit invalidateThumbnail(page_id);
 	}
@@ -585,7 +582,7 @@ OptionsWidget::dpiChanged(std::set<PageId> const& pages, Dpi const& dpi)
 void
 OptionsWidget::applyColorsConfirmed(std::set<PageId> const& pages)
 {
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		m_ptrSettings->setColorParams(page_id, m_colorParams);
 		emit invalidateThumbnail(page_id);
 	}
@@ -654,7 +651,7 @@ OptionsWidget::applyDespeckleButtonClicked()
 void
 OptionsWidget::applyDespeckleConfirmed(std::set<PageId> const& pages)
 {
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		m_ptrSettings->setDespeckleLevel(page_id, m_despeckleLevel);
 		emit invalidateThumbnail(page_id);
 	}
@@ -681,7 +678,7 @@ OptionsWidget::changeDewarpingButtonClicked()
 void
 OptionsWidget::dewarpingChanged(std::set<PageId> const& pages, DewarpingMode const& mode)
 {
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		m_ptrSettings->setDewarpingMode(page_id, mode);
 		emit invalidateThumbnail(page_id);
 	}
@@ -734,7 +731,7 @@ OptionsWidget::applyDepthPerceptionButtonClicked()
 void
 OptionsWidget::applyDepthPerceptionConfirmed(std::set<PageId> const& pages)
 {
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		m_ptrSettings->setDepthPerception(page_id, m_depthPerception);
 		emit invalidateThumbnail(page_id);
 	}

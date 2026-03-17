@@ -65,7 +65,6 @@
 #include "imageproc/Posterizer.h"
 #include "config.h"
 #ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #endif
@@ -460,7 +459,7 @@ OutputGenerator::modifyBinarizationMask(
 	typedef PictureLayerProperty PLP;
 
 	// Pass 1: ERASER1
-	BOOST_FOREACH(Zone const& zone, zones) {
+	for (Zone const& zone : zones) {
 		if (zone.properties().locateOrDefault<PLP>()->layer() == PLP::ERASER1) {
 			QPolygonF const poly(zone.spline().toPolygon());
 			PolygonRasterizer::fill(bw_mask, BLACK, xform.map(poly), Qt::WindingFill);
@@ -468,7 +467,7 @@ OutputGenerator::modifyBinarizationMask(
 	}
 
 	// Pass 2: PAINTER2
-	BOOST_FOREACH(Zone const& zone, zones) {
+	for (Zone const& zone : zones) {
 		if (zone.properties().locateOrDefault<PLP>()->layer() == PLP::PAINTER2) {
 			QPolygonF const poly(zone.spline().toPolygon());
 			PolygonRasterizer::fill(bw_mask, WHITE, xform.map(poly), Qt::WindingFill);
@@ -476,7 +475,7 @@ OutputGenerator::modifyBinarizationMask(
 	}
 
 	// Pass 1: ERASER3
-	BOOST_FOREACH(Zone const& zone, zones) {
+	for (Zone const& zone : zones) {
 		if (zone.properties().locateOrDefault<PLP>()->layer() == PLP::ERASER3) {
 			QPolygonF const poly(zone.spline().toPolygon());
 			PolygonRasterizer::fill(bw_mask, BLACK, xform.map(poly), Qt::WindingFill);
@@ -1316,10 +1315,10 @@ OutputGenerator::createDewarper(
 
 	std::vector<QPointF> top_polyline(distortion_model.topCurve().polyline());
 	std::vector<QPointF> bottom_polyline(distortion_model.bottomCurve().polyline());
-	BOOST_FOREACH(QPointF& pt, top_polyline) {
+	for (QPointF& pt : top_polyline) {
 		pt = distortion_model_to_target.map(pt);
 	}
-	BOOST_FOREACH(QPointF& pt, bottom_polyline) {
+	for (QPointF& pt : bottom_polyline) {
 		pt = distortion_model_to_target.map(pt);
 	}
 	return CylindricalSurfaceDewarper(
@@ -1922,7 +1921,7 @@ OutputGenerator::applyFillZonesInPlace(
 		painter.setRenderHint(QPainter::Antialiasing, true);
 		painter.setPen(Qt::NoPen);
 
-		BOOST_FOREACH(Zone const& zone, zones) {
+		for (Zone const& zone : zones) {
 			QColor const color(zone.properties().locateOrDefault<FillColorProperty>()->color());
 			QPolygonF const poly(zone.spline().transformed(orig_to_output).toPolygon());
 			painter.setBrush(color);
@@ -1959,7 +1958,7 @@ OutputGenerator::applyFillZonesInPlace(
 		return;
 	}
 
-	BOOST_FOREACH(Zone const& zone, zones) {
+	for (Zone const& zone : zones) {
 		QColor const color(zone.properties().locateOrDefault<FillColorProperty>()->color());
 		BWColor const bw_color = qGray(color.rgb()) < 128 ? BLACK : WHITE;
 		QPolygonF const poly(zone.spline().transformed(orig_to_output).toPolygon());

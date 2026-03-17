@@ -17,8 +17,6 @@
 */
 
 #include "ProcessingTaskQueue.h"
-#include <boost/foreach.hpp>
-
 ProcessingTaskQueue::Entry::Entry(
 	PageInfo const& page_info, BackgroundTaskPtr const& tsk)
 :	pageInfo(page_info),
@@ -42,7 +40,7 @@ ProcessingTaskQueue::addProcessingTask(
 BackgroundTaskPtr
 ProcessingTaskQueue::takeForProcessing()
 {
-	BOOST_FOREACH(Entry& ent, m_queue) {
+	for (Entry& ent : m_queue) {
 		if (!ent.takenForProcessing) {
 			ent.takenForProcessing = true;
 			

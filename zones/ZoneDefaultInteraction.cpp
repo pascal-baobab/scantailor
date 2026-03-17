@@ -31,9 +31,6 @@
 #include <QKeyEvent>
 #include <Qt>
 #include <QMouseEvent>
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
 #include <vector>
 #include <assert.h>
 
@@ -61,7 +58,7 @@ ZoneDefaultInteraction::onPaint(QPainter& painter, InteractionState const& inter
 
 	QTransform const to_screen(m_rContext.imageView().imageToWidget());
 
-	BOOST_FOREACH(EditableZoneSet::Zone const& zone, m_rContext.zones()) {
+	for (EditableZoneSet::Zone const& zone : m_rContext.zones()) {
 		EditableSpline::Ptr const& spline = zone.spline();
 		m_visualizer.prepareForSpline(painter, spline);
 		QPolygonF points;
@@ -146,7 +143,7 @@ ZoneDefaultInteraction::onProximityUpdate(QPointF const& mouse_pos, InteractionS
 
 	bool has_zone_under_mouse = false;
 
-	BOOST_FOREACH(EditableZoneSet::Zone const& zone, m_rContext.zones()) {
+	for (EditableZoneSet::Zone const& zone : m_rContext.zones()) {
 		EditableSpline::Ptr const& spline = zone.spline();
 
 		if (!has_zone_under_mouse) {

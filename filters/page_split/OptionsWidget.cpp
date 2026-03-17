@@ -27,9 +27,6 @@
 #include "ScopedIncDec.h"
 #include <QButtonGroup>
 #include <QPixmap>
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
 #include <assert.h>
 
 namespace page_split
@@ -282,7 +279,7 @@ OptionsWidget::layoutTypeSet(
 	} else {
 		m_ptrSettings->setLayoutTypeFor(layout_type, pages);
 		if (layout_type != AUTO_LAYOUT_TYPE) {
-			BOOST_FOREACH(PageId const& page_id, pages) {
+			for (PageId const& page_id : pages) {
 				m_ptrPages->setLayoutTypeFor(page_id.imageId(), plt);
 			}
 		}
@@ -291,7 +288,7 @@ OptionsWidget::layoutTypeSet(
 	if (all_pages) {
 		emit invalidateAllThumbnails();
 	} else {
-		BOOST_FOREACH(PageId const& page_id, pages) {
+		for (PageId const& page_id : pages) {
 			emit invalidateThumbnail(page_id);
 		}
 	}

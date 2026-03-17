@@ -21,10 +21,6 @@
 #include "RelinkablePath.h"
 #include "AbstractRelinker.h"
 #include <QMutexLocker>
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
-
 namespace deskew
 {
 
@@ -50,7 +46,7 @@ Settings::performRelinking(AbstractRelinker const& relinker)
 	QMutexLocker locker(&m_mutex);
 	PerPageParams new_params;
 
-	BOOST_FOREACH(PerPageParams::value_type const& kv, m_perPageParams) {
+	for (PerPageParams::value_type const& kv : m_perPageParams) {
 		RelinkablePath const old_path(kv.first.imageId().filePath(), RelinkablePath::File);
 		PageId new_page_id(kv.first);
 		new_page_id.imageId().setFilePath(relinker.substitutionPathFor(old_path));
@@ -99,7 +95,7 @@ void
 Settings::setDegress(std::set<PageId> const& pages, Params const& params)
 {
 	QMutexLocker const locker(&m_mutex);
-	BOOST_FOREACH(PageId const& page, pages) {
+	for (PageId const& page : pages) {
 		Utils::mapSetValue(m_perPageParams, page, params);
 		m_deviationProvider.addOrUpdate(page, params.deskewAngle());
 	}

@@ -22,10 +22,6 @@
 #include "AbstractRelinker.h"
 #include <QMutexLocker>
 #include <cmath>
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
-
 namespace select_content
 {
 
@@ -51,7 +47,7 @@ Settings::performRelinking(AbstractRelinker const& relinker)
 	QMutexLocker locker(&m_mutex);
 	PageParams new_params;
 
-	BOOST_FOREACH(PageParams::value_type const& kv, m_pageParams) {
+	for (PageParams::value_type const& kv : m_pageParams) {
 		RelinkablePath const old_path(kv.first.imageId().filePath(), RelinkablePath::File);
 		PageId new_page_id(kv.first);
 		new_page_id.imageId().setFilePath(relinker.substitutionPathFor(old_path));

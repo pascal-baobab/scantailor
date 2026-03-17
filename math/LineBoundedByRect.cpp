@@ -19,8 +19,6 @@
 #include "LineBoundedByRect.h"
 #include "LineIntersectionScalar.h"
 #include "NumericTraits.h"
-#include <boost/foreach.hpp>
-
 bool lineBoundedByRect(QLineF& line, QRectF const& rect)
 {
 	QLineF const rect_lines[4] = {
@@ -35,7 +33,7 @@ bool lineBoundedByRect(QLineF& line, QRectF const& rect)
 
 	double s1 = 0;
 	double s2 = 0;
-	BOOST_FOREACH(QLineF const& rect_line, rect_lines) {	
+	for (QLineF const& rect_line : rect_lines) {	
 		if (!lineIntersectionScalar(rect_line, line, s1, s2)) {
 			// line is parallel to rect_line.
 			continue;

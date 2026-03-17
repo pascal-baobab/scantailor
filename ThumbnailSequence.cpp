@@ -35,7 +35,6 @@
 #include <boost/function.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
-#include <boost/foreach.hpp>
 #endif
 #include <QGraphicsScene>
 #include <QGraphicsItem>
@@ -583,7 +582,7 @@ ThumbnailSequence::Impl::toPageSequence() const
 {
 	PageSequence pages;
 
-	BOOST_FOREACH(Item const& item, m_itemsInOrder) {
+	for (Item const& item : m_itemsInOrder) {
 		pages.append(item.pageInfo);
 	}
 
@@ -1021,7 +1020,7 @@ std::set<PageId>
 ThumbnailSequence::Impl::selectedItems() const
 {
 	std::set<PageId> selection;
-	BOOST_FOREACH(Item const& item, m_selectedThenUnselected) {
+	for (Item const& item : m_selectedThenUnselected) {
 		if (!item.isSelected()) {
 			break;
 		}
@@ -1267,7 +1266,7 @@ ThumbnailSequence::Impl::clearSelection()
 {
 	m_pSelectionLeader = 0;
 	
-	BOOST_FOREACH(Item const& item, m_selectedThenUnselected) {
+	for (Item const& item : m_selectedThenUnselected) {
 		if (!item.isSelected()) {
 			break;
 		}

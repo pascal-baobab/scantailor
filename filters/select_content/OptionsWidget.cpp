@@ -21,10 +21,6 @@
 #include "Settings.h"
 #include "Params.h"
 #include "ScopedIncDec.h"
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
-
 namespace select_content
 {
 
@@ -153,7 +149,7 @@ OptionsWidget::applySelection(std::set<PageId> const& pages)
 		m_uiData.pageRect(), m_uiData.pageDetectMode()
 	);
 
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		m_ptrSettings->setPageParams(page_id, params);
 		emit invalidateThumbnail(page_id);
 	}

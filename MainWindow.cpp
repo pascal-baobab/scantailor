@@ -96,7 +96,6 @@
 #include "config.h"
 #include "version.h"
 #ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 #endif
@@ -663,7 +662,7 @@ MainWindow::updateSortOptions()
 
 	sortOptions->clear();
 	
-	BOOST_FOREACH(PageOrderOption const& opt, filter->pageOrderOptions()) {
+	for (PageOrderOption const& opt : filter->pageOrderOptions()) {
 		sortOptions->addItem(opt.name());
 	}
 
@@ -2286,10 +2285,10 @@ MainWindow::showInsertFileDialog(BeforeOrAfter before_or_after, ImageId const& e
 	}
 
 	// Actually insert the new pages.
-	BOOST_FOREACH(ImageFileInfo const& file, new_files) {
+	for (ImageFileInfo const& file : new_files) {
 		int image_num = -1; // Zero-based image number in a multi-page TIFF.
 
-		BOOST_FOREACH(ImageMetadata const& metadata, file.imageInfo()) {
+		for (ImageMetadata const& metadata : file.imageInfo()) {
 			++image_num;
 
 			int const num_sub_pages = ProjectPages::adviseNumberOfLogicalPages(
@@ -2342,7 +2341,7 @@ MainWindow::insertImage(ImageInfo const& new_image,
 		std::reverse(pages.begin(), pages.end());
 	}
 	
-	BOOST_FOREACH(PageInfo const& page_info, pages) {
+	for (PageInfo const& page_info : pages) {
 		m_outFileNameGen.disambiguator()->registerFile(page_info.imageId().filePath());
 		m_ptrThumbSequence->insert(page_info, before_or_after, existing);
 		existing = page_info.imageId();
@@ -2373,7 +2372,7 @@ MainWindow::eraseOutputFiles(std::set<PageId> const& pages)
 	std::vector<PageId::SubPage> erase_variations;
 	erase_variations.reserve(3);
 
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		erase_variations.clear();
 		switch (page_id.subPage()) {
 			case PageId::SINGLE_PAGE:
@@ -2391,7 +2390,7 @@ MainWindow::eraseOutputFiles(std::set<PageId> const& pages)
 				break;
 		}
 		
-		BOOST_FOREACH(PageId::SubPage subpage, erase_variations) {
+		for (PageId::SubPage subpage : erase_variations) {
 			QFile::remove(m_outFileNameGen.filePathFor(PageId(page_id.imageId(), subpage))); 
 		}
 	}

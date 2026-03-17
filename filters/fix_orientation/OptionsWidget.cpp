@@ -23,9 +23,6 @@
 #include "ProjectPages.h"
 #include "ImageId.h"
 #include "PageId.h"
-#ifndef Q_MOC_RUN
-#include <boost/foreach.hpp>
-#endif
 #include <vector>
 #include <assert.h>
 
@@ -113,7 +110,7 @@ OptionsWidget::appliedTo(std::set<PageId> const& pages)
 	}
 	
 	m_ptrSettings->applyRotation(pages, m_rotation);
-	BOOST_FOREACH(PageId const& page_id, pages) {
+	for (PageId const& page_id : pages) {
 		emit invalidateThumbnail(page_id);
 	}
 }
