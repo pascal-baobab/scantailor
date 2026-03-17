@@ -40,6 +40,7 @@ jobs:
             mingw-w64-x86_64-libpng
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-poppler
+            mingw-w64-x86_64-poppler-qt5
 
       # ── 2. Checkout ───────────────────────────────────────────────────────
       - name: Checkout source
