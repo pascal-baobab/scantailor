@@ -25,6 +25,8 @@
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QDomDocument>
+#include <QXmlInputSource>
+#include <QXmlSimpleReader>
 
 using namespace page_split;
 using namespace output;
@@ -81,7 +83,11 @@ DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status
 	}
 
 	QDomDocument doc;
-	if (!doc.setContent(&profileFile)) {
+	QXmlSimpleReader reader;
+	reader.setFeature("http://xml.org/sax/features/external-general-entities", false);
+	reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+	QXmlInputSource source(&profileFile);
+	if (!doc.setContent(&source, &reader)) {
 		if (status) {
 			*status = IO_ERROR;
 		}

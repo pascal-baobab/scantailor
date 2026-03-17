@@ -30,12 +30,24 @@
 #include <boost/bind.hpp>
 #endif
 #include <set>
+#include <QDebug>
 
 ProjectReader::ProjectReader(QDomDocument const& doc)
 :	m_doc(doc),
 	m_ptrDisambiguator(new FileNameDisambiguator)
 {
 	QDomElement project_el(m_doc.documentElement());
+
+	// Check project file format version for forward compatibility.
+	// Version 1 (implicit): original format, no formatVersion attribute.
+	// Version 2: added formatVersion attribute, XXE-safe parsing.
+	int const formatVersion = project_el.attribute("formatVersion", "1").toInt();
+	if (formatVersion > 2) {
+		qWarning() << "Project file format version" << formatVersion
+		           << "is newer than this version of ScanTailor supports (2)."
+		           << "Some settings may be lost.";
+	}
+
 	m_outDir = project_el.attribute("outputDirectory");
 	
 	Qt::LayoutDirection layout_direction = Qt::LeftToRight;

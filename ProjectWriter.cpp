@@ -86,6 +86,7 @@ ProjectWriter::write(QString const& file_path, std::vector<FilterPtr> const& fil
 	QDomDocument doc;
 	QDomElement root_el(doc.createElement("project"));
 	doc.appendChild(root_el);
+	root_el.setAttribute("formatVersion", "2");
 	root_el.setAttribute("outputDirectory", m_outFileNameGen.outDir());
 	root_el.setAttribute(
 		"layoutDirection",

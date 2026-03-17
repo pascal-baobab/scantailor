@@ -74,6 +74,8 @@
 
 #include <QMap>
 #include <QDomDocument>
+#include <QXmlInputSource>
+#include <QXmlSimpleReader>
 
 #include "ConsoleBatch.h"
 #include "CommandLine.h"
@@ -100,7 +102,14 @@ ConsoleBatch::ConsoleBatch(QString const project_file)
 	}
 
 	QDomDocument doc;
-	if (!doc.setContent(&file)) {
+
+	// Parse with external entities disabled to prevent XXE attacks
+	// from malicious .ScanTailor project files.
+	QXmlSimpleReader reader;
+	reader.setFeature("http://xml.org/sax/features/external-general-entities", false);
+	reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+	QXmlInputSource source(&file);
+	if (!doc.setContent(&source, &reader)) {
 		throw std::runtime_error("The project file is broken.");
 	}
 

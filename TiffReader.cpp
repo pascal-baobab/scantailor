@@ -33,6 +33,7 @@
 #include <tiffio.h>
 #include <new>
 #include <assert.h>
+#include <cstdint>
 
 class TiffReader::TiffHeader
 {
@@ -309,11 +310,21 @@ TiffReader::readImage(QIODevice& device, int const page_num)
 	}
 	
 	TiffInfo const info(tif, header);
-	
+
+	// Guard against integer overflow in width*height allocation.
+	// A malformed TIFF with huge dimensions could cause buffer underallocation.
+	static int const MAX_DIM = 100000;
+	static int64_t const MAX_PIXELS = 500LL * 1000 * 1000; // 500 megapixels
+	if (info.width <= 0 || info.height <= 0 ||
+	    info.width > MAX_DIM || info.height > MAX_DIM ||
+	    static_cast<int64_t>(info.width) * info.height > MAX_PIXELS) {
+		return QImage();
+	}
+
 	ImageMetadata const metadata(currentPageMetadata(tif));
-	
+
 	QImage image;
-	
+
 	if (info.mapsToBinaryOrIndexed8()) {
 		// Common case optimization.
 		image = extractBinaryOrIndexed8Image(tif, info);

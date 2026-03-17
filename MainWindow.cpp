@@ -132,6 +132,8 @@
 #include <QStyle>
 #include <QSettings>
 #include <QDomDocument>
+#include <QXmlInputSource>
+#include <QXmlSimpleReader>
 #include <QSortFilterProxyModel>
 #include <QFileSystemModel>
 #include <QFileInfo>
@@ -1792,14 +1794,21 @@ MainWindow::openProject(QString const& project_file)
 	}
 	
 	QDomDocument doc;
-	if (!doc.setContent(&file)) {
+
+	// Parse with external entities disabled to prevent XXE attacks
+	// from malicious .ScanTailor project files.
+	QXmlSimpleReader reader;
+	reader.setFeature("http://xml.org/sax/features/external-general-entities", false);
+	reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+	QXmlInputSource source(&file);
+	if (!doc.setContent(&source, &reader)) {
 		QMessageBox::warning(
 			this, tr("Error"),
 			tr("The project file is broken.")
 		);
 		return;
 	}
-	
+
 	file.close();
 	
 	ProjectOpeningContext* context = new ProjectOpeningContext(this, project_file, doc);
