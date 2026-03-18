@@ -253,16 +253,7 @@ PictureZoneEditor::paintOverPictureMask(QPainter& painter)
 	painter.setPen(Qt::NoPen);
 	painter.setBrush(QColor(mask_color));
 
-#ifndef Q_WS_X11
-	// That's how it's supposed to be.
 	painter.setCompositionMode(QPainter::CompositionMode_Clear);
-#else
-	// QPainter::CompositionMode_Clear doesn't work for arbitrarily shaped
-	// objects on X11, as well as CompositionMode_Source with a transparent
-	// brush.  Fortunately, CompositionMode_DestinationOut with a non-transparent
-	// brush does actually work.
-	painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-#endif
 
 	typedef PictureLayerProperty PLP;
 
@@ -282,16 +273,7 @@ PictureZoneEditor::paintOverPictureMask(QPainter& painter)
 		}
 	}
 
-#ifndef Q_WS_X11
-	// That's how it's supposed to be.
 	painter.setCompositionMode(QPainter::CompositionMode_Clear);
-#else
-	// QPainter::CompositionMode_Clear doesn't work for arbitrarily shaped
-	// objects on X11, as well as CompositionMode_Source with a transparent
-	// brush.  Fortunately, CompositionMode_DestinationOut with a non-transparent
-	// brush does actually work.
-	painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-#endif
 
 	// Third pass: ERASER1
 	for (EditableZoneSet::Zone const& zone : m_zones) {

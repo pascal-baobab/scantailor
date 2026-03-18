@@ -296,20 +296,6 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 SET(EXTRA_LIBS "")
 
 IF(UNIX AND NOT APPLE)
-	# We need to manually use XRender (Linux/BSD only; macOS uses Cocoa, no XRender).
-	INCLUDE(FindX11)
-	IF(NOT X11_Xrender_FOUND)
-		MESSAGE(
-			FATAL_ERROR
-			"Could not find Xrender.h\n"
-			"You may need to install a package called\n"
-			"libxrender-dev or libXrender-dev or similarly."
-		)
-	ENDIF()
-
-	INCLUDE_DIRECTORIES("${X11_Xrender_INCLUDE_PATH}")
-	LIST(APPEND EXTRA_LIBS ${X11_Xrender_LIB})
-
 	FindPthreads()
 	IF(PTHREADS_FOUND)
 		ADD_DEFINITIONS(${PTHREADS_CFLAGS})

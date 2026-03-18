@@ -447,12 +447,7 @@ ImageViewBase::paintEvent(QPaintEvent* event)
 	QPainter painter(viewport());
 	painter.save();
 
-	// On X11 (except with OpenGL), SmoothPixmapTransform is too slow, so don't enable it.
-	bool smooth_pixmap_ok = true;
-#if defined(Q_WS_X11)
-	smooth_pixmap_ok = viewport()->inherits("QGLWidget");
-#endif
-	if (smooth_pixmap_ok) {
+	{
 		double const xscale = m_virtualToWidget.m11();
 
 		// Width of a source pixel in mm, as it's displayed on screen.
@@ -1163,10 +1158,7 @@ ImageViewBase::HqTransformTask::operator()()
 			OutsidePixels::assumeWeakColor(Qt::white), QSizeF(0.0, 0.0)
 		)
 	);
-#if defined(Q_WS_X11)
-	// ARGB32_Premultiplied is an optimal format for X11 + XRender.
 	hq_image = hq_image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-#endif
 	m_ptrResult->setData(target_rect.topLeft(), hq_image);
 	
 	return m_ptrResult;

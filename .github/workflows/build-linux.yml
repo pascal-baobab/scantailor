@@ -33,7 +33,6 @@ jobs:
             qtbase5-dev qttools5-dev qttools5-dev-tools \
             libboost-dev libboost-test-dev \
             libtiff-dev libjpeg-dev libpng-dev zlib1g-dev \
-            libxrender-dev libx11-dev \
             libfuse2 patchelf \
             librsvg2-bin \
             libpotrace-dev \

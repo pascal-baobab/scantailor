@@ -76,5 +76,5 @@ Each filter has: `Filter.cpp/h`, `Task.cpp/h`, `CacheDrivenTask.cpp/h`, `Setting
 
 ## Important notes
 - `QLineF::intersect()` is deprecated in Qt 5.14+ (use `intersects()`), but still compiles with warnings. Not worth bulk-fixing unless doing a Qt6 migration.
-- The `Q_WS_MAC` macro was replaced with `Q_OS_MAC` for Qt5 compatibility.
-- X11/XRender dependencies are Linux-only (guarded by `IF(UNIX AND NOT APPLE)`).
+- All `Q_WS_*` macros (Qt4) replaced with `Q_OS_*` (Qt5). Dead X11/XRender code removed — Qt5 uses raster engine.
+- X11/XRender dependency removed (was only needed for Qt4's native X11 paint engine).
