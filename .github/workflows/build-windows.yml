@@ -2,7 +2,7 @@ name: Build Windows
 
 on:
   push:
-    branches: [ master, modernization ]
+    branches: [ master, modernization, 'claude/**' ]
   pull_request:
     branches: [ master, modernization ]
   workflow_dispatch:
@@ -122,6 +122,13 @@ jobs:
           cp "$QT_PLUGINS/imageformats/"*.dll       dist/imageformats/ 2>/dev/null || true
           cp "$QT_PLUGINS/styles/"*.dll             dist/styles/      2>/dev/null || true
           cp "$QT_PLUGINS/printsupport/"*.dll       dist/printsupport/ 2>/dev/null || true
+
+          # Translation files (.qm)
+          if [ -d build ]; then
+            mkdir -p dist/translations
+            cp build/*.qm dist/translations/ 2>/dev/null || true
+            echo "Translation files: $(find dist/translations -name '*.qm' | wc -l)"
+          fi
 
           # Tesseract language data (required for OCR at runtime)
           if [ -d /mingw64/share/tessdata ]; then

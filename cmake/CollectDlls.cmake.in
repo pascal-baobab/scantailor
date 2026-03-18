@@ -1,0 +1,103 @@
+# CollectDlls.cmake.in -- Iterative objdump DLL resolver for MSYS2/MinGW
+# Invoked via: cmake -DTARGET_EXE_DIR=<dir> -P collect_dlls.cmake
+#
+# Variables substituted at configure time (@ONLY):
+#   MINGW_BIN_DIR    - e.g. /mingw64/bin
+#   QT_PLUGINS_DIR   - e.g. /mingw64/share/qt5/plugins
+#   CMAKE_BINARY_DIR - build directory (for .qm files)
+#
+# Variable passed at invocation time (-D):
+#   TARGET_EXE_DIR   - directory containing scantailor.exe
+
+set(DIST_DIR "${TARGET_EXE_DIR}")
+set(MINGW_BIN "@MINGW_BIN_DIR@")
+set(QT_PLUGINS "@QT_PLUGINS_DIR@")
+set(BUILD_DIR "@CMAKE_BINARY_DIR@")
+
+if(NOT DIST_DIR)
+    message(FATAL_ERROR "TARGET_EXE_DIR not set")
+endif()
+
+# ── 1. Iterative DLL resolution (converge in 4-6 passes) ─────────
+set(prev_count 0)
+foreach(pass RANGE 1 10)
+    file(GLOB exe_and_dlls "${DIST_DIR}/*.exe" "${DIST_DIR}/*.dll")
+    foreach(binary ${exe_and_dlls})
+        execute_process(
+            COMMAND objdump -p "${binary}"
+            OUTPUT_VARIABLE objdump_out
+            ERROR_QUIET
+        )
+        string(REGEX MATCHALL "DLL Name: [^\n\r]+" dll_lines "${objdump_out}")
+        foreach(line ${dll_lines})
+            string(REGEX REPLACE "DLL Name: +" "" dep "${line}")
+            string(STRIP "${dep}" dep)
+            if(EXISTS "${MINGW_BIN}/${dep}" AND NOT EXISTS "${DIST_DIR}/${dep}")
+                message(STATUS "  ${dep}")
+                file(COPY "${MINGW_BIN}/${dep}" DESTINATION "${DIST_DIR}")
+            endif()
+        endforeach()
+    endforeach()
+
+    file(GLOB all_dlls "${DIST_DIR}/*.dll")
+    list(LENGTH all_dlls curr_count)
+    message(STATUS "Pass ${pass}: ${curr_count} DLLs")
+    if(curr_count EQUAL prev_count)
+        message(STATUS "Converged at pass ${pass}")
+        break()
+    endif()
+    set(prev_count ${curr_count})
+endforeach()
+
+# ── 2. Qt5 plugins ───────────────────────────────────────────────
+foreach(plugin_subdir platforms styles imageformats printsupport)
+    if(IS_DIRECTORY "${QT_PLUGINS}/${plugin_subdir}")
+        file(MAKE_DIRECTORY "${DIST_DIR}/${plugin_subdir}")
+        file(GLOB plugin_dlls "${QT_PLUGINS}/${plugin_subdir}/*.dll")
+        foreach(dll ${plugin_dlls})
+            get_filename_component(name "${dll}" NAME)
+            if(NOT EXISTS "${DIST_DIR}/${plugin_subdir}/${name}")
+                message(STATUS "  plugin: ${plugin_subdir}/${name}")
+                file(COPY "${dll}" DESTINATION "${DIST_DIR}/${plugin_subdir}")
+            endif()
+        endforeach()
+    endif()
+endforeach()
+
+# ── 3. Resolve transitive deps of plugin DLLs ────────────────────
+foreach(plugin_subdir platforms styles imageformats printsupport)
+    file(GLOB plugin_files "${DIST_DIR}/${plugin_subdir}/*.dll")
+    foreach(binary ${plugin_files})
+        execute_process(
+            COMMAND objdump -p "${binary}"
+            OUTPUT_VARIABLE objdump_out
+            ERROR_QUIET
+        )
+        string(REGEX MATCHALL "DLL Name: [^\n\r]+" dll_lines "${objdump_out}")
+        foreach(line ${dll_lines})
+            string(REGEX REPLACE "DLL Name: +" "" dep "${line}")
+            string(STRIP "${dep}" dep)
+            if(EXISTS "${MINGW_BIN}/${dep}" AND NOT EXISTS "${DIST_DIR}/${dep}")
+                message(STATUS "  plugin dep: ${dep}")
+                file(COPY "${MINGW_BIN}/${dep}" DESTINATION "${DIST_DIR}")
+            endif()
+        endforeach()
+    endforeach()
+endforeach()
+
+# ── 4. Translation files (.qm) ───────────────────────────────────
+file(GLOB qm_files "${BUILD_DIR}/*.qm")
+list(LENGTH qm_files qm_count)
+if(qm_count GREATER 0)
+    file(MAKE_DIRECTORY "${DIST_DIR}/translations")
+    foreach(qm ${qm_files})
+        get_filename_component(name "${qm}" NAME)
+        file(COPY "${qm}" DESTINATION "${DIST_DIR}/translations")
+    endforeach()
+    message(STATUS "Copied ${qm_count} translation files")
+endif()
+
+# ── 5. Summary ────────────────────────────────────────────────────
+file(GLOB final_dlls "${DIST_DIR}/*.dll")
+list(LENGTH final_dlls total)
+message(STATUS "=== DLL collection complete: ${total} DLLs ===")

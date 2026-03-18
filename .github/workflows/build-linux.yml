@@ -2,7 +2,7 @@ name: Build Linux
 
 on:
   push:
-    branches: [ master, modernization ]
+    branches: [ master, modernization, 'claude/**' ]
   pull_request:
     branches: [ master, modernization ]
   workflow_dispatch:

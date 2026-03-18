@@ -78,8 +78,7 @@ INCLUDE(cmake/SetDefaultBuildType.cmake)
 INCLUDE(cmake/SetDefaultGccFlags.cmake)
 INCLUDE(cmake/ToNativePath.cmake)
 INCLUDE(cmake/UpdateTranslations.cmake)
-INCLUDE(cmake/CopyToBuildDir.cmake)
-INCLUDE(cmake/LibToDLL.cmake)
+# cmake/CopyToBuildDir.cmake and cmake/LibToDLL.cmake removed (Qt4-only)
 
 ST_SET_DEFAULT_BUILD_TYPE(Release)
 IF(CMAKE_COMPILER_IS_GNUCC)
@@ -90,21 +89,12 @@ GET_FILENAME_COMPONENT(source_outer_dir "${PROJECT_SOURCE_DIR}/../../../.." ABSO
 GET_FILENAME_COMPONENT(build_outer_dir "${PROJECT_BINARY_DIR}/.." ABSOLUTE)
 
 SET(STAGING_LIBS_DIR "")
-# On MSYS2/MinGW or any system with Qt5 available, skip the legacy
-# scantailor-deps-build requirement and use system Qt5 libraries.
+# Legacy Qt4 deps-build directory is no longer required.
+# Qt5 libraries are found via CMAKE_PREFIX_PATH or system packages.
 IF(WIN32 AND NOT DEFINED ENV{MSYSTEM})
-	FIND_PATH(
-		DEPS_BUILD_DIR build-qt.bat
-		HINTS "${build_outer_dir}/scantailor-deps-build"
-		DOC "Build directory for Scan Tailor dependencies."
+	MESSAGE(STATUS
+		"Building outside MSYS2. Ensure Qt5 is on CMAKE_PREFIX_PATH."
 	)
-	IF(NOT DEPS_BUILD_DIR)
-		MESSAGE(
-			FATAL_ERROR "The build directory for Scan Tailor dependencies could not be found! "
-			"You can specify it manually in DEPS_BUILD_DIR variable. Make sure you build the dependencies first!"
-		)
-	ENDIF()
-	SET(STAGING_LIBS_DIR "${DEPS_BUILD_DIR}/staging/libs")
 ENDIF()
 
 # Qt5 support (Qt4 is EOL; use Qt5 when available)
@@ -830,88 +820,54 @@ SET(
 )
 INCLUDE(CPack)
 
-IF(WIN32)
-	# Copy some DLLs to the staging dir.
-	
-	IF(MINGW)
-		CHECK_CXX_ACCEPTS_FLAG("-m64" MINGW64)
-		IF(NOT MINGW64)
-			FIND_FILE(
-				MINGWM10_DLL mingwm10.dll
-				PATHS c:/MinGW/bin ENV PATH
-				DOC "Full path to mingwm10.dll"
-			)
-			IF(NOT MINGWM10_DLL)
-				MESSAGE(
-					FATAL_ERROR
-					"Could not find mingwm10.dll\n"
-					"It shou 'bin' subdirectory of your MinGW installation."
-				)
-			ENDIF(NOT MINGWM10_DLL)
-			COPY_TO_BUILD_DIR("${MINGWM10_DLL}")
+IF(WIN32 AND MINGW)
+	# Iterative objdump-based DLL collection for MSYS2/MinGW builds.
+	# Replaces the legacy Qt4 LIB_TO_DLL / COPY_TO_BUILD_DIR mechanism
+	# which relied on Qt4 variables that are undefined in Qt5.
 
-			FIND_FILE(
-				GCC_DW2_DLL libgcc_s_dw2-1.dll
-				PATHS c:/MinGW/bin ENV PATH
-				DOC "Full path to libgcc_s_dw2-1.dll"
-			)
-			IF(NOT GCC_DW2_DLL)
-				SET(GCC_DW2_DLL "") # For NSIS
-				MESSAGE(
-					"Could not find libgcc_s_dw2-1.dll\n"
-					"That's fine if your MinGW is old and just doesn't have it."
-				)
-			ELSE()
-				COPY_TO_BUILD_DIR("${GCC_DW2_DLL}")
-			ENDIF()
-		ENDIF(NOT MINGW64)
-	ENDIF(MINGW)
-	
-	SET(
-		libs_copy_debug
-		"${QT_QTCORE_LIBRARY_DEBUG}"
-		"${QT_QTGUI_LIBRARY_DEBUG}"
-		"${QT_QTXML_LIBRARY_DEBUG}"
-		"${QT_QTNETWORK_LIBRARY_DEBUG}"
-	)
-	LIB_TO_DLL(libs_copy_debug ${libs_copy_debug})
-	COPY_TO_BUILD_DIR(${libs_copy_debug} CONFIGURATIONS Debug)
-	
-	SET(
-		libs_copy_nondebug
-		"${QT_QTCORE_LIBRARY_RELEASE}"
-		"${QT_QTGUI_LIBRARY_RELEASE}"
-		"${QT_QTXML_LIBRARY_RELEASE}"
-		"${QT_QTNETWORK_LIBRARY_RELEASE}"
-	)
-	LIB_TO_DLL(libs_copy_nondebug ${libs_copy_nondebug})
-	COPY_TO_BUILD_DIR(${libs_copy_nondebug} CONFIGURATIONS Release MinSizeRel RelWithDebInfo)
-	
-	# Qt's imageformat plugins. Note that png is built-in and for tiff we have our own code.
-	COPY_TO_BUILD_DIR("${QT_QJPEG_PLUGIN_RELEASE}" SUBDIR imageformats CONFIGURATIONS Release MinSizeRel RelWithDebInfo)
-	COPY_TO_BUILD_DIR("${QT_QJPEG_PLUGIN_DEBUG}" SUBDIR imageformats CONFIGURATIONS Debug)
-	
-	IF(MINGW)
-		SET(zlib_dll "${QT_BIN_DIR}/zlib1.dll")
-	ELSE()
-		SET(zlib_dll "${QT_BIN_DIR}/zdll.dll")
+	# Derive MinGW bin directory from the compiler path
+	GET_FILENAME_COMPONENT(MINGW_BIN_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+
+	# Qt5 plugins directory: derive from Qt5::Core location, fallback to MSYS2 default
+	GET_TARGET_PROPERTY(_qt5_core_loc Qt5::Core LOCATION)
+	GET_FILENAME_COMPONENT(_qt5_bin "${_qt5_core_loc}" DIRECTORY)
+	SET(QT_PLUGINS_DIR "${_qt5_bin}/../share/qt5/plugins")
+	GET_FILENAME_COMPONENT(QT_PLUGINS_DIR "${QT_PLUGINS_DIR}" ABSOLUTE)
+	IF(NOT IS_DIRECTORY "${QT_PLUGINS_DIR}")
+		SET(QT_PLUGINS_DIR "/mingw64/share/qt5/plugins")
 	ENDIF()
-	SET(
-		libs_copy_all_confs
-		"${QT_BIN_DIR}/libpng16-16.dll" "${QT_BIN_DIR}/libjpeg-8.dll"
-		"${QT_BIN_DIR}/libtiff-6.dll" "${zlib_dll}"
+
+	# Configure the DLL collection script (substitutes paths at configure time)
+	CONFIGURE_FILE("cmake/CollectDlls.cmake.in" "${CMAKE_BINARY_DIR}/collect_dlls.cmake" @ONLY)
+
+	# Custom target: cmake --build build --target collect_dlls
+	ADD_CUSTOM_TARGET(collect_dlls
+		COMMAND "${CMAKE_COMMAND}"
+			"-DTARGET_EXE_DIR=$<TARGET_FILE_DIR:scantailor>"
+			-P "${CMAKE_BINARY_DIR}/collect_dlls.cmake"
+		DEPENDS scantailor
+		COMMENT "Collecting DLLs and Qt plugins into build directory..."
+		VERBATIM
 	)
-	COPY_TO_BUILD_DIR(${libs_copy_all_confs})
-	
-	# Generate the target that will actually do the copying.
-	GENERATE_COPY_TO_BUILD_DIR_TARGET(copy_to_build_dir)
-	
-	# Installer for Windows.  Must go the last.
+
+	# Optional: auto-collect DLLs after every build (enable with -DAUTO_COLLECT_DLLS=ON)
+	OPTION(AUTO_COLLECT_DLLS "Automatically collect DLLs after build" OFF)
+	IF(AUTO_COLLECT_DLLS)
+		ADD_CUSTOM_COMMAND(TARGET scantailor POST_BUILD
+			COMMAND "${CMAKE_COMMAND}"
+				"-DTARGET_EXE_DIR=$<TARGET_FILE_DIR:scantailor>"
+				-P "${CMAKE_BINARY_DIR}/collect_dlls.cmake"
+			COMMENT "Auto-collecting DLLs..."
+			VERBATIM
+		)
+	ENDIF()
+
+	# Installer for Windows.  Must go last.
 	FIND_PROGRAM(MAKENSIS_EXE makensis)
 	IF(MAKENSIS_EXE)
 		ADD_SUBDIRECTORY(packaging/windows)
 	ENDIF()
-ENDIF(WIN32)
+ENDIF()
 
 IF(APPLE)
 	# macOS packaging: runs macdeployqt to bundle Qt frameworks.
