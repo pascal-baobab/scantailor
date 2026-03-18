@@ -536,6 +536,11 @@ MainWindow::createBatchProcessingWidget()
 	QCheckBox* beep_cb = lower_panel->ui.beepWhenFinished;
 	m_checkBeepWhenFinished = [beep_cb]() { return beep_cb->isChecked(); };
 
+	connect(
+		lower_panel->ui.systemLoadWidget, &SystemLoadWidget::threadCountChanged,
+		m_ptrWorkerThreadPool.get(), &WorkerThreadPool::refreshSettings
+	);
+
 	int row = 0; // Row 0 is reserved.
 	layout->addWidget(stop_btn, ++row, 1, Qt::AlignCenter);
 	layout->addWidget(lower_panel, ++row, 0, 1, 3, Qt::AlignHCenter|Qt::AlignTop);

@@ -104,8 +104,18 @@ void WorkerThreadPool::customEvent(QEvent* event)
 	}
 }
 
+void WorkerThreadPool::refreshSettings()
+{
+	m_threadCountCached = false;
+	updateNumberOfThreads();
+}
+
 void WorkerThreadPool::updateNumberOfThreads()
 {
+	if (m_threadCountCached) {
+		return;
+	}
+
 	int maxThreads = QThread::idealThreadCount();
 	// Restrict to 2 threads on 32-bit due to address space constraints.
 	if (sizeof(void*) <= 4) {
@@ -118,4 +128,5 @@ void WorkerThreadPool::updateNumberOfThreads()
 	numThreads = std::min(numThreads, maxThreads);
 	numThreads = std::max(numThreads, 1);
 	m_pool->setMaxThreadCount(numThreads);
+	m_threadCountCached = true;
 }

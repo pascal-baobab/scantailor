@@ -49,6 +49,8 @@ public:
 
 	void submitTask(BackgroundTaskPtr const& task);
 
+	void refreshSettings();
+
 signals:
 	void taskResult(BackgroundTaskPtr const& task, FilterResultPtr const& result);
 
@@ -61,6 +63,7 @@ private:
 
 	QThreadPool* m_pool;
 	QSettings m_settings;
+	bool m_threadCountCached = false;
 };
 
 #endif // WORKERTHREADPOOL_H_

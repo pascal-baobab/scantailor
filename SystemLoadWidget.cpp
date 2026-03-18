@@ -68,6 +68,7 @@ SystemLoadWidget::valueChanged(int threads)
 	} else {
 		settings.setValue(key, threads);
 	}
+	emit threadCountChanged(threads);
 }
 
 void

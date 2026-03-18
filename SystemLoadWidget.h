@@ -28,6 +28,8 @@ class SystemLoadWidget : public QWidget
 	Q_OBJECT
 public:
 	SystemLoadWidget(QWidget* parent = nullptr);
+signals:
+	void threadCountChanged(int threads);
 private slots:
 	void sliderPressed();
 
