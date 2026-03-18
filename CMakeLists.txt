@@ -406,6 +406,12 @@ IF(ENABLE_POPPLER)
 		PKG_CHECK_MODULES(POPPLER poppler-qt5)
 		IF(NOT POPPLER_FOUND)
 			PKG_CHECK_MODULES(POPPLER poppler REQUIRED)
+			# poppler pkg-config gives base include dir; qt5 headers are in a subdirectory
+			FOREACH(_dir ${POPPLER_INCLUDE_DIRS})
+				IF(EXISTS "${_dir}/qt5")
+					LIST(APPEND POPPLER_INCLUDE_DIRS "${_dir}/qt5")
+				ENDIF()
+			ENDFOREACH()
 		ENDIF()
 	ELSE()
 		FIND_LIBRARY(POPPLER_LIBRARIES NAMES poppler-qt5 poppler REQUIRED
