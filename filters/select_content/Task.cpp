@@ -45,7 +45,7 @@ class Task::UiUpdater : public FilterResult
 public:
 	UiUpdater(IntrusivePtr<Filter> const& filter,
 		PageId const& page_id,
-		std::auto_ptr<DebugImages> dbg,
+		std::unique_ptr<DebugImages> dbg,
 		QImage const& image,
 		ImageTransformation const& xform,
 		OptionsWidget::UiData const& ui_data, bool batch);
@@ -56,7 +56,7 @@ public:
 private:
 	IntrusivePtr<Filter> m_ptrFilter;
 	PageId m_pageId;
-	std::auto_ptr<DebugImages> m_ptrDbg;
+	std::unique_ptr<DebugImages> m_ptrDbg;
 	QImage m_image;
 	QImage m_downscaledImage;
 	ImageTransformation m_xform;
@@ -91,7 +91,7 @@ Task::process(TaskStatus const& status, FilterData const& data)
 	
 	Dependencies const deps(data.xform().resultingPreCropArea());
 
-	std::auto_ptr<Params> params(m_ptrSettings->getPageParams(m_pageId));
+	std::unique_ptr<Params> params(m_ptrSettings->getPageParams(m_pageId));
 	if (params.get() && !params->dependencies().matches(deps) && (params->mode() == MODE_AUTO)) {
 		params.reset();
 	}
@@ -156,7 +156,7 @@ Task::process(TaskStatus const& status, FilterData const& data)
 	} else {
 		return FilterResultPtr(
 			new UiUpdater(
-				m_ptrFilter, m_pageId, m_ptrDbg, data.origImage(),
+				m_ptrFilter, m_pageId, std::move(m_ptrDbg), data.origImage(),
 				data.xform(), ui_data, m_batchProcessing
 			)
 		);
@@ -168,12 +168,12 @@ Task::process(TaskStatus const& status, FilterData const& data)
 
 Task::UiUpdater::UiUpdater(
 	IntrusivePtr<Filter> const& filter, PageId const& page_id,
-	std::auto_ptr<DebugImages> dbg, QImage const& image,
+	std::unique_ptr<DebugImages> dbg, QImage const& image,
 	ImageTransformation const& xform, OptionsWidget::UiData const& ui_data,
 	bool const batch)
 :	m_ptrFilter(filter),
 	m_pageId(page_id),
-	m_ptrDbg(dbg),
+	m_ptrDbg(std::move(dbg)),
 	m_image(image),
 	m_downscaledImage(ImageView::createDownscaledImage(image)),
 	m_xform(xform),

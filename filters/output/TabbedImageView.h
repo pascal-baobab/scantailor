@@ -42,7 +42,7 @@ public:
 
 	void addTab(QWidget* widget, QString const& label, ImageViewTab tab);
 
-	void setImageRectMap(std::auto_ptr<TabImageRectMap> tabImageRectMap);
+	void setImageRectMap(std::unique_ptr<TabImageRectMap> tabImageRectMap);
 
 public slots:
 	void setCurrentTab(ImageViewTab tab);
@@ -58,7 +58,7 @@ private:
 	static ImageViewBase* findImageView(QWidget* widget);
 
 	std::map<QWidget*, ImageViewTab> m_registry;
-	std::auto_ptr<TabImageRectMap> m_tabImageRectMap;
+	std::unique_ptr<TabImageRectMap> m_tabImageRectMap;
 	int m_prevImageViewTabIndex;
 };
 

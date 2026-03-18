@@ -471,7 +471,7 @@ MainWindow::switchToNewProject(
 void
 MainWindow::showNewOpenProjectPanel()
 {
-	std::auto_ptr<QWidget> outer_widget(new QWidget);
+	std::unique_ptr<QWidget> outer_widget(new QWidget);
 	QGridLayout* layout = new QGridLayout(outer_widget.get());
 	outer_widget->setLayout(layout);
 	
@@ -2204,7 +2204,7 @@ MainWindow::showInsertFileDialog(BeforeOrAfter before_or_after, ImageId const& e
 		QFileInfoList m_inProjectFiles;
 	};
 	
-	std::auto_ptr<QFileDialog> dialog(
+	std::unique_ptr<QFileDialog> dialog(
 		new QFileDialog(
 			this, tr("Files to insert"),
 			QFileInfo(existing.filePath()).absolutePath()
@@ -2258,7 +2258,7 @@ MainWindow::showInsertFileDialog(BeforeOrAfter before_or_after, ImageId const& e
 	}
 
 	if (!failed_files.empty()) {
-		std::auto_ptr<LoadFilesStatusDialog> err_dialog(new LoadFilesStatusDialog(this));
+		std::unique_ptr<LoadFilesStatusDialog> err_dialog(new LoadFilesStatusDialog(this));
 		err_dialog->setLoadedFiles(loaded_files);
 		err_dialog->setFailedFiles(failed_files);
 		err_dialog->setOkButtonName(QString(" %1 ").arg(tr("Skip failed files")));
@@ -2271,7 +2271,7 @@ MainWindow::showInsertFileDialog(BeforeOrAfter before_or_after, ImageId const& e
 	if (std::find_if(new_files.begin(), new_files.end(),
 		[](ImageFileInfo const& info) { return !info.isDpiOK(); }) != new_files.end()) {
 
-		std::auto_ptr<FixDpiDialog> dpi_dialog(new FixDpiDialog(new_files, this));
+		std::unique_ptr<FixDpiDialog> dpi_dialog(new FixDpiDialog(new_files, this));
 		dpi_dialog->setWindowModality(Qt::WindowModal);
 		if (dpi_dialog->exec() != QDialog::Accepted) {
 			return;
@@ -2301,7 +2301,7 @@ MainWindow::showInsertFileDialog(BeforeOrAfter before_or_after, ImageId const& e
 void
 MainWindow::showRemovePagesDialog(std::set<PageId> const& pages)
 {
-	std::auto_ptr<QDialog> dialog(new QDialog(this));
+	std::unique_ptr<QDialog> dialog(new QDialog(this));
 	Ui::RemovePagesDialog ui;
 	ui.setupUi(dialog.get());
 	ui.icon->setPixmap(style()->standardIcon(QStyle::SP_MessageBoxQuestion).pixmap(48, 48));

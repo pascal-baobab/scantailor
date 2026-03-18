@@ -84,7 +84,7 @@ class Task::UiUpdater : public FilterResult
 public:
 	UiUpdater(IntrusivePtr<Filter> const& filter,
 		IntrusivePtr<Settings> const& settings,
-		std::auto_ptr<DebugImages> dbg_img,
+		std::unique_ptr<DebugImages> dbg_img,
 		Params const& params,
 		ImageTransformation const& xform,
 		QRect const& virt_content_rect,
@@ -102,7 +102,7 @@ public:
 private:
 	IntrusivePtr<Filter> m_ptrFilter;
 	IntrusivePtr<Settings> m_ptrSettings;
-	std::auto_ptr<DebugImages> m_ptrDbg;
+	std::unique_ptr<DebugImages> m_ptrDbg;
 	Params m_params;
 	ImageTransformation m_xform;
 	QRect m_virtContentRect;
@@ -201,7 +201,7 @@ Task::process(
 	bool need_reprocess = false;
 	do { // Just to be able to break from it.
 		
-		std::auto_ptr<OutputParams> stored_output_params(
+		std::unique_ptr<OutputParams> stored_output_params(
 			m_ptrSettings->getOutputParams(m_pageId)
 		);
 		
@@ -418,7 +418,7 @@ Task::process(
 	if (CommandLine::get().isGui()) {
 		return FilterResultPtr(
 			new UiUpdater(
-				m_ptrFilter, m_ptrSettings, m_ptrDbg, params,
+				m_ptrFilter, m_ptrSettings, std::move(m_ptrDbg), params,
 				new_xform, generator.outputContentRect(),
 				m_pageId, data.origImage(), out_img, automask_img,
 				despeckle_state, despeckle_visualization,
@@ -466,7 +466,7 @@ Task::deleteMutuallyExclusiveOutputFiles()
 Task::UiUpdater::UiUpdater(
 	IntrusivePtr<Filter> const& filter,
 	IntrusivePtr<Settings> const& settings,
-	std::auto_ptr<DebugImages> dbg_img,
+	std::unique_ptr<DebugImages> dbg_img,
 	Params const& params,
 	ImageTransformation const& xform,
 	QRect const& virt_content_rect,
@@ -479,7 +479,7 @@ Task::UiUpdater::UiUpdater(
 	bool const batch, bool const debug)
 :	m_ptrFilter(filter),
 	m_ptrSettings(settings),
-	m_ptrDbg(dbg_img),
+	m_ptrDbg(std::move(dbg_img)),
 	m_params(params),
 	m_xform(xform),
 	m_virtContentRect(virt_content_rect),
@@ -511,17 +511,17 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		return;
 	}
 
-	std::auto_ptr<TabbedImageView::TabImageRectMap> tab_image_rect_map(
+	std::unique_ptr<TabbedImageView::TabImageRectMap> tab_image_rect_map(
 		new TabbedImageView::TabImageRectMap()
 	);
 
-	std::auto_ptr<ImageViewBase> image_view(
+	std::unique_ptr<ImageViewBase> image_view(
 		new ImageView(m_outputImage, m_downscaledOutputImage)
 	);
 	QPixmap const downscaled_output_pixmap(image_view->downscaledPixmap());
 	(*tab_image_rect_map)[TAB_OUTPUT] = m_xform.resultingRect();
 
-	std::auto_ptr<ImageViewBase> dewarping_view(
+	std::unique_ptr<ImageViewBase> dewarping_view(
 		new DewarpingView(
 			m_origImage, m_downscaledOrigImage, m_xform.transform(),
 			PolygonUtils::convexHull(
@@ -542,7 +542,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		opt_widget, SLOT(distortionModelChanged(dewarping::DistortionModel const&))
 	);
 
-	std::auto_ptr<QWidget> picture_zone_editor;
+	std::unique_ptr<QWidget> picture_zone_editor;
 	if (m_pictureMask.isNull()) {
 		picture_zone_editor.reset(
 			new ErrorWidget(tr("Picture zones are only available in Mixed mode."))
@@ -585,7 +585,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		output_to_orig = [bwd](QPointF const& pt) { return bwd.map(pt); };
 	}
 
-	std::auto_ptr<QWidget> fill_zone_editor(
+	std::unique_ptr<QWidget> fill_zone_editor(
 		new FillZoneEditor(
 			m_outputImage, downscaled_output_pixmap,
 			orig_to_output, output_to_orig, m_pageId, m_ptrSettings
@@ -597,7 +597,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	);
 	(*tab_image_rect_map)[TAB_FILL_ZONES] = m_xform.resultingRect();
 
-	std::auto_ptr<QWidget> despeckle_view;
+	std::unique_ptr<QWidget> despeckle_view;
 	if (m_params.colorParams().colorMode() == ColorParams::COLOR_GRAYSCALE) {
 		despeckle_view.reset(
 			new ErrorWidget(tr("Despeckling can't be done in Color / Grayscale mode."))
@@ -615,7 +615,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		(*tab_image_rect_map)[TAB_DESPECKLING] = m_xform.resultingRect();
 	}
 
-	std::auto_ptr<TabbedImageView> tab_widget(new TabbedImageView);
+	std::unique_ptr<TabbedImageView> tab_widget(new TabbedImageView);
 	tab_widget->setDocumentMode(true);
 	tab_widget->setTabPosition(QTabWidget::East);
 	tab_widget->addTab(image_view.release(), tr("Output"), TAB_OUTPUT);
@@ -624,7 +624,7 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	tab_widget->addTab(dewarping_view.release(), tr("Dewarping"), TAB_DEWARPING);
 	tab_widget->addTab(despeckle_view.release(), tr("Despeckling"), TAB_DESPECKLING);
 	tab_widget->setCurrentTab(opt_widget->lastTab());
-	tab_widget->setImageRectMap(tab_image_rect_map);
+	tab_widget->setImageRectMap(std::move(tab_image_rect_map));
 
 	QObject::connect(
 		tab_widget.get(), SIGNAL(tabChanged(ImageViewTab)),

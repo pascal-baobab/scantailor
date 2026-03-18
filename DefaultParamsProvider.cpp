@@ -35,9 +35,9 @@ DefaultParamsProvider::DefaultParamsProvider()
 		m_params = profileManager.createSourceProfile();
 		m_profileName = profile;
 	} else {
-		std::auto_ptr<DefaultParams> params = profileManager.readProfile(profile);
+		std::unique_ptr<DefaultParams> params = profileManager.readProfile(profile);
 		if (params.get() != nullptr) {
-			m_params = params;
+			m_params = std::move(params);
 			m_profileName = profile;
 		} else {
 			m_params = profileManager.createDefaultProfile();
@@ -68,12 +68,12 @@ DefaultParamsProvider::getParams() const
 }
 
 void
-DefaultParamsProvider::setParams(std::auto_ptr<DefaultParams> params, QString const& name)
+DefaultParamsProvider::setParams(std::unique_ptr<DefaultParams> params, QString const& name)
 {
 	if (params.get() == nullptr) {
 		return;
 	}
 
-	m_params = params;
+	m_params = std::move(params);
 	m_profileName = name;
 }

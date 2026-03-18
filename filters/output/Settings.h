@@ -72,7 +72,7 @@ public:
 
 	void setSplittingOptions(PageId const& page_id, SplittingOptions const& splitting_options);
 	
-	std::auto_ptr<OutputParams> getOutputParams(PageId const& page_id) const;
+	std::unique_ptr<OutputParams> getOutputParams(PageId const& page_id) const;
 	
 	void removeOutputParams(PageId const& page_id);
 	

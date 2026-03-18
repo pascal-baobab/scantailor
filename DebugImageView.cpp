@@ -99,7 +99,7 @@ DebugImageView::imageLoaded(QImage const& image)
 	}
 
 	if (currentWidget() == m_pPlaceholderWidget) {
-		std::auto_ptr<QWidget> image_view;
+		std::unique_ptr<QWidget> image_view;
 		if (!m_imageViewFactory) {
 			image_view.reset(new BasicImageView(image));
 		} else {

@@ -59,7 +59,7 @@ DefaultParamsProfileManager::getProfileList() const
 	return profileList;
 }
 
-std::auto_ptr<DefaultParams>
+std::unique_ptr<DefaultParams>
 DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status) const
 {
 	QDir dir(m_path);
@@ -70,7 +70,7 @@ DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status
 			if (status) {
 				*status = IO_ERROR;
 			}
-			return std::auto_ptr<DefaultParams>();
+			return nullptr;
 		}
 	}
 
@@ -79,7 +79,7 @@ DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status
 		if (status) {
 			*status = IO_ERROR;
 		}
-		return std::auto_ptr<DefaultParams>();
+		return nullptr;
 	}
 
 	QDomDocument doc;
@@ -91,7 +91,7 @@ DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status
 		if (status) {
 			*status = IO_ERROR;
 		}
-		return std::auto_ptr<DefaultParams>();
+		return nullptr;
 	}
 
 	profileFile.close();
@@ -102,7 +102,7 @@ DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status
 		if (status) {
 			*status = INCOMPATIBLE_VERSION_ERROR;
 		}
-		return std::auto_ptr<DefaultParams>();
+		return nullptr;
 	}
 
 	QDomElement const defaultParamsElement(profileElement.namedItem("default-params").toElement());
@@ -110,7 +110,7 @@ DefaultParamsProfileManager::readProfile(QString const& name, LoadStatus* status
 	if (status) {
 		*status = SUCCESS;
 	}
-	return std::auto_ptr<DefaultParams>(new DefaultParams(defaultParamsElement));
+	return std::make_unique<DefaultParams>(defaultParamsElement);
 }
 
 bool
@@ -152,13 +152,13 @@ DefaultParamsProfileManager::deleteProfile(QString const& name) const
 	return profileFile.remove();
 }
 
-std::auto_ptr<DefaultParams>
+std::unique_ptr<DefaultParams>
 DefaultParamsProfileManager::createDefaultProfile() const
 {
-	return std::auto_ptr<DefaultParams>(new DefaultParams());
+	return std::make_unique<DefaultParams>();
 }
 
-std::auto_ptr<DefaultParams>
+std::unique_ptr<DefaultParams>
 DefaultParamsProfileManager::createSourceProfile() const
 {
 	DefaultParams::DeskewParams deskewParams;
@@ -185,12 +185,10 @@ DefaultParamsProfileManager::createSourceProfile() const
 
 	outputParams.setColorParams(colorParams);
 
-	return std::auto_ptr<DefaultParams>(
-		new DefaultParams(
-			DefaultParams::FixOrientationParams(),
-			deskewParams, pageSplitParams,
-			selectContentParams, pageLayoutParams,
-			outputParams
-		)
+	return std::make_unique<DefaultParams>(
+		DefaultParams::FixOrientationParams(),
+		deskewParams, pageSplitParams,
+		selectContentParams, pageLayoutParams,
+		outputParams
 	);
 }

@@ -53,13 +53,13 @@ CacheDrivenTask::process(
 	PageInfo const& page_info, AbstractFilterDataCollector* collector,
 	ImageTransformation const& xform, QRectF const& content_rect)
 {
-	std::auto_ptr<Params> const params(
+	std::unique_ptr<Params> const params(
 		m_ptrSettings->getPageParams(page_info.id())
 	);
 	if (!params.get() || !params->contentSizeMM().isValid()) {
 		if (ThumbnailCollector* thumb_col = dynamic_cast<ThumbnailCollector*>(collector)) {
 			thumb_col->processThumbnail(
-				std::auto_ptr<QGraphicsItem>(
+				std::unique_ptr<QGraphicsItem>(
 					new IncompleteThumbnail(
 						thumb_col->thumbnailCache(),
 						thumb_col->maxLogicalThumbSize(),
@@ -94,7 +94,7 @@ CacheDrivenTask::process(
 	if (ThumbnailCollector* thumb_col = dynamic_cast<ThumbnailCollector*>(collector)) {
 		bool const deviant = m_ptrSettings->deviationProvider().isDeviant(page_info.id());
 		thumb_col->processThumbnail(
-			std::auto_ptr<QGraphicsItem>(
+			std::unique_ptr<QGraphicsItem>(
 				new Thumbnail(
 					thumb_col->thumbnailCache(),
 					thumb_col->maxLogicalThumbSize(),

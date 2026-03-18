@@ -41,7 +41,7 @@ public:
 	QColor getColorParam(QString const& colorParam, QColor const& defaultColor) const;
 
 private:
-	std::auto_ptr<ColorScheme::ColorParams> m_colorParams;
+	std::unique_ptr<ColorScheme::ColorParams> m_colorParams;
 };
 
 #endif

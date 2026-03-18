@@ -78,7 +78,7 @@ private:
 	QPointer<DespeckleView> m_ptrOwner;
 	DespeckleState m_despeckleState;
 	IntrusivePtr<TaskCancelHandle> m_ptrCancelHandle;
-	std::auto_ptr<DebugImages> m_ptrDbg;
+	std::unique_ptr<DebugImages> m_ptrDbg;
 	DespeckleLevel m_despeckleLevel;
 };
 
@@ -91,14 +91,14 @@ public:
 		IntrusivePtr<TaskCancelHandle> const& cancel_handle,
 		DespeckleState const& despeckle_state,
 		DespeckleVisualization const& visualization,
-		std::auto_ptr<DebugImages> debug_images);
+		std::unique_ptr<DebugImages> debug_images);
 
 	// This method is called from the main thread.
 	virtual void operator()();
 private:
 	QPointer<DespeckleView> m_ptrOwner;
 	IntrusivePtr<TaskCancelHandle> m_ptrCancelHandle;
-	std::auto_ptr<DebugImages> m_ptrDbg;
+	std::unique_ptr<DebugImages> m_ptrDbg;
 	DespeckleState m_despeckleState;
 	DespeckleVisualization m_visualization;
 };
@@ -118,7 +118,7 @@ DespeckleView::DespeckleView(
 
 	if (!visualization.isNull()) {
 		// Create the image view.
-		std::auto_ptr<QWidget> widget(
+		std::unique_ptr<QWidget> widget(
 			new BasicImageView(visualization.image(), visualization.downscaledImage())
 		);
 		setCurrentIndex(addWidget(widget.release()));
@@ -205,21 +205,21 @@ DespeckleView::despeckleDone(
 
 	removeImageViewWidget();
 
-	std::auto_ptr<QWidget> widget(
+	std::unique_ptr<QWidget> widget(
 		new BasicImageView(
 			visualization.image(), visualization.downscaledImage(), OutputMargins()
 		)
 	);
 
 	if (dbg && !dbg->empty()) {
-		std::auto_ptr<TabbedDebugImages> tab_widget(new TabbedDebugImages);
+		std::unique_ptr<TabbedDebugImages> tab_widget(new TabbedDebugImages);
 		tab_widget->addTab(widget.release(), "Main");
 		AutoRemovingFile file;
 		QString label;
 		while (!(file = dbg->retrieveNext(&label)).get().isNull()) {
 			tab_widget->addTab(new DebugImageView(file), label);
 		}
-		widget = tab_widget;
+		widget = std::move(tab_widget);
 	}
 
 	setCurrentIndex(addWidget(widget.release()));
@@ -282,7 +282,7 @@ DespeckleView::DespeckleTask::operator()()
 		return BackgroundExecutor::TaskResultPtr(
 			new DespeckleResult(
 				m_ptrOwner, m_ptrCancelHandle,
-				m_despeckleState, visualization, m_ptrDbg
+				m_despeckleState, visualization, std::move(m_ptrDbg)
 			)
 		);
 	} catch (TaskCancelException const&) {
@@ -298,10 +298,10 @@ DespeckleView::DespeckleResult::DespeckleResult(
 	IntrusivePtr<TaskCancelHandle> const& cancel_handle,
 	DespeckleState const& despeckle_state,
 	DespeckleVisualization const& visualization,
-	std::auto_ptr<DebugImages> debug_images)
+	std::unique_ptr<DebugImages> debug_images)
 :	m_ptrOwner(owner),
 	m_ptrCancelHandle(cancel_handle),
-	m_ptrDbg(debug_images),
+	m_ptrDbg(std::move(debug_images)),
 	m_despeckleState(despeckle_state),
 	m_visualization(visualization)
 {

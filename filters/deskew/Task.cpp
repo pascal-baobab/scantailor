@@ -64,7 +64,7 @@ class Task::UiUpdater : public FilterResult
 {
 public:
 	UiUpdater(IntrusivePtr<Filter> const& filter,
-		std::auto_ptr<DebugImages> dbg_img,
+		std::unique_ptr<DebugImages> dbg_img,
 		QImage const& image, PageId const& page_id,
 		ImageTransformation const& xform,
 		OptionsWidget::UiData const& ui_data,
@@ -75,7 +75,7 @@ public:
 	virtual IntrusivePtr<AbstractFilter> filter() { return m_ptrFilter; }
 private:
 	IntrusivePtr<Filter> m_ptrFilter;
-	std::auto_ptr<DebugImages> m_ptrDbg;
+	std::unique_ptr<DebugImages> m_ptrDbg;
 	QImage m_image;
 	QImage m_downscaledImage;
 	PageId m_pageId;
@@ -116,7 +116,7 @@ Task::process(TaskStatus const& status, FilterData const& data)
 
 	CommandLine const& cli = CommandLine::get();
 
-	std::auto_ptr<Params> params(m_ptrSettings->getPageParams(m_pageId));
+	std::unique_ptr<Params> params(m_ptrSettings->getPageParams(m_pageId));
 	if (params.get()) {
 		if ((!deps.matches(params->dependencies()) ||
 					params->deskewAngle() != ui_data.effectiveDeskewAngle()) &&
@@ -199,7 +199,7 @@ Task::process(TaskStatus const& status, FilterData const& data)
 	} else {
 		return FilterResultPtr(
 			new UiUpdater(
-				m_ptrFilter, m_ptrDbg, data.origImage(),
+				m_ptrFilter, std::move(m_ptrDbg), data.origImage(),
 				m_pageId, new_xform, ui_data, m_batchProcessing
 			)
 		);
@@ -271,13 +271,13 @@ Task::from150dpi(QSize const& size, Dpi const& target_dpi)
 
 Task::UiUpdater::UiUpdater(
 	IntrusivePtr<Filter> const& filter,
-	std::auto_ptr<DebugImages> dbg_img,
+	std::unique_ptr<DebugImages> dbg_img,
 	QImage const& image, PageId const& page_id,
 	ImageTransformation const& xform,
 	OptionsWidget::UiData const& ui_data,
 	bool const batch_processing)
 :	m_ptrFilter(filter),
-	m_ptrDbg(dbg_img),
+	m_ptrDbg(std::move(dbg_img)),
 	m_image(image),
 	m_downscaledImage(ImageView::createDownscaledImage(image)),
 	m_pageId(page_id),

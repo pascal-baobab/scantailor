@@ -100,9 +100,9 @@ struct CenterComparator
  * \param hor_shadows A downscaled grayscale image that contains
  *        long enough and not too thin horizontal lines.
  * \param dbg An optional sink for debugging images.
- * \return The page layout detected or a null auto_ptr.
+ * \return The page layout detected or a null unique_ptr.
  */
-std::auto_ptr<PageLayout> autoDetectSinglePageLayout(
+std::unique_ptr<PageLayout> autoDetectSinglePageLayout(
 	LayoutType const layout_type,
 	std::vector<QLineF> const& ltr_lines,
 	QRectF const& virtual_image_rect,
@@ -139,15 +139,15 @@ std::auto_ptr<PageLayout> autoDetectSinglePageLayout(
 		}
 		
 		// Return a SINGLE_PAGE_UNCUT layout.
-		return std::auto_ptr<PageLayout>(new PageLayout(virtual_image_rect));
+		return std::make_unique<PageLayout>(virtual_image_rect);
 	} while (false);
-	
+
 	if (ltr_lines.empty()) {
 		// Impossible to detect the layout type.
-		return std::auto_ptr<PageLayout>();
+		return nullptr;
 	} else if (ltr_lines.size() > 1) {
-		return std::auto_ptr<PageLayout>(
-			new PageLayout(virtual_image_rect, ltr_lines.front(), ltr_lines.back())
+		return std::make_unique<PageLayout>(
+			virtual_image_rect, ltr_lines.front(), ltr_lines.back()
 		);
 	} else {
 		assert(ltr_lines.size() == 1);
@@ -157,15 +157,15 @@ std::auto_ptr<PageLayout> autoDetectSinglePageLayout(
 			QLineF const right_line(
 				virtual_image_rect.topRight(), virtual_image_rect.bottomRight()
 			);
-			return std::auto_ptr<PageLayout>(
-				new PageLayout(virtual_image_rect, line, right_line)
+			return std::make_unique<PageLayout>(
+				virtual_image_rect, line, right_line
 			);
 		} else {
 			QLineF const left_line(
 				virtual_image_rect.topLeft(), virtual_image_rect.bottomLeft()
 			);
-			return std::auto_ptr<PageLayout>(
-				new PageLayout(virtual_image_rect, left_line, line)
+			return std::make_unique<PageLayout>(
+				virtual_image_rect, left_line, line
 			);
 		}
 	}
@@ -176,21 +176,21 @@ std::auto_ptr<PageLayout> autoDetectSinglePageLayout(
  *
  * \param ltr_lines Folding line candidates sorted from left to right.
  * \param image_size The dimensions of the page image.
- * \return The page layout detected or a null auto_ptr.
+ * \return The page layout detected or a null unique_ptr.
  */
-std::auto_ptr<PageLayout> autoDetectTwoPageLayout(
+std::unique_ptr<PageLayout> autoDetectTwoPageLayout(
 	std::vector<QLineF> const& ltr_lines,
 	QRectF const& virtual_image_rect)
 {
 	if (ltr_lines.empty()) {
 		// Impossible to detect the page layout.
-		return std::auto_ptr<PageLayout>();
+		return nullptr;
 	} else if (ltr_lines.size() == 1) {
-		return std::auto_ptr<PageLayout>(
-			new PageLayout(virtual_image_rect, ltr_lines.front())
+		return std::make_unique<PageLayout>(
+			virtual_image_rect, ltr_lines.front()
 		);
 	}
-	
+
 	// Find the line closest to the center.
 	double const image_center = virtual_image_rect.center().x();
 	double min_distance = std::numeric_limits<double>::max();
@@ -203,9 +203,9 @@ std::auto_ptr<PageLayout> autoDetectTwoPageLayout(
 			best_line = &line;
 		}
 	}
-	
-	return std::auto_ptr<PageLayout>(
-		new PageLayout(virtual_image_rect, *best_line)
+
+	return std::make_unique<PageLayout>(
+		virtual_image_rect, *best_line
 	);
 }
 
@@ -250,7 +250,7 @@ PageLayoutEstimator::estimatePageLayout(
 		return PageLayout(pre_xform.resultingRect());
 	}
 	
-	std::auto_ptr<PageLayout> layout(
+	std::unique_ptr<PageLayout> layout(
 		tryCutAtFoldingLine(layout_type, input, pre_xform, dbg)
 	);
 	if (layout.get()) {
@@ -297,10 +297,10 @@ private:
  * \param pre_xform The logical transformation applied to the input image.
  *        The resulting page layout will be in transformed coordinates.
  * \param dbg An optional sink for debugging images.
- * \return The detected page layout, or a null auto_ptr if page layout
+ * \return The detected page layout, or a null unique_ptr if page layout
  *         could not be detected.
  */
-std::auto_ptr<PageLayout>
+std::unique_ptr<PageLayout>
 PageLayoutEstimator::tryCutAtFoldingLine(
 	LayoutType const layout_type, QImage const& input,
 	ImageTransformation const& pre_xform, DebugImages* const dbg)

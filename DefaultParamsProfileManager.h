@@ -38,15 +38,15 @@ public:
 
 	std::list<QString> getProfileList() const;
 
-	std::auto_ptr<DefaultParams> readProfile(QString const& name, LoadStatus* status = nullptr) const;
+	std::unique_ptr<DefaultParams> readProfile(QString const& name, LoadStatus* status = nullptr) const;
 
 	bool writeProfile(DefaultParams const& params, QString const& name) const;
 
 	bool deleteProfile(QString const& name) const;
 
-	std::auto_ptr<DefaultParams> createDefaultProfile() const;
+	std::unique_ptr<DefaultParams> createDefaultProfile() const;
 
-	std::auto_ptr<DefaultParams> createSourceProfile() const;
+	std::unique_ptr<DefaultParams> createSourceProfile() const;
 
 private:
 	QString m_path;

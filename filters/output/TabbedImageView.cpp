@@ -38,9 +38,9 @@ TabbedImageView::addTab(QWidget* widget, QString const& label, ImageViewTab tab)
 }
 
 void
-TabbedImageView::setImageRectMap(std::auto_ptr<TabImageRectMap> tabImageRectMap)
+TabbedImageView::setImageRectMap(std::unique_ptr<TabImageRectMap> tabImageRectMap)
 {
-	m_tabImageRectMap = tabImageRectMap;
+	m_tabImageRectMap = std::move(tabImageRectMap);
 }
 
 void

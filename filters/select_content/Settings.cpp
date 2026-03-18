@@ -81,16 +81,16 @@ Settings::clearPageParams(PageId const& page_id)
 	m_deviationProvider.remove(page_id);
 }
 
-std::auto_ptr<Params>
+std::unique_ptr<Params>
 Settings::getPageParams(PageId const& page_id) const
 {
 	QMutexLocker locker(&m_mutex);
-	
+
 	PageParams::const_iterator const it(m_pageParams.find(page_id));
 	if (it != m_pageParams.end()) {
-		return std::auto_ptr<Params>(new Params(it->second));
+		return std::make_unique<Params>(it->second);
 	} else {
-		return std::auto_ptr<Params>();
+		return nullptr;
 	}
 }
 

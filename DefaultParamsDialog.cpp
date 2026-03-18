@@ -219,7 +219,7 @@ DefaultParamsDialog::commitChanges()
 	DefaultParams params = paramsFromUI();
 
 	DefaultParamsProvider::getInstance().setParams(
-		std::auto_ptr<DefaultParams>(new DefaultParams(params)), name
+		std::make_unique<DefaultParams>(params), name
 	);
 
 	QSettings settings;
@@ -232,7 +232,7 @@ DefaultParamsDialog::commitChanges()
 void
 DefaultParamsDialog::loadProfile(QString const& name)
 {
-	std::auto_ptr<DefaultParams> params;
+	std::unique_ptr<DefaultParams> params;
 
 	if (name == tr("Default")) {
 		params = m_profileManager.createDefaultProfile();

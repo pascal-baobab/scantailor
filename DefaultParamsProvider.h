@@ -38,11 +38,11 @@ public:
 
 	DefaultParams const& getParams() const;
 
-	void setParams(std::auto_ptr<DefaultParams> params, QString const& name);
+	void setParams(std::unique_ptr<DefaultParams> params, QString const& name);
 
 private:
 	QString m_profileName;
-	std::auto_ptr<DefaultParams> m_params;
+	std::unique_ptr<DefaultParams> m_params;
 };
 
 #endif
