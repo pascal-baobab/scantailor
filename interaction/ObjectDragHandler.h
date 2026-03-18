@@ -34,7 +34,7 @@ class ObjectDragHandler : public InteractionHandler
 {
 	DECLARE_NON_COPYABLE(ObjectDragHandler)
 public:
-	ObjectDragHandler(DraggableObject* obj = 0);
+	ObjectDragHandler(DraggableObject* obj = nullptr);
 
 	void setObject(DraggableObject* obj) { m_pObj = obj; }
 

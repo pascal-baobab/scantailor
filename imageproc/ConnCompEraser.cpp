@@ -63,7 +63,7 @@ ConnCompEraser::clearBit(uint32_t* const line, int const x)
 
 ConnCompEraser::ConnCompEraser(BinaryImage const& image, Connectivity conn)
 :	m_image(image),
-	m_pLine(0),
+	m_pLine(nullptr),
 	m_width(m_image.width()),
 	m_height(m_image.height()),
 	m_wpl(m_image.wordsPerLine()),

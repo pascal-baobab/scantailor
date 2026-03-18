@@ -28,7 +28,7 @@ class QModelIndex;
 class RelinkingListView : public QListView
 {
 public:
-	RelinkingListView(QWidget* parent = 0);
+	RelinkingListView(QWidget* parent = nullptr);
 protected:
 	virtual void paintEvent(QPaintEvent* e);
 private:

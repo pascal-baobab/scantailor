@@ -523,7 +523,7 @@ MainWindow::createBatchProcessingWidget()
 	class LowerPanel : public QWidget
 	{
 	public:
-		LowerPanel(QWidget* parent = 0) : QWidget(parent) { ui.setupUi(this); }
+		LowerPanel(QWidget* parent = nullptr) : QWidget(parent) { ui.setupUi(this); }
 
 		Ui::BatchProcessingLowerPanel ui;
 	};
@@ -1912,7 +1912,7 @@ MainWindow::removeFilterOptionsWidget()
 	// Delete the old widget we were owning, if any.
 	m_optionsWidgetCleanup.clear();
 
-	m_ptrOptionsWidget = 0;
+	m_ptrOptionsWidget = nullptr;
 }
 
 void
@@ -1928,7 +1928,7 @@ MainWindow::updateProjectActions()
 bool
 MainWindow::isBatchProcessingInProgress() const
 {
-	return m_ptrBatchQueue.get() != 0;
+	return m_ptrBatchQueue.get() != nullptr;
 }
 
 bool

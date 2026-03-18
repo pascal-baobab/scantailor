@@ -54,7 +54,7 @@ public:
 	static void trace(
 		imageproc::GrayImage const& input, Dpi const& dpi,
 		QRect const& content_rect, DistortionModelBuilder& output,
-		TaskStatus const& status, DebugImages* dbg = 0);
+		TaskStatus const& status, DebugImages* dbg = nullptr);
 private:
 	static imageproc::GrayImage downscale(imageproc::GrayImage const& input, Dpi const& dpi);
 
@@ -98,7 +98,7 @@ private:
 
 	static QImage visualizePolylines(
 		QImage const& background, std::list<std::vector<QPointF> > const& polylines,
-		std::pair<QLineF, QLineF> const* vert_bounds = 0);
+		std::pair<QLineF, QLineF> const* vert_bounds = nullptr);
 };
 
 } // namespace dewarping

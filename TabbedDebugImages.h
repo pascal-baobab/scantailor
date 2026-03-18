@@ -29,7 +29,7 @@ class TabbedDebugImages : public QTabWidget
 {
 	Q_OBJECT
 public:
-	TabbedDebugImages(QWidget* parent = 0);
+	TabbedDebugImages(QWidget* parent = nullptr);
 private slots:
 	void currentTabChanged(int idx);
 private:

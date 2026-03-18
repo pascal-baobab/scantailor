@@ -123,12 +123,12 @@ template<typename T>
 void
 FastQueue<T>::push(T const& t)
 {	
-	Chunk* chunk = 0;
+	Chunk* chunk = nullptr;
 
 	if (!m_chunkList.empty()) {
 		chunk = &m_chunkList.back();
 		if (chunk->pEnd == chunk->pBufferEnd) {
-			chunk = 0;
+			chunk = nullptr;
 		}
 	}
 

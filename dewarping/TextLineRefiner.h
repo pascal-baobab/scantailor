@@ -88,7 +88,7 @@ private:
 
 	QImage visualizeGradient(Grid<float> const& gradient) const;
 
-	QImage visualizeSnakes(std::vector<Snake> const& snakes, Grid<float> const* gradient = 0) const;
+	QImage visualizeSnakes(std::vector<Snake> const& snakes, Grid<float> const* gradient = nullptr) const;
 	
 	imageproc::GrayImage m_image;
 	Dpi m_dpi;

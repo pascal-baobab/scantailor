@@ -29,8 +29,8 @@ class CollapsibleGroupBox : public QGroupBox
 	Q_PROPERTY(bool collapsed READ isCollapsed WRITE setCollapsed USER true)
 
 public:
-	explicit CollapsibleGroupBox(QWidget* parent = 0);
-	explicit CollapsibleGroupBox(QString const& title, QWidget* parent = 0);
+	explicit CollapsibleGroupBox(QWidget* parent = nullptr);
+	explicit CollapsibleGroupBox(QString const& title, QWidget* parent = nullptr);
 	~CollapsibleGroupBox();
 
 	bool isCollapsed() const;

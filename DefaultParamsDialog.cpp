@@ -240,7 +240,7 @@ DefaultParamsDialog::loadProfile(QString const& name)
 		params = m_profileManager.createSourceProfile();
 	} else {
 		params = m_profileManager.readProfile(name);
-		if (params.get() == 0) {
+		if (params.get() == nullptr) {
 			params = m_profileManager.createDefaultProfile();
 		}
 	}

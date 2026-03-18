@@ -34,7 +34,7 @@ class CrashReportDialog : public QDialog
 {
 	Q_OBJECT
 public:
-	CrashReportDialog(QString const& dir, QString const& id, QWidget* parent = 0);
+	CrashReportDialog(QString const& dir, QString const& id, QWidget* parent = nullptr);
 
 	~CrashReportDialog();
 protected:

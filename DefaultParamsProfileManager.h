@@ -38,7 +38,7 @@ public:
 
 	std::list<QString> getProfileList() const;
 
-	std::auto_ptr<DefaultParams> readProfile(QString const& name, LoadStatus* status = 0) const;
+	std::auto_ptr<DefaultParams> readProfile(QString const& name, LoadStatus* status = nullptr) const;
 
 	bool writeProfile(DefaultParams const& params, QString const& name) const;
 

@@ -36,7 +36,7 @@ class DebugImageView :
 public:
 	DebugImageView(AutoRemovingFile file,
 		std::function<QWidget* (QImage const&)> const& image_view_factory =
-		std::function<QWidget* (QImage const&)>(), QWidget* parent = 0);
+		std::function<QWidget* (QImage const&)>(), QWidget* parent = nullptr);
 
 	/**
 	 * Tells this widget to either display the actual image or just

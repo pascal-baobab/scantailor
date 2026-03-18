@@ -50,7 +50,7 @@ public:
 	DespeckleVisualization visualize() const;
 
 	DespeckleState redespeckle(DespeckleLevel level,
-		TaskStatus const& status, DebugImages* dbg = 0) const;
+		TaskStatus const& status, DebugImages* dbg = nullptr) const;
 private:
 	static QImage overlaySpeckles(
 		QImage const& mixed, imageproc::BinaryImage const& speckles);

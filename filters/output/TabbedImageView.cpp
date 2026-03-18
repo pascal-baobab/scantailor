@@ -70,7 +70,7 @@ TabbedImageView::tabChangedSlot(int const idx)
 
 	copyViewZoomAndPos(m_prevImageViewTabIndex, idx);
 
-	if (findImageView(widget(idx)) != 0) {
+	if (findImageView(widget(idx)) != nullptr) {
 		m_prevImageViewTabIndex = idx;
 	}
 }
@@ -79,7 +79,7 @@ ImageViewBase*
 TabbedImageView::findImageView(QWidget* widget)
 {
 	if (!widget) {
-		return 0;
+		return nullptr;
 	}
 
 	if (ImageViewBase* iv = dynamic_cast<ImageViewBase*>(widget)) {
@@ -95,7 +95,7 @@ TabbedImageView::findImageView(QWidget* widget)
 			}
 		}
 	}
-	return 0;
+	return nullptr;
 }
 
 void

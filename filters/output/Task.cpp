@@ -426,7 +426,7 @@ Task::process(
 			)
 		);
 	} else {
-		return FilterResultPtr(0);
+		return FilterResultPtr(nullptr);
 	}
 }
 

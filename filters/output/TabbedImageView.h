@@ -38,7 +38,7 @@ class TabbedImageView : public QTabWidget
 public:
 	typedef std::map<ImageViewTab, QRectF> TabImageRectMap;
 
-	TabbedImageView(QWidget* parent = 0);
+	TabbedImageView(QWidget* parent = nullptr);
 
 	void addTab(QWidget* widget, QString const& label, ImageViewTab tab);
 

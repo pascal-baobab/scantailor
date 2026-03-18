@@ -348,7 +348,7 @@ void
 FixDpiDialog::applyClicked()
 {
 	Dpi const dpi(xDpi->text().toInt(), yDpi->text().toInt());
-	QItemSelectionModel* selection_model = 0;
+	QItemSelectionModel* selection_model = nullptr;
 	
 	if (tabWidget->currentIndex() == ALL_PAGES_TAB) {
 		selection_model = allPagesView->selectionModel();

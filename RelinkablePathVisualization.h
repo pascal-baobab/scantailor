@@ -30,7 +30,7 @@ class RelinkablePathVisualization : public QWidget
 {
 	Q_OBJECT
 public:
-	RelinkablePathVisualization(QWidget* parent = 0);
+	RelinkablePathVisualization(QWidget* parent = nullptr);
 
 	void clear();
 

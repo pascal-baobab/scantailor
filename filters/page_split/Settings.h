@@ -48,11 +48,11 @@ private:
 		BaseRecord();
 		
 		LayoutType const* layoutType() const {
-			return m_layoutTypeValid ? &m_layoutType : 0;
+			return m_layoutTypeValid ? &m_layoutType : nullptr;
 		}
-		
+
 		Params const* params() const {
-			return m_paramsValid ? &m_params : 0;
+			return m_paramsValid ? &m_params : nullptr;
 		}
 		
 		/**
@@ -180,7 +180,7 @@ public:
 	 */
 	Record conditionalUpdate(
 		ImageId const& image_id, UpdateAction const& action,
-		bool* conflict = 0);
+		bool* conflict = nullptr);
 private:
 	typedef std::map<ImageId, BaseRecord> PerPageRecords;
 	

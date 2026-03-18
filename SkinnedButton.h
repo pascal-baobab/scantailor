@@ -42,7 +42,7 @@ public:
 	 *        image representing the normal state of the button.
 	 * \param parent An optional parent widget.
 	 */
-	SkinnedButton(QString const& file, QWidget* parent = 0);
+	SkinnedButton(QString const& file, QWidget* parent = nullptr);
 	
 	/**
 	 * \brief Construct a skinned button from a set of 3 images.
@@ -61,7 +61,7 @@ public:
 		QString const& normal_state_file,
 		QString const& hover_state_file,
 		QString const& pressed_state_file,
-		QWidget* parent = 0);
+		QWidget* parent = nullptr);
 	
 	/**
 	 * \brief Set the hover state image.

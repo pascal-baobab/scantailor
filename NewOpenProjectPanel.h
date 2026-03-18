@@ -28,7 +28,7 @@ class NewOpenProjectPanel : public QWidget, private Ui::NewOpenProjectPanel
 {
 	Q_OBJECT
 public:
-	NewOpenProjectPanel(QWidget* parent = 0);
+	NewOpenProjectPanel(QWidget* parent = nullptr);
 signals:
 	void newProject();
 	

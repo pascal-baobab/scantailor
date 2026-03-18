@@ -32,7 +32,7 @@ class OutOfMemoryDialog : public QDialog
 {
 	Q_OBJECT
 public:
-	OutOfMemoryDialog(QWidget* parent = 0);
+	OutOfMemoryDialog(QWidget* parent = nullptr);
 
 	void setParams(
 		QString const& project_file, // may be empty

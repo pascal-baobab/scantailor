@@ -24,7 +24,7 @@
 class RelinkingSortingModel : public QSortFilterProxyModel
 {
 public:
-	RelinkingSortingModel(QObject* parent = 0);
+	RelinkingSortingModel(QObject* parent = nullptr);
 protected:
 	virtual bool lessThan(QModelIndex const& left, QModelIndex const& right) const;
 };

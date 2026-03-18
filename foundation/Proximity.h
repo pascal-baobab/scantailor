@@ -37,7 +37,7 @@ public:
 	static Proximity fromSqDist(double sqDist) { return Proximity(sqDist); }
 
 	static Proximity pointAndLineSegment(
-		QPointF const& pt, QLineF const& segment, QPointF* point_on_segment = 0);
+		QPointF const& pt, QLineF const& segment, QPointF* point_on_segment = nullptr);
 
 	double dist() const { return sqrt(m_sqDist); }
 

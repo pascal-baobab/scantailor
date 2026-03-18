@@ -120,9 +120,9 @@ public:
 	 * to access that data.
 	 */
 	Cell const* paddedData() const {
-		return m_pData ? &m_data[0] : 0;
+		return m_pData ? &m_data[0] : nullptr;
 	}
-	
+
 	/**
 	 * \brief Returns a pointer to the top-left corner of padding of the map.
 	 *
@@ -131,7 +131,7 @@ public:
 	 * to access that data.
 	 */
 	Cell* paddedData() {
-		return m_pData ? &m_data[0] : 0;
+		return m_pData ? &m_data[0] : nullptr;
 	}
 	
 	/**
@@ -160,7 +160,7 @@ public:
 	 */
 	QImage visualized() const;
 private:
-	void init(ConnectivityMap const& cmap, BinaryImage const* mask = 0);
+	void init(ConnectivityMap const& cmap, BinaryImage const* mask = nullptr);
 	
 	std::vector<Cell> m_data;
 	Cell* m_pData;

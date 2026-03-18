@@ -60,7 +60,7 @@ QPoint const*
 TowardsLineTracer::trace(float const max_dist)
 {
 	if (m_finished) {
-		return 0;
+		return nullptr;
 	}
 
 	int const max_sqdist = qRound(max_dist * max_dist);
@@ -131,7 +131,7 @@ TowardsLineTracer::trace(float const max_dist)
 		m_lastOutputPos = cur_pos;
 		return &m_lastOutputPos;
 	} else {
-		return 0;
+		return nullptr;
 	}
 }
 

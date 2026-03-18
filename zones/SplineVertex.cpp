@@ -38,7 +38,7 @@ SplineVertex::remove()
 	assert(m_ptrNext.get() == this);
 
 	m_pPrev->m_ptrNext->m_pPrev = m_pPrev;
-	m_pPrev = 0;
+	m_pPrev = nullptr;
 
 	// This may or may not destroy this object,
 	// depending on if there are other references to it.

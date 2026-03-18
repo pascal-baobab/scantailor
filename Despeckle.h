@@ -45,14 +45,14 @@ public:
 	 */
 	static imageproc::BinaryImage despeckle(
 		imageproc::BinaryImage const& src, Dpi const& dpi, Level level,
-		TaskStatus const& status, DebugImages* dbg = 0);
+		TaskStatus const& status, DebugImages* dbg = nullptr);
 
 	/**
 	 * \brief A slightly faster, in-place version of despeckle().
 	 */
 	static void despeckleInPlace(
 		imageproc::BinaryImage& image, Dpi const& dpi,
-		Level level, TaskStatus const& status, DebugImages* dbg = 0);
+		Level level, TaskStatus const& status, DebugImages* dbg = nullptr);
 };
 
 #endif

@@ -141,7 +141,7 @@ OptionsWidget::setRotation(OrthogonalRotation const rotation)
 void
 OptionsWidget::setRotationPixmap()
 {
-	char const* path = 0;
+	char const* path = nullptr;
 	
 	switch (m_rotation.toDegrees()) {
 		case 0:

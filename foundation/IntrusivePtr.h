@@ -33,7 +33,7 @@ private:
 	};
 	typedef int BooleanTestHelper::*BooleanTest;
 public:
-	IntrusivePtr() : m_pObj(0) {}
+	IntrusivePtr() : m_pObj(nullptr) {}
 	
 	explicit
 	IntrusivePtr(T* obj);
@@ -56,7 +56,7 @@ public:
 	
 	T* get() const { return m_pObj; }
 	
-	void reset(T* obj = 0);
+	void reset(T* obj = nullptr);
 	
 	void swap(IntrusivePtr& other);
 

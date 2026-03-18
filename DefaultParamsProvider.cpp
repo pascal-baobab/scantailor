@@ -36,7 +36,7 @@ DefaultParamsProvider::DefaultParamsProvider()
 		m_profileName = profile;
 	} else {
 		std::auto_ptr<DefaultParams> params = profileManager.readProfile(profile);
-		if (params.get() != 0) {
+		if (params.get() != nullptr) {
 			m_params = params;
 			m_profileName = profile;
 		} else {
@@ -63,14 +63,14 @@ DefaultParamsProvider::getProfileName() const
 DefaultParams const&
 DefaultParamsProvider::getParams() const
 {
-	assert(m_params.get() != 0);
+	assert(m_params.get() != nullptr);
 	return *m_params;
 }
 
 void
 DefaultParamsProvider::setParams(std::auto_ptr<DefaultParams> params, QString const& name)
 {
-	if (params.get() == 0) {
+	if (params.get() == nullptr) {
 		return;
 	}
 

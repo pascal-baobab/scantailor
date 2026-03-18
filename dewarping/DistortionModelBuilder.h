@@ -85,7 +85,7 @@ public:
 	 * \return A DistortionModel that may be invalid.
 	 * \see DistortionModel::isValid()
 	 */
-	DistortionModel tryBuildModel(DebugImages* dbg = 0, QImage const* dbg_background = 0) const;
+	DistortionModel tryBuildModel(DebugImages* dbg = nullptr, QImage const* dbg_background = nullptr) const;
 private:
 	struct TracedCurve;
 	struct RansacModel;

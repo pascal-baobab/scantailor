@@ -42,7 +42,7 @@ public:
 	
 	virtual void setImageWidget(
 		QWidget* widget, Ownership ownership,
-		DebugImages* debug_images = 0) = 0;
+		DebugImages* debug_images = nullptr) = 0;
 	
 	virtual void invalidateThumbnail(PageId const& page_id) = 0;
 	

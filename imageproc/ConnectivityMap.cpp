@@ -34,7 +34,7 @@ uint32_t const ConnectivityMap::BACKGROUND = ~uint32_t(0);
 uint32_t const ConnectivityMap::UNTAGGED_FG = BACKGROUND - 1;
 
 ConnectivityMap::ConnectivityMap()
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_size(),
 	m_stride(0),
 	m_maxLabel(0)
@@ -42,7 +42,7 @@ ConnectivityMap::ConnectivityMap()
 }
 
 ConnectivityMap::ConnectivityMap(QSize const& size)
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_size(size),
 	m_stride(0),
 	m_maxLabel(0)
@@ -61,7 +61,7 @@ ConnectivityMap::ConnectivityMap(QSize const& size)
 
 ConnectivityMap::ConnectivityMap(
 	BinaryImage const& image, Connectivity const conn)
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_size(image.size()),
 	m_stride(0),
 	m_maxLabel(0)
@@ -99,7 +99,7 @@ ConnectivityMap::ConnectivityMap(
 
 ConnectivityMap::ConnectivityMap(ConnectivityMap const& other)
 :	m_data(other.m_data),
-	m_pData(0),
+	m_pData(nullptr),
 	m_size(other.size()),
 	m_stride(other.stride()),
 	m_maxLabel(other.m_maxLabel)
@@ -110,7 +110,7 @@ ConnectivityMap::ConnectivityMap(ConnectivityMap const& other)
 }
 
 ConnectivityMap::ConnectivityMap(InfluenceMap const& imap)
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_size(imap.size()),
 	m_stride(imap.stride()),
 	m_maxLabel(imap.maxLabel())

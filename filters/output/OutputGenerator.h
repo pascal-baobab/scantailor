@@ -102,10 +102,10 @@ public:
 		DewarpingMode dewarping_mode,
 		dewarping::DistortionModel& distortion_model,
 		DepthPerception const& depth_perception,
-		imageproc::BinaryImage* auto_picture_mask = 0,
-		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0,
-		QImage* foreground_img = 0) const;
+		imageproc::BinaryImage* auto_picture_mask = nullptr,
+		imageproc::BinaryImage* speckles_image = nullptr,
+		DebugImages* dbg = nullptr,
+		QImage* foreground_img = nullptr) const;
 	
 	QSize outputImageSize() const;
 	
@@ -120,24 +120,24 @@ private:
 		DewarpingMode dewarping_mode,
 		dewarping::DistortionModel& distortion_model,
 		DepthPerception const& depth_perception,
-		imageproc::BinaryImage* auto_picture_mask = 0,
-		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0,
-		QImage* foreground_img = 0) const;
+		imageproc::BinaryImage* auto_picture_mask = nullptr,
+		imageproc::BinaryImage* speckles_image = nullptr,
+		DebugImages* dbg = nullptr,
+		QImage* foreground_img = nullptr) const;
 
 	QImage processAsIs(
 		FilterData const& input, TaskStatus const& status,
 		ZoneSet const& fill_zones,
 		DepthPerception const& depth_perception,
-		DebugImages* dbg = 0) const;
+		DebugImages* dbg = nullptr) const;
 
 	QImage processWithoutDewarping(
 		TaskStatus const& status, FilterData const& input,
 		ZoneSet const& picture_zones, ZoneSet const& fill_zones,
-		imageproc::BinaryImage* auto_picture_mask = 0,
-		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0,
-		QImage* foreground_img = 0) const;
+		imageproc::BinaryImage* auto_picture_mask = nullptr,
+		imageproc::BinaryImage* speckles_image = nullptr,
+		DebugImages* dbg = nullptr,
+		QImage* foreground_img = nullptr) const;
 
 	QImage processWithDewarping(
 		TaskStatus const& status, FilterData const& input,
@@ -145,9 +145,9 @@ private:
 		DewarpingMode dewarping_mode,
 		dewarping::DistortionModel& distortion_model,
 		DepthPerception const& depth_perception,
-		imageproc::BinaryImage* auto_picture_mask = 0,
-		imageproc::BinaryImage* speckles_image = 0,
-		DebugImages* dbg = 0) const;
+		imageproc::BinaryImage* auto_picture_mask = nullptr,
+		imageproc::BinaryImage* speckles_image = nullptr,
+		DebugImages* dbg = nullptr) const;
 	
 	void setupTrivialDistortionModel(dewarping::DistortionModel& distortion_model) const;
 
@@ -173,11 +173,11 @@ private:
 		TaskStatus const& status,
 		QImage const& input, QPolygonF const& area_to_consider,
 		QTransform const& xform, QRect const& target_rect,
-		imageproc::GrayImage* background = 0, DebugImages* dbg = 0);
+		imageproc::GrayImage* background = nullptr, DebugImages* dbg = nullptr);
 	
 	static imageproc::GrayImage detectPictures(
 		imageproc::GrayImage const& input_300dpi, TaskStatus const& status,
-		DebugImages* dbg = 0);
+		DebugImages* dbg = nullptr);
 	
 	imageproc::BinaryImage estimateBinarizationMask(
 		TaskStatus const& status, imageproc::GrayImage const& gray_source,
@@ -196,14 +196,14 @@ private:
 
 	imageproc::BinaryThreshold calcBinarizationThreshold(
 		QImage const& image, QPolygonF const& crop_area,
-		imageproc::BinaryImage const* mask = 0) const;
+		imageproc::BinaryImage const* mask = nullptr) const;
 
 	imageproc::BinaryImage binarize(
 		QImage const& image, imageproc::BinaryImage const& mask) const;
 	
 	imageproc::BinaryImage binarize(
 		QImage const& image, QPolygonF const& crop_area,
-		imageproc::BinaryImage const* mask = 0) const;
+		imageproc::BinaryImage const* mask = nullptr) const;
 	
 	void maybeDespeckleInPlace(
 		imageproc::BinaryImage& image, QRect const& image_rect,
@@ -228,11 +228,11 @@ private:
 
 	QImage transformAndNormalizeIllumination(
 		QImage const& gray_input, DebugImages* dbg,
-		QImage const* morph_background = 0) const;
+		QImage const* morph_background = nullptr) const;
 	
 	QImage transformAndNormalizeIllumination2(
 		QImage const& gray_input, DebugImages* dbg,
-		QImage const* morph_background = 0) const;
+		QImage const* morph_background = nullptr) const;
 
 	void applyFillZonesInPlace(QImage& img, ZoneSet const& zones,
 		std::function<QPointF(QPointF const&)> const& orig_to_output) const;

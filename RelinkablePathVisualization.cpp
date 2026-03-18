@@ -51,7 +51,7 @@ struct RelinkablePathVisualization::PathComponent
 class RelinkablePathVisualization::ComponentButton : public QPushButton
 {
 public:
-	ComponentButton(QWidget* parent = 0) : QPushButton(parent) {}
+	ComponentButton(QWidget* parent = nullptr) : QPushButton(parent) {}
 protected:
 	virtual void paintEvent(QPaintEvent* evt);
 };

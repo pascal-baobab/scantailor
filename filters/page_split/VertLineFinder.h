@@ -42,9 +42,9 @@ class VertLineFinder
 public:
 	static std::vector<QLineF> findLines(
 		QImage const& image, ImageTransformation const& xform,
-		int max_lines, DebugImages* dbg = 0,
-		imageproc::GrayImage* gray_downscaled = 0,
-		QTransform* out_to_downscaled = 0);
+		int max_lines, DebugImages* dbg = nullptr,
+		imageproc::GrayImage* gray_downscaled = nullptr,
+		QTransform* out_to_downscaled = nullptr);
 private:
 	class QualityLine
 	{

@@ -107,7 +107,7 @@ private:
 
 template<typename Node>
 Grid<Node>::Grid()
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_width(0),
 	m_height(0),
 	m_stride(0),

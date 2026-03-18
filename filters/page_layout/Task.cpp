@@ -126,7 +126,7 @@ Task::process(
 		return m_ptrNextTask->process(
 			status, FilterData(data, new_xform), content_rect_phys
 		);
-	} else if (m_ptrFilter->optionsWidget() != 0) {
+	} else if (m_ptrFilter->optionsWidget() != nullptr) {
 		return FilterResultPtr(
 			new UiUpdater(
 				m_ptrFilter, m_ptrSettings, m_pageId,
@@ -136,7 +136,7 @@ Task::process(
 			)
 		);
 	} else {
-		return FilterResultPtr(0);
+		return FilterResultPtr(nullptr);
 	}
 }
 

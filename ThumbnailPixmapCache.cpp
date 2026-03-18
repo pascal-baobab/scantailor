@@ -120,7 +120,7 @@ public:
 	
 	Status request(
 		ImageId const& image_id, QPixmap& pixmap, bool load_now = false,
-		std::weak_ptr<CompletionHandler> const* completion_handler = 0);
+		std::weak_ptr<CompletionHandler> const* completion_handler = nullptr);
 	
 	void ensureThumbnailExists(ImageId const& image_id, QImage const& image);
 	

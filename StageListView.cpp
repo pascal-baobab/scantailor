@@ -81,7 +81,7 @@ class StageListView::RightColDelegate :
 	public ChangedStateItemDelegate<QStyledItemDelegate>
 {
 public:
-	RightColDelegate(QObject* parent = 0);
+	RightColDelegate(QObject* parent = nullptr);
 	
 	virtual void paint(
 		QPainter* painter, QStyleOptionViewItem const& option,
@@ -94,7 +94,7 @@ private:
 StageListView::StageListView(QWidget* parent)
 :	QTableView(parent),
 	m_sizeHint(QTableView::sizeHint()),
-	m_pModel(0),
+	m_pModel(nullptr),
 	m_pFirstColDelegate(new LeftColDelegate(this)),
 	m_pSecondColDelegate(new RightColDelegate(this)),
 	m_curBatchAnimationFrame(0),

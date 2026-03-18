@@ -35,7 +35,7 @@ class RelinkingDialog : public QDialog
 {
 	Q_OBJECT
 public:
-	explicit RelinkingDialog(QString const& project_file_path, QWidget* parent = 0);
+	explicit RelinkingDialog(QString const& project_file_path, QWidget* parent = nullptr);
 
 	VirtualFunction1<void, RelinkablePath const&>& pathCollector() { return m_model; }
 

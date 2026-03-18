@@ -123,7 +123,7 @@ public:
 
 	void process(int x, VertRange const& range);
 
-	QLineF approximateWithLine(std::vector<Segment>* dbg_segments = 0) const;
+	QLineF approximateWithLine(std::vector<Segment>* dbg_segments = nullptr) const;
 
 	QImage visualizeEnvelope(QImage const& background);
 private:

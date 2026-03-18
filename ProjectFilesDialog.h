@@ -31,7 +31,7 @@ class ProjectFilesDialog : public QDialog, private Ui::ProjectFilesDialog
 {
 	Q_OBJECT
 public:
-	ProjectFilesDialog(QWidget* parent = 0);
+	ProjectFilesDialog(QWidget* parent = nullptr);
 	
 	virtual ~ProjectFilesDialog();
 	

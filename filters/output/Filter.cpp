@@ -180,7 +180,7 @@ Filter::createTask(
 	bool const batch, bool const debug)
 {
 	ImageViewTab lastTab(TAB_OUTPUT);
-	if (m_ptrOptionsWidget.get() != 0)
+	if (m_ptrOptionsWidget.get() != nullptr)
 		lastTab = m_ptrOptionsWidget->lastTab();
 	return IntrusivePtr<Task>(
 		new Task(

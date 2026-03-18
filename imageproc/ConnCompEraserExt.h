@@ -78,7 +78,7 @@ public:
 	 * In case nextConnComp() returned a null component or was never called,
 	 * a null BinaryImage is returned.
 	 */
-	BinaryImage computeConnCompImageAligned(QRect* rect = 0) const;
+	BinaryImage computeConnCompImageAligned(QRect* rect = nullptr) const;
 private:
 	ConnCompEraser m_eraser;
 	

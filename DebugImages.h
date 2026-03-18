@@ -57,8 +57,8 @@ public:
 	 * are returned by taking pointers to them as arguments.
 	 * Returns a null AutoRemovingFile if image sequence is empty.
 	 */
-	AutoRemovingFile retrieveNext(QString* label = 0,
-		std::function<QWidget* (QImage const&)>* image_view_factory = 0);
+	AutoRemovingFile retrieveNext(QString* label = nullptr,
+		std::function<QWidget* (QImage const&)>* image_view_factory = nullptr);
 private:
 	struct Item : public RefCountable
 	{

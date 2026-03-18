@@ -48,7 +48,7 @@ public:
 	
 	void readFilterSettings(std::vector<FilterPtr> const& filters) const;
 	
-	bool success() const { return m_ptrPages.get() != 0; }
+	bool success() const { return m_ptrPages.get() != nullptr; }
 	
 	QString const& outputDirectory() const { return m_outDir; }
 	

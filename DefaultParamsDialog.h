@@ -32,7 +32,7 @@ class DefaultParamsDialog : public QDialog
 {
 	Q_OBJECT
 public:
-	explicit DefaultParamsDialog(QWidget* parent = 0);
+	explicit DefaultParamsDialog(QWidget* parent = nullptr);
 
 private slots:
 	void profileChanged(int idx);

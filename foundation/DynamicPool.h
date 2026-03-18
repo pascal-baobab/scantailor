@@ -90,12 +90,12 @@ template<typename T>
 T*
 DynamicPool<T>::alloc(size_t num_elements)
 {	
-	Chunk* chunk = 0;
+	Chunk* chunk = nullptr;
 
 	if (!m_chunkList.empty()) {
 		chunk = &m_chunkList.back();
 		if (chunk->remainingElements < num_elements) {
-			chunk = 0;
+			chunk = nullptr;
 		}
 	}
 

@@ -80,7 +80,7 @@ private:
 };
 
 BinaryImage::BinaryImage()
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_width(0),
 	m_height(0),
 	m_wpl(0)
@@ -157,7 +157,7 @@ BinaryImage::BinaryImage(BinaryImage const& other)
 }
 
 BinaryImage::BinaryImage(QImage const& image, BinaryThreshold const threshold)
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_width(0),
 	m_height(0),
 	m_wpl(0)
@@ -193,7 +193,7 @@ BinaryImage::BinaryImage(QImage const& image, BinaryThreshold const threshold)
 
 BinaryImage::BinaryImage(
 	QImage const& image, QRect const& rect, BinaryThreshold const threshold)
-:	m_pData(0),
+:	m_pData(nullptr),
 	m_width(0),
 	m_height(0),
 	m_wpl(0)
@@ -562,7 +562,7 @@ uint32_t*
 BinaryImage::data()
 {
 	if (isNull()) {
-		return 0;
+		return nullptr;
 	}
 	
 	copyIfShared();
@@ -573,7 +573,7 @@ uint32_t const*
 BinaryImage::data() const
 {
 	if (isNull()) {
-		return 0;
+		return nullptr;
 	}
 	return m_pData->data();
 }
@@ -1187,7 +1187,7 @@ BinaryImage::SharedData::unref() const
 void*
 BinaryImage::SharedData::operator new(size_t, NumWords const num_words)
 {
-	SharedData* sd = 0;
+	SharedData* sd = nullptr;
 	void* addr = malloc(((char*)&sd->m_data[0] - (char*)sd) + num_words.numWords * 4);
 	if (!addr) {
 		throw std::bad_alloc();

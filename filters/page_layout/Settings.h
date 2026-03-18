@@ -73,7 +73,7 @@ public:
 	 * \param ignore The page to be ignored by the check.  Optional.
 	 */
 	bool checkEverythingDefined(
-		PageSequence const& pages, PageId const* ignore = 0) const;
+		PageSequence const& pages, PageId const* ignore = nullptr) const;
 	
 	/**
 	 * \brief Get all page parameters at once.
@@ -92,8 +92,8 @@ public:
 	 */
 	Params updateContentSizeAndGetParams(
 		PageId const& page_id, QSizeF const& content_size_mm,
-		QSizeF* agg_hard_size_before = 0,
-		QSizeF* agg_hard_size_after = 0);
+		QSizeF* agg_hard_size_before = nullptr,
+		QSizeF* agg_hard_size_after = nullptr);
 	
 	/**
 	 * \brief Returns the hard margins for the specified page.

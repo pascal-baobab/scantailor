@@ -72,7 +72,7 @@ class TiffReader::TiffBuffer
 {
 	DECLARE_NON_COPYABLE(TiffBuffer)
 public:
-	TiffBuffer() : m_pData(0) {}
+	TiffBuffer() : m_pData(nullptr) {}
 
 	TiffBuffer(tsize_t num_items) {
 		m_pData = (T*)_TIFFmalloc(num_items * sizeof(T));
@@ -341,7 +341,7 @@ TiffReader::readImage(QIODevice& device, int const page_num)
 
 		// For ABGR -> ARGB conversion.
 		TiffBuffer<uint32> tmp_buffer;
-		uint32 const* src_line = 0;
+		uint32 const* src_line = nullptr;
 
 		if (image.bytesPerLine() == 4 * info.width) {
 			// We can avoid creating a temporary buffer in this case.
@@ -458,9 +458,9 @@ TiffReader::extractBinaryOrIndexed8Image(
 	image.setColorCount(num_colors);
 	
 	if (info.photometric == PHOTOMETRIC_PALETTE) {
-		uint16* pr = 0;
-		uint16* pg = 0;
-		uint16* pb = 0;
+		uint16* pr = nullptr;
+		uint16* pg = nullptr;
+		uint16* pb = nullptr;
 		TIFFGetField(tif.handle(), TIFFTAG_COLORMAP, &pr, &pg, &pb);
 		if (!pr || !pg || !pb) {
 			return QImage();

@@ -30,7 +30,7 @@ class WorkerThread : public QObject
 	Q_OBJECT
 	DECLARE_NON_COPYABLE(WorkerThread)
 public:	
-	WorkerThread(QObject* parent = 0);
+	WorkerThread(QObject* parent = nullptr);
 	
 	~WorkerThread();
 	

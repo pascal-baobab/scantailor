@@ -31,7 +31,7 @@ template<typename T = QStyledItemDelegate>
 class ChangedStateItemDelegate : public T
 {
 public:
-	ChangedStateItemDelegate(QObject* parent = 0)
+	ChangedStateItemDelegate(QObject* parent = nullptr)
 	: T(parent), m_changedFlags(), m_changedMask() {}
 	
 	void flagsForceEnabled(QStyle::State flags) {

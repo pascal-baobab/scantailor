@@ -69,7 +69,7 @@ ZoneContextMenuInteraction::create(
 	std::vector<Zone> selectable_zones(zonesUnderMouse(context));	
 
 	if (selectable_zones.empty()) {
-		return 0;
+		return nullptr;
 	} else {
 		return new ZoneContextMenuInteraction(
 			context, interaction, menu_customizer, selectable_zones

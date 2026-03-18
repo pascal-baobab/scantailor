@@ -194,14 +194,14 @@ private:
                                 Ownership ownership);
 
   virtual void setImageWidget(QWidget *widget, Ownership ownership,
-                              DebugImages *debug_images = 0);
+                              DebugImages *debug_images = nullptr);
 
   virtual IntrusivePtr<AbstractCommand0<void>> relinkingDialogRequester();
 
   void switchToNewProject(IntrusivePtr<ProjectPages> const &pages,
                           QString const &out_dir,
                           QString const &project_file_path = QString(),
-                          ProjectReader const *project_reader = 0);
+                          ProjectReader const *project_reader = nullptr);
 
   IntrusivePtr<ThumbnailPixmapCache> createThumbnailCache();
 
@@ -246,7 +246,7 @@ private:
 
   void updateMainArea();
 
-  bool checkReadyForOutput(PageId const *ignore = 0) const;
+  bool checkReadyForOutput(PageId const *ignore = nullptr) const;
 
   void loadPageInteractive(PageInfo const &page);
 

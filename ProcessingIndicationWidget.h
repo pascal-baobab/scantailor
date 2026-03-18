@@ -32,7 +32,7 @@ class QRect;
 class ProcessingIndicationWidget : public QWidget
 {
 public:
-	ProcessingIndicationWidget(QWidget* parent = 0);
+	ProcessingIndicationWidget(QWidget* parent = nullptr);
 	
 	/**
 	 * \brief Resets animation to the state it had just after

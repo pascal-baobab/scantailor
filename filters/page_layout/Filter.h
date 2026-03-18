@@ -89,7 +89,7 @@ public:
 	void invalidateContentBox(PageId const& page_id);
 	
 	bool checkReadyForOutput(
-		ProjectPages const& pages, PageId const* ignore = 0);
+		ProjectPages const& pages, PageId const* ignore = nullptr);
 	
 	IntrusivePtr<Task> createTask(
 		PageId const& page_id,

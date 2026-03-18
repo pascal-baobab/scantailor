@@ -62,7 +62,7 @@ public:
 	 * \return true if the curve is the proximity leader.
 	 */
 	bool curveIsProximityLeader(
-		InteractionState const& state, QPointF* pt = 0, double* t = 0) const;
+		InteractionState const& state, QPointF* pt = nullptr, double* t = nullptr) const;
 protected:
 	virtual void onProximityUpdate(
 		QPointF const& screen_mouse_pos, InteractionState& interaction);

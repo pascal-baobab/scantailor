@@ -27,7 +27,7 @@ class SystemLoadWidget : public QWidget
 {
 	Q_OBJECT
 public:
-	SystemLoadWidget(QWidget* parent = 0);
+	SystemLoadWidget(QWidget* parent = nullptr);
 private slots:
 	void sliderPressed();
 

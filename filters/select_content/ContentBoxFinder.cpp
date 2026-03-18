@@ -823,7 +823,7 @@ ContentBoxFinder::estimateTextMask(
 			}
 			
 			int best_magnitude = std::numeric_limits<int>::min();
-			int const* best_split_pos = 0;
+			int const* best_split_pos = nullptr;
 			assert(first != last);
 			for (int const* p = first + 1; p != last; ++p) {
 				int const peak1 = max_forward[p - (first + 1)];

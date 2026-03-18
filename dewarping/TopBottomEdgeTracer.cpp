@@ -615,7 +615,7 @@ TopBottomEdgeTracer::locateBestPathEndpoints(Grid<GridNode> const& grid, QLineF 
 		GridNode const* node = data + offset;
 		
 		// Find the closest path.
-		Path* closest_path = 0;
+		Path* closest_path = nullptr;
 		int closest_sqdist = std::numeric_limits<int>::max();
 		for (Path& path : best_paths) {
 			QPoint const delta(path.pt - pt);

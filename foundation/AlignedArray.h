@@ -37,7 +37,7 @@ public:
 	/**
 	 * \brief Constructs a null array.
 	 */
-	AlignedArray() : m_pAlignedData(0), m_pStorage(0) {}
+	AlignedArray() : m_pAlignedData(nullptr), m_pStorage(nullptr) {}
 	
 	AlignedArray(size_t size);
 	
