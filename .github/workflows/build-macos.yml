@@ -37,6 +37,7 @@ jobs:
           QT_PREFIX="$(brew --prefix qt@5)"
           echo "${QT_PREFIX}/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=${QT_PREFIX}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=${QT_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
 
       # ── 4. Configure ─────────────────────────────────────────────────────
       - name: Configure (CMake)
@@ -48,12 +49,13 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" \
             -DCMAKE_CXX_STANDARD=14 \
+            -DENABLE_POPPLER=OFF \
             -DENABLE_POTRACE=ON \
             -DENABLE_TESSERACT=ON
 
       # ── 5. Build (also runs macdeployqt via the macos_bundle ALL target) ──
       - name: Build
-        run: cmake --build build --parallel 4
+        run: cmake --build build --parallel
 
       # ── 6. Bundle non-Qt Homebrew dylibs into .app ───────────────────────
       #    macdeployqt handles Qt frameworks but NOT third-party dylibs
