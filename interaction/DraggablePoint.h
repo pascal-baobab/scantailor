@@ -21,18 +21,16 @@
 
 #include "DraggableObject.h"
 #include <QPointF>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 
 class DraggablePoint : public DraggableObject
 {
 public:
-	typedef boost::function<
+	typedef std::function<
 		QPointF ()
 	> PositionCallback;
 
-	typedef boost::function<
+	typedef std::function<
 		void (QPointF const&)
 	> MoveRequestCallback;
 

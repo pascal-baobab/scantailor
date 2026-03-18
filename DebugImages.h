@@ -22,7 +22,7 @@
 #include "RefCountable.h"
 #include "IntrusivePtr.h"
 #include "AutoRemovingFile.h"
-#include <boost/function.hpp>
+#include <functional>
 #include <QString>
 #include <deque>
 
@@ -41,12 +41,12 @@ class DebugImages
 {
 public:
 	void add(QImage const& image, QString const& label,
-		boost::function<QWidget* (QImage const&)> const& image_view_factory =
-		boost::function<QWidget* (QImage const&)>());
+		std::function<QWidget* (QImage const&)> const& image_view_factory =
+		std::function<QWidget* (QImage const&)>());
 	
 	void add(imageproc::BinaryImage const& image, QString const& label,
-		boost::function<QWidget* (QImage const&)> const& image_view_factory =
-		boost::function<QWidget* (QImage const&)>());
+		std::function<QWidget* (QImage const&)> const& image_view_factory =
+		std::function<QWidget* (QImage const&)>());
 	
 	bool empty() const { return m_sequence.empty(); }
 
@@ -58,16 +58,16 @@ public:
 	 * Returns a null AutoRemovingFile if image sequence is empty.
 	 */
 	AutoRemovingFile retrieveNext(QString* label = 0,
-		boost::function<QWidget* (QImage const&)>* image_view_factory = 0);
+		std::function<QWidget* (QImage const&)>* image_view_factory = 0);
 private:
 	struct Item : public RefCountable
 	{
 		AutoRemovingFile file;
 		QString label;
-		boost::function<QWidget* (QImage const&)> imageViewFactory;
+		std::function<QWidget* (QImage const&)> imageViewFactory;
 
 		Item(AutoRemovingFile f, QString const& l,
-			boost::function<QWidget* (QImage const&)> const& imf)
+			std::function<QWidget* (QImage const&)> const& imf)
 		:	file(f), label(l), imageViewFactory(imf) {}
 	};
 

@@ -58,12 +58,7 @@
 #include <QPen>
 #include <QColor>
 #include <QtGlobal>
-#ifndef Q_MOC_RUN
-#include <boost/scoped_array.hpp>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#include <boost/lambda/if.hpp>
-#endif
+#include <memory>
 #include <algorithm>
 #include <set>
 #include <map>
@@ -85,8 +80,6 @@ TextLineTracer::trace(
 	DistortionModelBuilder& output,
 	TaskStatus const& status, DebugImages* dbg)
 {
-	using namespace boost::lambda;
-
 	GrayImage downscaled(downscale(input, dpi));
 	if (dbg) {
 		dbg->add(downscaled, "downscaled");
@@ -336,8 +329,6 @@ TextLineTracer::extractTextLines(
 	std::list<std::vector<QPointF> >& out, imageproc::GrayImage const& image,
 	std::pair<QLineF, QLineF> const& bounds, DebugImages* dbg)
 {
-	using namespace boost::lambda;
-
 	int const width = image.width();
 	int const height = image.height();
 	QSize const size(image.size());
@@ -346,15 +337,22 @@ TextLineTracer::extractTextLines(
 	Grid<float> aux_grid(image.width(), image.height(), 0);
 
 	float const downscale = 1.0f / (255.0f * 8.0f);
+	float const dir0 = direction[0];
+	float const dir1 = direction[1];
+	auto const srcReader = [downscale](uint8_t val) { return val * downscale; };
+	auto const assign = [](float& dst, float src) { dst = src; };
+	auto const identity = [](float val) { return val; };
+	auto const dirCombine = [dir0, dir1](float& dst, float src) { dst = dst * dir0 + src * dir1; };
+
 	horizontalSobel<float>(
-		width, height, image.data(), image.stride(), _1 * downscale,
-		aux_grid.data(), aux_grid.stride(), _1 = _2, _1,
-		main_grid.data(), main_grid.stride(), _1 = _2
+		width, height, image.data(), image.stride(), srcReader,
+		aux_grid.data(), aux_grid.stride(), assign, identity,
+		main_grid.data(), main_grid.stride(), assign
 	);
 	verticalSobel<float>(
-		width, height, image.data(), image.stride(), _1 * downscale,
-		aux_grid.data(), aux_grid.stride(), _1 = _2, _1,
-		main_grid.data(), main_grid.stride(), _1 = _1 * direction[0] + _2 * direction[1]
+		width, height, image.data(), image.stride(), srcReader,
+		aux_grid.data(), aux_grid.stride(), assign, identity,
+		main_grid.data(), main_grid.stride(), dirCombine
 	);
 	if (dbg) {
 		dbg->add(visualizeGradient(image, main_grid), "first_dir_deriv");
@@ -362,26 +360,27 @@ TextLineTracer::extractTextLines(
 
 	gaussBlurGeneric(
 		size, 6.0f, 6.0f,
-		main_grid.data(), main_grid.stride(), _1,
-		main_grid.data(), main_grid.stride(), _1 = _2
+		main_grid.data(), main_grid.stride(), identity,
+		main_grid.data(), main_grid.stride(), assign
 	);
 	if (dbg) {
 		dbg->add(visualizeGradient(image, main_grid), "first_dir_deriv_blurred");
 	}
 
 	horizontalSobel<float>(
-		width, height, main_grid.data(), main_grid.stride(), _1,
-		aux_grid.data(), aux_grid.stride(), _1 = _2, _1,
-		aux_grid.data(), aux_grid.stride(), _1 = _2
+		width, height, main_grid.data(), main_grid.stride(), identity,
+		aux_grid.data(), aux_grid.stride(), assign, identity,
+		aux_grid.data(), aux_grid.stride(), assign
 	);
 	verticalSobel<float>(
-		width, height, main_grid.data(), main_grid.stride(), _1,
-		main_grid.data(), main_grid.stride(), _1 = _2, _1,
-		main_grid.data(), main_grid.stride(), _1 = _2
+		width, height, main_grid.data(), main_grid.stride(), identity,
+		main_grid.data(), main_grid.stride(), assign, identity,
+		main_grid.data(), main_grid.stride(), assign
 	);
 	rasterOpGeneric(
 		aux_grid.data(), aux_grid.stride(), size,
-		main_grid.data(), main_grid.stride(), _2 = _1 * direction[0] + _2 * direction[1]
+		main_grid.data(), main_grid.stride(),
+		[dir0, dir1](float src, float& dst) { dst = src * dir0 + dst * dir1; }
 	);
 	if (dbg) {
 		dbg->add(visualizeGradient(image, main_grid), "second_dir_deriv");
@@ -390,14 +389,14 @@ TextLineTracer::extractTextLines(
 	float max = 0;
 	rasterOpGeneric(
 		main_grid.data(), main_grid.stride(), size,
-		if_then(_1 > var(max), var(max) = _1)
+		[&max](float val) { if (val > max) max = val; }
 	);
 	float const threshold = max * 15.0f / 255.0f;
 
 	BinaryImage initial_binarization(image.size());
 	rasterOpGeneric(
 		initial_binarization, main_grid.data(), main_grid.stride(),
-		if_then_else(_2 > threshold, _1 = uint32_t(1), _1 = uint32_t(0))
+		[threshold](auto& dst, float src) { dst = (src > threshold) ? uint32_t(1) : uint32_t(0); }
 	);
 	if (dbg) {
 		dbg->add(initial_binarization, "initial_binarization");
@@ -405,7 +404,8 @@ TextLineTracer::extractTextLines(
 
 	rasterOpGeneric(
 		main_grid.data(), main_grid.stride(), size,
-		aux_grid.data(), aux_grid.stride(), _2 = bind((float (*)(float))&std::fabs, _1)
+		aux_grid.data(), aux_grid.stride(),
+		[](float src, float& dst) { dst = std::fabs(src); }
 	);
 	if (dbg) {
 		dbg->add(visualizeGradient(image, aux_grid), "abs");
@@ -413,8 +413,8 @@ TextLineTracer::extractTextLines(
 
 	gaussBlurGeneric(
 		size, 12.0f, 12.0f,
-		aux_grid.data(), aux_grid.stride(), _1,
-		aux_grid.data(), aux_grid.stride(), _1 = _2
+		aux_grid.data(), aux_grid.stride(), identity,
+		aux_grid.data(), aux_grid.stride(), assign
 	);
 	if (dbg) {
 		dbg->add(visualizeGradient(image, aux_grid), "blurred");
@@ -423,16 +423,16 @@ TextLineTracer::extractTextLines(
 	rasterOpGeneric(
 		main_grid.data(), main_grid.stride(), size,
 		aux_grid.data(), aux_grid.stride(),
-		_2 += _1 - bind((float (*)(float))&std::fabs, _1)
+		[](float src, float& dst) { dst += src - std::fabs(src); }
 	);
 	if (dbg) {
 		dbg->add(visualizeGradient(image, aux_grid), "+= diff");
 	}
-	
+
 	BinaryImage post_binarization(image.size());
 	rasterOpGeneric(
 		post_binarization, aux_grid.data(), aux_grid.stride(),
-		if_then_else(_2 > threshold, _1 = uint32_t(1), _1 = uint32_t(0))
+		[threshold](auto& dst, float src) { dst = (src > threshold) ? uint32_t(1) : uint32_t(0); }
 	);
 	if (dbg) {
 		dbg->add(post_binarization, "post_binarization");
@@ -441,7 +441,7 @@ TextLineTracer::extractTextLines(
 	BinaryImage obstacles(image.size());
 	rasterOpGeneric(
 		obstacles, aux_grid.data(), aux_grid.stride(),
-		if_then_else(_2 < -threshold, _1 = uint32_t(1), _1 = uint32_t(0))
+		[threshold](auto& dst, float src) { dst = (src < -threshold) ? uint32_t(1) : uint32_t(0); }
 	);
 	if (dbg) {
 		dbg->add(obstacles, "obstacles");

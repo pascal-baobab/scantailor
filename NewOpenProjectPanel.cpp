@@ -18,10 +18,7 @@
 #include "NewOpenProjectPanel.h"
 #include "RecentProjects.h"
 #include "Utils.h"
-#ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#endif
+#include <functional>
 #include <QVBoxLayout>
 #include <QPainter>
 #include <QPalette>
@@ -65,10 +62,7 @@ NewOpenProjectPanel::NewOpenProjectPanel(QWidget* parent)
 		recentProjectsGroup->setVisible(false);
 	} else {
 		rp.enumerate(
-			boost::lambda::bind(
-				&NewOpenProjectPanel::addRecentProject,
-				this, boost::lambda::_1
-			)
+			[this](QString const& path) { addRecentProject(path); }
 		);
 	}
 	

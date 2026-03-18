@@ -27,9 +27,7 @@
 #include "DespeckleLevel.h"
 #include "DewarpingMode.h"
 #include "ImageTransformation.h"
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 #include <QSize>
 #include <QRect>
 #include <QTransform>
@@ -237,12 +235,12 @@ private:
 		QImage const* morph_background = 0) const;
 
 	void applyFillZonesInPlace(QImage& img, ZoneSet const& zones,
-		boost::function<QPointF(QPointF const&)> const& orig_to_output) const;
+		std::function<QPointF(QPointF const&)> const& orig_to_output) const;
 
 	void applyFillZonesInPlace(QImage& img, ZoneSet const& zones) const;
 
 	void applyFillZonesInPlace(imageproc::BinaryImage& img, ZoneSet const& zones,
-		boost::function<QPointF(QPointF const&)> const& orig_to_output) const;
+		std::function<QPointF(QPointF const&)> const& orig_to_output) const;
 
 	void applyFillZonesInPlace(imageproc::BinaryImage& img, ZoneSet const& zones) const;
 	

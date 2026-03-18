@@ -21,7 +21,7 @@
 
 #include "NonCopyable.h"
 #include <boost/intrusive/list.hpp>
-#include <boost/scoped_array.hpp>
+#include <memory>
 #include <stddef.h>
 
 /**
@@ -52,13 +52,13 @@ private:
 	
 	struct Chunk : public boost::intrusive::list_base_hook<>
 	{
-		boost::scoped_array<T> storage;
+		std::unique_ptr<T[]> storage;
 		T* pData;
 		size_t remainingElements;
 
 		Chunk() : pData(0), remainingElements(0) {}
 
-		void init(boost::scoped_array<T>& data, size_t size) {
+		void init(std::unique_ptr<T[]>& data, size_t size) {
 			data.swap(storage);
 			pData = storage.get();
 			remainingElements = size;
@@ -102,7 +102,7 @@ DynamicPool<T>::alloc(size_t num_elements)
 	if (!chunk) {
 		// Create a new chunk.
 		size_t const chunk_size = adviseChunkSize(num_elements);
-		boost::scoped_array<T> data(new T[chunk_size]);
+		std::unique_ptr<T[]> data(new T[chunk_size]);
 		chunk = &*m_chunkList.insert(m_chunkList.end(), *new Chunk);
 		chunk->init(data, chunk_size);
 	}

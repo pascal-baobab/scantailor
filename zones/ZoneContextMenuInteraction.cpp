@@ -33,10 +33,7 @@
 #include <QCursor>
 #include <QMessageBox>
 #include <QDebug>
-#ifndef Q_MOC_RUN
-#include <boost/bind.hpp>
-#include <boost/ref.hpp>
-#endif
+#include <functional>
 #include <vector>
 #include <assert.h>
 
@@ -58,7 +55,9 @@ ZoneContextMenuInteraction::create(
 {
 	return create(
 		context, interaction,
-		boost::bind(&ZoneContextMenuInteraction::defaultMenuCustomizer, _1, _2)
+		[](EditableZoneSet::Zone const& zone, StandardMenuItems const& std_items) {
+			return defaultMenuCustomizer(zone, std_items);
+		}
 	);
 }
 
@@ -150,10 +149,9 @@ ZoneContextMenuInteraction::ZoneContextMenuInteraction(
 			QAction* action = m_ptrMenu->addAction(pixmap, item.label());
 			new QtSignalForwarder(
 				action, SIGNAL(triggered()),
-				boost::bind(
-					&ZoneContextMenuInteraction::menuItemTriggered,
-					this, boost::ref(interaction), item.callback()
-				)
+				[this, &interaction, cb = item.callback()]() {
+					menuItemTriggered(interaction, cb);
+				}
 			);
 			
 			hover_map->setMapping(action, i);
@@ -264,7 +262,7 @@ ZoneContextMenuInteraction::deleteMenuItemFor(
 {
 	return ZoneContextMenuItem(
 		tr("Delete"),
-		boost::bind(&ZoneContextMenuInteraction::deleteRequest, this, zone)
+		[this, zone](InteractionState&) { return deleteRequest(zone); }
 	);
 }
 
@@ -274,7 +272,7 @@ ZoneContextMenuInteraction::propertiesMenuItemFor(
 {
 	return ZoneContextMenuItem(
 		tr("Properties"),
-		boost::bind(&ZoneContextMenuInteraction::propertiesRequest, this, zone)
+		[this, zone](InteractionState&) { return propertiesRequest(zone); }
 	);
 }
 

@@ -30,9 +30,7 @@
 #include <QScrollBar>
 #include <QStyle>
 #include <Qt>
-#ifndef Q_MOC_RUN
-#include <boost/bind.hpp>
-#endif
+#include <functional>
 #include <algorithm>
 #include <math.h>
 
@@ -68,13 +66,13 @@ ImageView::ImageView(
 	for (int i = 0; i < 2; ++i) {
 		m_handles[i].setHitRadius(hit_radius);
 		m_handles[i].setPositionCallback(
-			boost::bind(&ImageView::handlePosition, this, i)
+			[this, i]() { return handlePosition(i); }
 		);
 		m_handles[i].setMoveRequestCallback(
-			boost::bind(&ImageView::handleMoveRequest, this, i, _1)
+			[this, i](QPointF const& pos) { handleMoveRequest(i, pos); }
 		);
 		m_handles[i].setDragFinishedCallback(
-			boost::bind(&ImageView::dragFinished, this)
+			[this](QPointF const&) { dragFinished(); }
 		);
 
 		m_handleInteractors[i].setProximityStatusTip(tip);

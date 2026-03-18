@@ -32,10 +32,6 @@
 #include <QColor>
 #include <Qt>
 #include <QtGlobal>
-#ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#endif
 #include <vector>
 #include <deque>
 #include <algorithm>
@@ -276,19 +272,17 @@ SequentialColumnProcessor::segmentIsTooLong(QPoint const p1, QPoint const p2) co
 QLineF
 SequentialColumnProcessor::approximateWithLine(std::vector<Segment>* dbg_segments) const
 {
-	using namespace boost::lambda;
-
 	size_t const num_points = m_path.size();
 
 	std::vector<Segment> segments;
 	segments.reserve(num_points);
-	
+
 	// Collect line segments from m_path and convert them to unit vectors.
 	for (size_t i = 1; i < num_points; ++i) {
 		QPoint const pt1(m_path[i - 1]);
 		QPoint const pt2(m_path[i]);
 		assert(pt2.y() > pt1.y());
-		
+
 		Vec2d vec(pt2 - pt1);
 		if (fabs(vec[0]) > fabs(vec[1])) {
 			// We don't want segments that are more horizontal than vertical.
@@ -298,10 +292,10 @@ SequentialColumnProcessor::approximateWithLine(std::vector<Segment>* dbg_segment
 		vec /= sqrt(vec.squaredNorm());
 		segments.push_back(Segment(QLine(pt1, pt2), vec, pt2.y() - pt1.y()));
 	}
-	
+
 
 	// Run RANSAC on the segments.
-	
+
 	RansacAlgo ransac(segments);
 	qsrand(0); // Repeatablity is important.
 
@@ -309,10 +303,12 @@ SequentialColumnProcessor::approximateWithLine(std::vector<Segment>* dbg_segment
 	// to the edge, so let's sort segments appropriately
 	// and manually feed the best ones to RANSAC.
 	size_t const num_best_segments = std::min<size_t>(6, segments.size());
+	int const vert_line_x = m_leadingTop.x();
 	std::partial_sort(
 		segments.begin(), segments.begin() + num_best_segments, segments.end(),
-		bind(&Segment::distToVertLine, _1, m_leadingTop.x()) <
-		bind(&Segment::distToVertLine, _2, m_leadingTop.x())
+		[vert_line_x](Segment const& a, Segment const& b) {
+			return a.distToVertLine(vert_line_x) < b.distToVertLine(vert_line_x);
+		}
 	);
 	for (size_t i = 0; i < num_best_segments; ++i) {
 		ransac.buildAndAssessModel(segments[i]);

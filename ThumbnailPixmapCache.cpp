@@ -87,7 +87,7 @@ public:
 	mutable QPixmap pixmap; /**< Guaranteed to be set if status is LOADED */
 	
 	mutable std::vector<
-		boost::weak_ptr<CompletionHandler>
+		std::weak_ptr<CompletionHandler>
 	> completionHandlers;
 	
 	/**
@@ -120,7 +120,7 @@ public:
 	
 	Status request(
 		ImageId const& image_id, QPixmap& pixmap, bool load_now = false,
-		boost::weak_ptr<CompletionHandler> const* completion_handler = 0);
+		std::weak_ptr<CompletionHandler> const* completion_handler = 0);
 	
 	void ensureThumbnailExists(ImageId const& image_id, QImage const& image);
 	
@@ -299,7 +299,7 @@ ThumbnailPixmapCache::loadNow(ImageId const& image_id, QPixmap& pixmap)
 ThumbnailPixmapCache::Status
 ThumbnailPixmapCache::loadRequest(
 	ImageId const& image_id, QPixmap& pixmap,
-	boost::weak_ptr<CompletionHandler> const& completion_handler)
+	std::weak_ptr<CompletionHandler> const& completion_handler)
 {
 	return m_ptrImpl->request(image_id, pixmap, false, &completion_handler);
 }
@@ -388,7 +388,7 @@ ThumbnailPixmapCache::Impl::setThumbDir(QString const& thumb_dir)
 ThumbnailPixmapCache::Status
 ThumbnailPixmapCache::Impl::request(
 	ImageId const& image_id, QPixmap& pixmap, bool const load_now,
-	boost::weak_ptr<CompletionHandler> const* completion_handler)
+	std::weak_ptr<CompletionHandler> const* completion_handler)
 {
 	assert(QCoreApplication::instance()->thread() == QThread::currentThread());
 	
@@ -777,7 +777,7 @@ ThumbnailPixmapCache::Impl::processLoadResult(LoadResultEvent* result)
 	QPixmap pixmap(QPixmap::fromImage(result->image()));
 	result->releaseImage();
 	
-	std::vector<boost::weak_ptr<CompletionHandler> > completion_handlers;
+	std::vector<std::weak_ptr<CompletionHandler> > completion_handlers;
 	
 	{
 		QMutexLocker const locker(&m_mutex);
@@ -834,9 +834,9 @@ ThumbnailPixmapCache::Impl::processLoadResult(LoadResultEvent* result)
 	
 	// Notify listeners.
 	ThumbnailLoadResult const load_result(result->status(), pixmap);
-	typedef boost::weak_ptr<CompletionHandler> WeakHandler;
+	typedef std::weak_ptr<CompletionHandler> WeakHandler;
 	for (WeakHandler const& wh : completion_handlers) {
-		boost::shared_ptr<CompletionHandler> const sh(wh.lock());
+		std::shared_ptr<CompletionHandler> const sh(wh.lock());
 		if (sh.get()) {
 			(*sh)(load_result);
 		}

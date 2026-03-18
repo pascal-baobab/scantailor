@@ -19,7 +19,7 @@
 #ifndef MAT_T_H_
 #define MAT_T_H_
 
-#include <boost/scoped_array.hpp>
+#include <memory>
 #include <stddef.h>
 #include <assert.h>
 
@@ -113,7 +113,7 @@ public:
 private:
 	size_t m_rows;
 	size_t m_cols;
-	boost::scoped_array<T> m_data;
+	std::unique_ptr<T[]> m_data;
 };
 
 

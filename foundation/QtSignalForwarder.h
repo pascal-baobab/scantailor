@@ -21,12 +21,10 @@
 
 #include "NonCopyable.h"
 #include <QObject>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 
 /**
- * \brief Connects to a Qt signal and forwards it to a boost::function.
+ * \brief Connects to a Qt signal and forwards it to a std::function.
  *
  * Useful when you need to bind additional parameters to a slot
  * at connection time.
@@ -44,14 +42,14 @@ public:
 	 * \param signal The signal specification in the form of SIGNAL(name()).
 	 *        Signals with arguments may be specified, but the arguments
 	 *        won't be forwarded.
-	 * \param slot A boost::function to forward the signal to.
+	 * \param slot A std::function to forward the signal to.
 	 */
 	QtSignalForwarder(
-		QObject* emitter, char const* signal, boost::function<void()> const& slot);
+		QObject* emitter, char const* signal, std::function<void()> const& slot);
 private slots:
 	void handleSignal();
 private:
-	boost::function<void()> m_slot;
+	std::function<void()> m_slot;
 };
 
 #endif

@@ -23,9 +23,6 @@
 #include "RefCountable.h"
 #include "ThumbnailLoadResult.h"
 #include "AbstractCommand.h"
-#ifndef Q_MOC_RUN
-#include <boost/weak_ptr.hpp>
-#endif
 #include <memory>
 
 class ImageId;
@@ -102,25 +99,22 @@ public:
 	 * \param completion_handler A functor that will be called on request
 	 * completion.  The best way to construct such a functor would be:
 	 * \code
-	 * class X : public boost::signals::trackable
+	 * class X
 	 * {
 	 * public:
 	 * 	void handleCompletion(ThumbnailLoadResult const& result);
 	 * };
 	 *
 	 * X x;
-	 * cache->loadRequest(image_id, pixmap, boost::bind(&X::handleCompletion, x, _1));
+	 * cache->loadRequest(image_id, pixmap,
+	 *     [&x](ThumbnailLoadResult const& r) { x.handleCompletion(r); });
 	 * \endcode
-	 * Note that deriving X from boost::signals::trackable (with public inheritance)
-	 * allows to safely delete the x object without worrying about callbacks
-	 * it may receive in the future.  Keep in mind however, that deleting
-	 * x is only safe when done from the GUI thread.  Another thing to
-	 * keep in mind is that only boost::bind() can handle trackable binds.
-	 * Other methods, for example boost::lambda::bind() can't do that.
+	 * Note: ensure the captured object outlives any pending callbacks.
+	 * Deleting the object is only safe when done from the GUI thread.
 	 */
 	Status loadRequest(
 		ImageId const& image_id, QPixmap& pixmap,
-		boost::weak_ptr<CompletionHandler> const& completion_handler);
+		std::weak_ptr<CompletionHandler> const& completion_handler);
 	
 	/**
 	 * \brief If no thumbnail exists for this image, create it.

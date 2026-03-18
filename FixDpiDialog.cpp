@@ -29,10 +29,7 @@
 #include <QColor>
 #include <Qt>
 #include <QDebug>
-#ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#endif
+#include <functional>
 #include <vector>
 #include <algorithm>
 #include <assert.h>
@@ -838,12 +835,10 @@ FixDpiDialog::TreeModel::emitItemChanged(QModelIndex const& idx)
 FixDpiDialog::SizeGroup&
 FixDpiDialog::TreeModel::sizeGroupFor(QSize const size)
 {
-	using namespace boost::lambda;
-	
 	std::vector<SizeGroup>::iterator const it(
 		std::find_if(
 			m_sizes.begin(), m_sizes.end(),
-			bind(&SizeGroup::size, _1) == size
+			[size](SizeGroup const& sg) { return sg.size() == size; }
 		)
 	);
 	if (it != m_sizes.end()) {

@@ -34,9 +34,7 @@
 #include "ThumbnailSequence.h"
 #include "ui_MainWindow.h"
 
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 #include <QMainWindow>
 #include <QObjectCleanupHandler>
 #include <QPointer>
@@ -310,7 +308,7 @@ private:
   std::auto_ptr<PageOrientationPropagator> m_ptrPageOrientationPropagator;
   std::auto_ptr<QWidget> m_ptrBatchProcessingWidget;
   std::auto_ptr<ProcessingIndicationWidget> m_ptrProcessingIndicationWidget;
-  boost::function<bool()> m_checkBeepWhenFinished;
+  std::function<bool()> m_checkBeepWhenFinished;
   SelectedPage m_selectedPage;
   QObjectCleanupHandler m_optionsWidgetCleanup;
   QObjectCleanupHandler m_imageWidgetCleanup;

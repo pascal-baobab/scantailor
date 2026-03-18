@@ -23,7 +23,7 @@
 #include <QStackedWidget>
 #include <QWidget>
 #include <boost/intrusive/list.hpp>
-#include <boost/function.hpp>
+#include <functional>
 
 class QImage;
 
@@ -35,8 +35,8 @@ class DebugImageView :
 {
 public:
 	DebugImageView(AutoRemovingFile file,
-		boost::function<QWidget* (QImage const&)> const& image_view_factory =
-		boost::function<QWidget* (QImage const&)>(), QWidget* parent = 0);
+		std::function<QWidget* (QImage const&)> const& image_view_factory =
+		std::function<QWidget* (QImage const&)>(), QWidget* parent = 0);
 
 	/**
 	 * Tells this widget to either display the actual image or just
@@ -50,7 +50,7 @@ private:
 	void imageLoaded(QImage const& image);
 
 	AutoRemovingFile m_file;
-	boost::function<QWidget* (QImage const&)> m_imageViewFactory;
+	std::function<QWidget* (QImage const&)> m_imageViewFactory;
 	QWidget* m_pPlaceholderWidget;
 	bool m_isLive;
 };

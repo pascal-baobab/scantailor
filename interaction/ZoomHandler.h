@@ -23,9 +23,7 @@
 #include "InteractionState.h"
 #include <QPoint>
 #include <QCoreApplication>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 
 class ImageViewBase;
 
@@ -38,7 +36,7 @@ public:
 	ZoomHandler(ImageViewBase& image_view);
 
 	ZoomHandler(ImageViewBase& image_view,
-		boost::function<bool(InteractionState const&)> const& explicit_interaction_permitter);
+		std::function<bool(InteractionState const&)> const& explicit_interaction_permitter);
 
 	Focus focus() const { return m_focus; }
 
@@ -48,7 +46,7 @@ protected:
 	virtual void onKeyPressEvent(QKeyEvent* event, InteractionState& interaction);
 private:
 	ImageViewBase& m_rImageView;
-	boost::function<bool(InteractionState const&)> m_interactionPermitter;
+	std::function<bool(InteractionState const&)> m_interactionPermitter;
 	InteractionState::Captor m_interaction;
 	Focus m_focus;
 };

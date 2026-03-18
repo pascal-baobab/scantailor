@@ -38,7 +38,7 @@ namespace imageproc
  * operation(data[offset]);
  * \endcode
  * Depending on whether T is const, the operation may be able to modify the image.
- * Hinst: boost::lambda is an easy way to construct operations.
+ * Hint: a C++ lambda is an easy way to construct operations.
  */
 template<typename T, typename Op>
 void rasterOpGeneric(T* data, int stride, QSize size, Op operation);
@@ -57,7 +57,7 @@ void rasterOpGeneric(T* data, int stride, QSize size, Op operation);
  * \endcode
  * Depending on whether T1 / T2 are const, the operation may be able to modify
  * one or both of them.
- * Hinst: boost::lambda is an easy way to construct operations.
+ * Hint: a C++ lambda is an easy way to construct operations.
  */
 template<typename T1, typename T2, typename Op>
 void rasterOpGeneric(T1* data1, int stride1, QSize size,

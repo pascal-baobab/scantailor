@@ -27,14 +27,12 @@
 #include "RefCountable.h"
 #include "IntrusivePtr.h"
 #include "ScopedIncDec.h"
+#include <functional>
 #ifndef Q_MOC_RUN
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-#include <boost/function.hpp>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
 #endif
 #include <QGraphicsScene>
 #include <QGraphicsItem>
@@ -71,7 +69,6 @@
 #include <assert.h>
 
 using namespace ::boost::multi_index;
-using namespace ::boost::lambda;
 
 
 class ThumbnailSequence::Item
@@ -101,7 +98,7 @@ private:
 class ThumbnailSequence::GraphicsScene : public QGraphicsScene
 {
 public:
-	typedef boost::function<void (QGraphicsSceneContextMenuEvent*)> ContextMenuEventCallback;
+	typedef std::function<void (QGraphicsSceneContextMenuEvent*)> ContextMenuEventCallback;
 
 	void setContextMenuEventCallback(ContextMenuEventCallback callback) {
 		m_contextMenuEventCallback = callback;
@@ -489,7 +486,7 @@ ThumbnailSequence::Impl::Impl(
 	m_pSelectionLeader(0)
 {
 	m_graphicsScene.setContextMenuEventCallback(
-		boost::lambda::bind(&Impl::sceneContextMenuEvent, this, boost::lambda::_1)
+		[this](QGraphicsSceneContextMenuEvent* e) { this->sceneContextMenuEvent(e); }
 	);
 }
 
@@ -603,7 +600,7 @@ ThumbnailSequence::Impl::invalidateThumbnail(PageInfo const& page_info)
 {
 	ItemsById::iterator const id_it(m_itemsById.find(page_info.id()));
 	if (id_it != m_itemsById.end()) {
-		m_itemsById.modify(id_it, boost::lambda::bind(&Item::pageInfo, boost::lambda::_1) = page_info);
+		m_itemsById.modify(id_it, [&page_info](Item& item) { item.pageInfo = page_info; });
 		invalidateThumbnailImpl(id_it);
 	}
 }
@@ -722,12 +719,14 @@ ThumbnailSequence::Impl::invalidateAllThumbnails()
 
 	// Sort pages in m_itemsInOrder using m_ptrOrderProvider.
 	if (m_ptrOrderProvider.get()) {
+		PageOrderProvider const* order_provider = m_ptrOrderProvider.get();
 		m_itemsInOrder.sort(
-			boost::lambda::bind(
-				&PageOrderProvider::precedes, m_ptrOrderProvider.get(),
-				boost::lambda::bind(&Item::pageId, boost::lambda::_1), bind(&Item::incompleteThumbnail, boost::lambda::_1),
-				boost::lambda::bind(&Item::pageId, boost::lambda::_2), bind(&Item::incompleteThumbnail, boost::lambda::_2)
-			)
+			[order_provider](Item const& a, Item const& b) {
+				return order_provider->precedes(
+					a.pageId(), a.incompleteThumbnail,
+					b.pageId(), b.incompleteThumbnail
+				);
+			}
 		);
 	}
 	

@@ -33,10 +33,7 @@
 #include "OrderByHeightProvider.h"
 #include "OrderByDeviationProvider.h"
 #include "Utils.h"
-#ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#endif
+#include <functional>
 #include <QRectF>
 #include <QSizeF>
 #include <QString>
@@ -134,15 +131,11 @@ QDomElement
 Filter::saveSettings(
 	ProjectWriter const& writer, QDomDocument& doc) const
 {
-	
-	using namespace boost::lambda;
-	
 	QDomElement filter_el(doc.createElement("page-layout"));
 	writer.enumPages(
-		boost::lambda::bind(
-			&Filter::writePageSettings,
-			this, boost::ref(doc), var(filter_el), boost::lambda::_1, boost::lambda::_2
-		)
+		[this, &doc, &filter_el](PageId const& page_id, int numeric_id) {
+			writePageSettings(doc, filter_el, page_id, numeric_id);
+		}
 	);
 	
 	return filter_el;

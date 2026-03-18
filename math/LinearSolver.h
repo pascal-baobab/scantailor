@@ -25,7 +25,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
-#include <boost/scoped_array.hpp>
+#include <memory>
 #include <stddef.h>
 #include <assert.h>
 
@@ -217,8 +217,8 @@ template<typename T>
 void
 LinearSolver::solve(T const* A, T* X, T const* B) const
 {
-	boost::scoped_array<T> tbuffer(new T[m_colsArowsX * (m_rowsAB + m_colsBX)]);
-	boost::scoped_array<size_t> pbuffer(new size_t[m_rowsAB]);
+	std::unique_ptr<T[]> tbuffer(new T[m_colsArowsX * (m_rowsAB + m_colsBX)]);
+	std::unique_ptr<size_t[]> pbuffer(new size_t[m_rowsAB]);
 
 	solve(A, X, B, tbuffer.get(), pbuffer.get());
 }

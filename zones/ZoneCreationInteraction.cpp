@@ -30,18 +30,15 @@
 #include <Qt>
 #include <QLineF>
 #include <QDebug>
-#ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/bind.hpp>
-#endif
+#include <functional>
 
 ZoneCreationInteraction::ZoneCreationInteraction(
 	ZoneInteractionContext& context, InteractionState& interaction)
 :	m_rContext(context),
 	m_dragHandler(context.imageView(),
-		boost::bind(&ZoneCreationInteraction::isDragHandlerPermitted, this, _1)),
+		[this](InteractionState const& state) { return isDragHandlerPermitted(state); }),
 	m_dragWatcher(m_dragHandler),
-	m_zoomHandler(context.imageView(), boost::lambda::constant(true)),
+	m_zoomHandler(context.imageView(), [](InteractionState const&) { return true; }),
 	m_ptrSpline(new EditableSpline),
 	m_initialZoneCreationMode(context.getZoneCreationMode()),
 	m_leftMouseButtonPressed(m_initialZoneCreationMode == ZoneCreationMode::LASSO),

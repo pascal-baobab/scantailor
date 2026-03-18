@@ -21,25 +21,25 @@
 #include "ZoneCreationInteraction.h"
 #include "ZoneVertexDragInteraction.h"
 #include "ZoneContextMenuInteraction.h"
-#ifndef Q_MOC_RUN
-#include <boost/bind.hpp>
-#endif
+#include <functional>
 
 ZoneInteractionContext::ZoneInteractionContext(
 	ImageViewBase& image_view, EditableZoneSet& zones)
 :	m_rImageView(image_view),
 	m_rZones(zones),
 	m_defaultInteractionCreator(
-		boost::bind(&ZoneInteractionContext::createStdDefaultInteraction, this)
+		[this]() { return createStdDefaultInteraction(); }
 	),
 	m_zoneCreationInteractionCreator(
-		boost::bind(&ZoneInteractionContext::createStdZoneCreationInteraction, this, _1)
+		[this](InteractionState& interaction) { return createStdZoneCreationInteraction(interaction); }
 	),
 	m_vertexDragInteractionCreator(
-		boost::bind(&ZoneInteractionContext::createStdVertexDragInteraction, this, _1, _2, _3)
+		[this](InteractionState& interaction, EditableSpline::Ptr const& spline, SplineVertex::Ptr const& vertex) {
+			return createStdVertexDragInteraction(interaction, spline, vertex);
+		}
 	),
 	m_contextMenuInteractionCreator(
-		boost::bind(&ZoneInteractionContext::createStdContextMenuInteraction, this, _1)
+		[this](InteractionState& interaction) { return createStdContextMenuInteraction(interaction); }
 	),
 	m_showPropertiesCommand(&ZoneInteractionContext::showPropertiesStub),
 	m_zoneCreationMode(ZoneCreationMode::POLYGONAL)

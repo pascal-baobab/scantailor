@@ -42,10 +42,7 @@
 #include <QAction>
 #include <QContextMenuEvent>
 #include <Qt>
-#ifndef Q_MOC_RUN
-#include <boost/bind.hpp>
-#include <boost/lambda/lambda.hpp>
-#endif
+#include <functional>
 #include <algorithm>
 #include <cmath>
 #include <math.h>
@@ -96,74 +93,77 @@ ImageView::ImageView(
 	static int const masks_by_edge[] = { TOP, RIGHT, BOTTOM, LEFT };
 	static int const masks_by_corner[] = { TOP|LEFT, TOP|RIGHT, BOTTOM|RIGHT, BOTTOM|LEFT };
 	for (int i = 0; i < 4; ++i) {
+		int const corner_mask = masks_by_corner[i];
+		int const edge_mask = masks_by_edge[i];
+
 		// Proximity priority - inner rect higher than middle, corners higher than edges.
 		m_innerCorners[i].setProximityPriorityCallback(
-			boost::lambda::constant(4)
+			[]() { return 4; }
 		);
 		m_innerEdges[i].setProximityPriorityCallback(
-			boost::lambda::constant(3)
+			[]() { return 3; }
 		);
 		m_middleCorners[i].setProximityPriorityCallback(
-			boost::lambda::constant(2)
+			[]() { return 2; }
 		);
 		m_middleEdges[i].setProximityPriorityCallback(
-			boost::lambda::constant(1)
+			[]() { return 1; }
 		);
 
 		// Proximity.
 		m_innerCorners[i].setProximityCallback(
-			boost::bind(&ImageView::cornerProximity, this, masks_by_corner[i], &m_innerRect, _1)
+			[this, corner_mask](QPointF const& pos) { return cornerProximity(corner_mask, &m_innerRect, pos); }
 		);
 		m_middleCorners[i].setProximityCallback(
-			boost::bind(&ImageView::cornerProximity, this, masks_by_corner[i], &m_middleRect, _1)
+			[this, corner_mask](QPointF const& pos) { return cornerProximity(corner_mask, &m_middleRect, pos); }
 		);
 		m_innerEdges[i].setProximityCallback(
-			boost::bind(&ImageView::edgeProximity, this, masks_by_edge[i], &m_innerRect, _1)
+			[this, edge_mask](QPointF const& pos) { return edgeProximity(edge_mask, &m_innerRect, pos); }
 		);
 		m_middleEdges[i].setProximityCallback(
-			boost::bind(&ImageView::edgeProximity, this, masks_by_edge[i], &m_middleRect, _1)
+			[this, edge_mask](QPointF const& pos) { return edgeProximity(edge_mask, &m_middleRect, pos); }
 		);
 
 		// Drag initiation.
 		m_innerCorners[i].setDragInitiatedCallback(
-			boost::bind(&ImageView::dragInitiated, this, _1)
+			[this](QPointF const& pos) { dragInitiated(pos); }
 		);
 		m_middleCorners[i].setDragInitiatedCallback(
-			boost::bind(&ImageView::dragInitiated, this, _1)
+			[this](QPointF const& pos) { dragInitiated(pos); }
 		);
 		m_innerEdges[i].setDragInitiatedCallback(
-			boost::bind(&ImageView::dragInitiated, this, _1)
+			[this](QPointF const& pos) { dragInitiated(pos); }
 		);
 		m_middleEdges[i].setDragInitiatedCallback(
-			boost::bind(&ImageView::dragInitiated, this, _1)
+			[this](QPointF const& pos) { dragInitiated(pos); }
 		);
 
 		// Drag continuation.
 		m_innerCorners[i].setDragContinuationCallback(
-			boost::bind(&ImageView::innerRectDragContinuation, this, masks_by_corner[i], _1)
+			[this, corner_mask](QPointF const& pos) { innerRectDragContinuation(corner_mask, pos); }
 		);
 		m_middleCorners[i].setDragContinuationCallback(
-			boost::bind(&ImageView::middleRectDragContinuation, this, masks_by_corner[i], _1)
+			[this, corner_mask](QPointF const& pos) { middleRectDragContinuation(corner_mask, pos); }
 		);
 		m_innerEdges[i].setDragContinuationCallback(
-			boost::bind(&ImageView::innerRectDragContinuation, this, masks_by_edge[i], _1)
+			[this, edge_mask](QPointF const& pos) { innerRectDragContinuation(edge_mask, pos); }
 		);
 		m_middleEdges[i].setDragContinuationCallback(
-			boost::bind(&ImageView::middleRectDragContinuation, this, masks_by_edge[i], _1)
+			[this, edge_mask](QPointF const& pos) { middleRectDragContinuation(edge_mask, pos); }
 		);
 
 		// Drag finishing.
 		m_innerCorners[i].setDragFinishedCallback(
-			boost::bind(&ImageView::dragFinished, this)
+			[this](QPointF const&) { dragFinished(); }
 		);
 		m_middleCorners[i].setDragFinishedCallback(
-			boost::bind(&ImageView::dragFinished, this)
+			[this](QPointF const&) { dragFinished(); }
 		);
 		m_innerEdges[i].setDragFinishedCallback(
-			boost::bind(&ImageView::dragFinished, this)
+			[this](QPointF const&) { dragFinished(); }
 		);
 		m_middleEdges[i].setDragFinishedCallback(
-			boost::bind(&ImageView::dragFinished, this)
+			[this](QPointF const&) { dragFinished(); }
 		);
 
 		m_innerCornerHandlers[i].setObject(&m_innerCorners[i]);
@@ -928,13 +928,13 @@ ImageView::setupGuideInteraction(int const index)
 	DraggableLineSegment* draggable = new DraggableLineSegment();
 	draggable->setProximityPriority(1);
 	draggable->setPositionCallback(
-		boost::bind(&ImageView::guidePosition, this, index)
+		[this, index]() { return guidePosition(index); }
 	);
 	draggable->setMoveRequestCallback(
-		boost::bind(&ImageView::guideMoveRequest, this, index, _1)
+		[this, index](QLineF const& line) { guideMoveRequest(index, line); }
 	);
 	draggable->setDragFinishedCallback(
-		boost::bind(&ImageView::guideDragFinished, this, _1)
+		[this](QPointF const& pos) { guideDragFinished(pos); }
 	);
 	m_draggableGuides[index] = draggable;
 

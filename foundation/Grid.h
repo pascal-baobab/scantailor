@@ -19,7 +19,7 @@
 #ifndef GRID_H_
 #define GRID_H_
 
-#include <boost/scoped_array.hpp>
+#include <memory>
 
 template<typename Node>
 class Grid
@@ -96,7 +96,7 @@ private:
 		T tmp(o1); o1 = o2; o2 = tmp;
 	}
 
-	boost::scoped_array<Node> m_storage;
+	std::unique_ptr<Node[]> m_storage;
 	Node* m_pData;
 	int m_width;
 	int m_height;

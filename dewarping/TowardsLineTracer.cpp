@@ -24,8 +24,7 @@
 #include <QRect>
 #include <QtGlobal>
 #ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
+#include <algorithm>
 #endif
 #include <algorithm>
 #include <math.h>
@@ -178,11 +177,12 @@ TowardsLineTracer::setupSteps()
 	}
 
 	// Sort by decreasing alignment with m_normalTowardsLine.
-	using namespace boost::lambda;
 	std::sort(
 		m_steps, m_steps + m_numSteps,
-		bind(&Vec2d::dot, m_normalTowardsLine, bind<Vec2d const&>(&Step::unitVec, _1)) >
-		bind(&Vec2d::dot, m_normalTowardsLine, bind<Vec2d const&>(&Step::unitVec, _2))
+		[this](Step const& a, Step const& b) {
+			return m_normalTowardsLine.dot(a.unitVec) >
+			       m_normalTowardsLine.dot(b.unitVec);
+		}
 	);
 }
 

@@ -22,20 +22,18 @@
 #include "DraggableObject.h"
 #include <QPointF>
 #include <QLineF>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 
 class ObjectDragHandler;
 
 class DraggableLineSegment : public DraggableObject
 {
 public:
-	typedef boost::function<
+	typedef std::function<
 		QLineF ()
 	> PositionCallback;
 
-	typedef boost::function<
+	typedef std::function<
 		void (QLineF const& line)
 	> MoveRequestCallback;
 

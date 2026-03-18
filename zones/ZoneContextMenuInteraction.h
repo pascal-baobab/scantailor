@@ -30,9 +30,7 @@
 #include <QObject>
 #include <QColor>
 #include <QtGlobal>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#endif
+#include <functional>
 #include <map>
 #include <memory>
 #include <vector>
@@ -55,7 +53,7 @@ public:
 			ZoneContextMenuItem const& delete_item);
 	};
 
-	typedef boost::function<
+	typedef std::function<
 		std::vector<ZoneContextMenuItem>(
 			EditableZoneSet::Zone const&, StandardMenuItems const&
 		)

@@ -20,10 +20,7 @@
 #include "PageSelectionAccessor.h"
 #include "QtSignalForwarder.h"
 #include <QButtonGroup>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#include <boost/lambda/lambda.hpp>
-#endif
+#include <functional>
 
 namespace output
 {
@@ -38,8 +35,6 @@ ChangeDewarpingDialog::ChangeDewarpingDialog(
 	m_mode(mode),
 	m_pScopeGroup(new QButtonGroup(this))
 {
-	using namespace boost::lambda;
-
 	ui.setupUi(this);
 	m_pScopeGroup->addButton(ui.thisPageRB);
 	m_pScopeGroup->addButton(ui.allPagesRB);
@@ -62,9 +57,9 @@ ChangeDewarpingDialog::ChangeDewarpingDialog(
 	}
 
 	// No, we don't leak memory here.
-	new QtSignalForwarder(ui.offRB, SIGNAL(clicked(bool)), var(m_mode) = DewarpingMode::OFF);
-	new QtSignalForwarder(ui.autoRB, SIGNAL(clicked(bool)), var(m_mode) = DewarpingMode::AUTO);
-	new QtSignalForwarder(ui.manualRB, SIGNAL(clicked(bool)), var(m_mode) = DewarpingMode::MANUAL);
+	new QtSignalForwarder(ui.offRB, SIGNAL(clicked(bool)), [this]() { m_mode = DewarpingMode::OFF; });
+	new QtSignalForwarder(ui.autoRB, SIGNAL(clicked(bool)), [this]() { m_mode = DewarpingMode::AUTO; });
+	new QtSignalForwarder(ui.manualRB, SIGNAL(clicked(bool)), [this]() { m_mode = DewarpingMode::MANUAL; });
 	
 	connect(ui.buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
 }

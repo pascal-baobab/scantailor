@@ -24,9 +24,7 @@
 
 #include "ValueConv.h"
 #include <QSize>
-#ifndef Q_MOC_RUN
-#include <boost/scoped_array.hpp>
-#endif
+#include <memory>
 #include <iterator>
 #include <string.h>
 
@@ -75,16 +73,14 @@ GrayImage gaussBlur(GrayImage const& src, float h_sigma, float v_sigma);
  * float const val = ...;
  * writer(output[x], val);
  * \endcode
- * Consider using boost::lambda, possible in conjunction with one of the functors
+ * Consider using a C++ lambda, possibly in conjunction with one of the functors
  * from ValueConv.h:
  * \code
- * using namespace boost::lambda;
- *
  * // Just copying.
- * gaussBlurGeneric(..., _1 = _2);
+ * gaussBlurGeneric(..., [](float& dst, float val) { dst = val; });
  *
  * // Convert to uint8_t, with rounding and clipping.
- * gaussBlurGeneric(..., _1 = bind<uint8_t>(RoundAndClipValueConv<uint8_t>(), _2);
+ * gaussBlurGeneric(..., [](uint8_t& dst, float val) { dst = RoundAndClipValueConv<uint8_t>()(val); });
  * \endcode
  */
 template<typename SrcIt, typename DstIt, typename FloatReader, typename FloatWriter>
@@ -132,9 +128,9 @@ void gaussBlurGeneric(QSize const size, float const h_sigma, float const v_sigma
 	int const height = size.height();
 	int const width_height_max = width > height ? width : height;
 
-	boost::scoped_array<float> val_p(new float[width_height_max]);
-	boost::scoped_array<float> val_m(new float[width_height_max]);
-	boost::scoped_array<float> intermediate_image(new float[width * height]);
+	std::unique_ptr<float[]> val_p(new float[width_height_max]);
+	std::unique_ptr<float[]> val_m(new float[width_height_max]);
+	std::unique_ptr<float[]> intermediate_image(new float[width * height]);
 	int const intermediate_stride = width;
 
 	// IIR parameters.

@@ -47,10 +47,6 @@
 #include "imageproc/Grayscale.h"
 #include "imageproc/GrayRasterOp.h"
 #include "imageproc/PolygonRasterizer.h"
-#ifndef Q_MOC_RUN
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
-#endif
 #include <QRect>
 #include <QRectF>
 #include <QSize>
@@ -491,11 +487,9 @@ PageLayoutEstimator::cutAtWhitespaceDeskewed150(
 	bool const left_offcut, bool const right_offcut,
 	DebugImages* dbg)
 {
-	using namespace boost::lambda;
-	
 	int const width = input.width();
 	int const height = input.height();
-	
+
 	BinaryImage cc_img(input.size(), WHITE);
 
 	{
@@ -511,19 +505,18 @@ PageLayoutEstimator::cutAtWhitespaceDeskewed150(
 			cc_img.fill(cc.rect(), BLACK);
 		}
 	}
-	
+
 	if (dbg) {
 		dbg->add(cc_img, "cc_img");
 	}
-	
+
 	ContentSpanFinder span_finder;
 	span_finder.setMinContentWidth(2);
 	span_finder.setMinWhitespaceWidth(8);
-	
+
 	std::deque<Span> spans;
 	SlicedHistogram hist(cc_img, SlicedHistogram::COLS);
-	void (std::deque<Span>::*push_back) (const Span&) = &std::deque<Span>::push_back;
-	span_finder.find(hist, boost::lambda::bind(push_back, var(spans), _1));
+	span_finder.find(hist, [&spans](Span const& s) { spans.push_back(s); });
 	
 	if (dbg) {
 		visualizeSpans(*dbg, spans, input, "spans");

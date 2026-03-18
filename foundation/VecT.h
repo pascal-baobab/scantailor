@@ -19,7 +19,7 @@
 #ifndef VEC_T_H_
 #define VEC_T_H_
 
-#include <boost/scoped_array.hpp>
+#include <memory>
 #include <stddef.h>
 #include <assert.h>
 
@@ -107,7 +107,7 @@ public:
 
 	void swap(VecT& other);
 private:
-	boost::scoped_array<T> m_data;
+	std::unique_ptr<T[]> m_data;
 	size_t m_size;
 };
 

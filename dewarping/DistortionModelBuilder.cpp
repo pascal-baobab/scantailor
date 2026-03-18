@@ -43,6 +43,7 @@
 #include <exception>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <math.h>
 #include <assert.h>
 
@@ -511,11 +512,11 @@ try {
 		DynamicMatrixCalc<double> mc;
 		
 		// A = Att
-		boost::scoped_array<double> A(new double[polyline_size * 2]);
+		std::unique_ptr<double[]> A(new double[polyline_size * 2]);
 		mc(&At[0], 2, polyline_size).transWrite(&A[0]);
 
 		try {
-			boost::scoped_array<double> errvec(new double[polyline_size]);
+			std::unique_ptr<double[]> errvec(new double[polyline_size]);
 			double ab[2]; // As in "y = ax + b".
 
 			// errvec = B - A * (At*A)-1 * At * B

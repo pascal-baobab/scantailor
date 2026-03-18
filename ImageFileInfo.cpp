@@ -17,18 +17,15 @@
 */
 
 #include "ImageFileInfo.h"
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
+#include <functional>
 #include <algorithm>
 
 bool
 ImageFileInfo::isDpiOK() const
 {
-	using namespace boost::lambda;
-	
 	return std::find_if(
 		m_imageInfo.begin(), m_imageInfo.end(),
-		!bind(&ImageMetadata::isDpiOK, _1)
+		[](ImageMetadata const& m) { return !m.isDpiOK(); }
 	) == m_imageInfo.end();
 }
 

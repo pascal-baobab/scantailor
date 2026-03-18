@@ -26,19 +26,17 @@
 #include "VecNT.h"
 #include <QPointF>
 #include <QCoreApplication>
-#ifndef Q_MOC_RUN
-#include <boost/function.hpp>
-#include <boost/scoped_array.hpp>
-#endif
+#include <functional>
+#include <memory>
 #include <stddef.h>
 
 class InteractiveXSpline : public InteractionHandler
 {
 	Q_DECLARE_TR_FUNCTIONS(InteractiveXSpline)
 public:
-	typedef boost::function<QPointF (QPointF const&)> Transform;
-	typedef boost::function<void()> ModifiedCallback;
-	typedef boost::function<void()> DragFinishedCallback;
+	typedef std::function<QPointF (QPointF const&)> Transform;
+	typedef std::function<void()> ModifiedCallback;
+	typedef std::function<void()> DragFinishedCallback;
 
 	InteractiveXSpline();
 
@@ -102,7 +100,7 @@ private:
 	Transform m_fromStorage;
 	Transform m_toStorage;
 	XSpline m_spline;
-	boost::scoped_array<ControlPoint> m_controlPoints;
+	std::unique_ptr<ControlPoint[]> m_controlPoints;
 	InteractionState::Captor m_curveProximity;
 	QPointF m_curveProximityPointStorage;
 	QPointF m_curveProximityPointScreen;

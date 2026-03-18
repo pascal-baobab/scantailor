@@ -64,10 +64,7 @@
 #include "imageproc/ColorSegmenter.h"
 #include "imageproc/Posterizer.h"
 #include "config.h"
-#ifndef Q_MOC_RUN
-#include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>
-#endif
+#include <functional>
 #include <QImage>
 #include <QSize>
 #include <QPoint>
@@ -1153,14 +1150,14 @@ OutputGenerator::processWithDewarping(
 		}
 	}
 
-	boost::shared_ptr<DewarpingPointMapper> mapper(
+	std::shared_ptr<DewarpingPointMapper> mapper(
 		new DewarpingPointMapper(
 			distortion_model, depth_perception.value(),
 			m_xform.transform(), m_contentRect
 		)
 	);
-	boost::function<QPointF(QPointF const&)> const orig_to_output(
-		boost::bind(&DewarpingPointMapper::mapToDewarpedSpace, mapper, _1)
+	std::function<QPointF(QPointF const&)> const orig_to_output(
+		[mapper](QPointF const& pt) { return mapper->mapToDewarpedSpace(pt); }
 	);
 
 	if (render_params.binaryOutput()) {	
@@ -1908,7 +1905,7 @@ OutputGenerator::calcDominantBackgroundGrayLevel(QImage const& img)
 void
 OutputGenerator::applyFillZonesInPlace(
 	QImage& img, ZoneSet const& zones,
-	boost::function<QPointF(QPointF const&)> const& orig_to_output) const
+	std::function<QPointF(QPointF const&)> const& orig_to_output) const
 {
 	if (zones.empty()) {
 		return;
@@ -1943,16 +1940,16 @@ OutputGenerator::applyFillZonesInPlace(
 void
 OutputGenerator::applyFillZonesInPlace(QImage& img, ZoneSet const& zones) const
 {
-	typedef QPointF (QTransform::*MapPointFunc)(QPointF const&) const;
+	QTransform const xform = m_xform.transform();
 	applyFillZonesInPlace(
-		img, zones, boost::bind((MapPointFunc)&QTransform::map, m_xform.transform(), _1)
+		img, zones, [xform](QPointF const& pt) { return xform.map(pt); }
 	);
 }
 
 void
 OutputGenerator::applyFillZonesInPlace(
 	imageproc::BinaryImage& img, ZoneSet const& zones,
-	boost::function<QPointF(QPointF const&)> const& orig_to_output) const
+	std::function<QPointF(QPointF const&)> const& orig_to_output) const
 {
 	if (zones.empty()) {
 		return;
@@ -1974,9 +1971,9 @@ void
 OutputGenerator::applyFillZonesInPlace(
 	imageproc::BinaryImage& img, ZoneSet const& zones) const
 {
-	typedef QPointF (QTransform::*MapPointFunc)(QPointF const&) const;
+	QTransform const xform = m_xform.transform();
 	applyFillZonesInPlace(
-		img, zones, boost::bind((MapPointFunc)&QTransform::map, m_xform.transform(), _1)
+		img, zones, [xform](QPointF const& pt) { return xform.map(pt); }
 	);
 }
 

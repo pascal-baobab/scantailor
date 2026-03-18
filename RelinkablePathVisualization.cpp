@@ -32,9 +32,7 @@
 #include <QStyleOptionButton>
 #include <QFile>
 #include <QVariant>
-#ifndef Q_MOC_RUN
-#include <boost/bind.hpp>
-#endif
+#include <functional>
 #include <vector>
 
 struct RelinkablePathVisualization::PathComponent
@@ -141,11 +139,11 @@ RelinkablePathVisualization::setPath(RelinkablePath const& path, bool clickable)
 		stylePathComponentButton(btn, path_component.exists);
 		
 		new QtSignalForwarder(
-			btn, SIGNAL(clicked()), boost::bind(
-				&RelinkablePathVisualization::onClicked, this,
-				component_idx, path_component.prefixPath,
-				path_component.suffixPath, path_component.type
-			)
+			btn, SIGNAL(clicked()),
+			[this, component_idx, path_component]() {
+				onClicked(component_idx, path_component.prefixPath,
+					path_component.suffixPath, path_component.type);
+			}
 		);
 	}
 

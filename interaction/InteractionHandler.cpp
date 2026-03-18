@@ -24,11 +24,6 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QContextMenuEvent>
-#ifndef Q_MOC_RUn
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/construct.hpp>
-#include <boost/lambda/bind.hpp>
-#endif
 #include <assert.h>
 
 #define DISPATCH(list, call) {                    \
@@ -84,9 +79,8 @@ InteractionHandler::InteractionHandler()
 
 InteractionHandler::~InteractionHandler()
 {
-	using namespace boost::lambda;
-	m_ptrPreceeders->clear_and_dispose(bind(delete_ptr(), _1));
-	m_ptrFollowers->clear_and_dispose(bind(delete_ptr(), _1));
+	m_ptrPreceeders->clear_and_dispose([](InteractionHandler* p) { delete p; });
+	m_ptrFollowers->clear_and_dispose([](InteractionHandler* p) { delete p; });
 }
 
 void
