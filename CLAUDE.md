@@ -40,7 +40,7 @@ Three workflows in `.github/workflows/`:
 GitHub repo: `https://github.com/pascal-baobab/scantailor`
 
 ### Known CI constraints
-- **macOS**: Must use `-DCMAKE_CXX_STANDARD=14` — Xcode 16+ defaults to C++17 which removes `std::auto_ptr` (used extensively in this codebase).
+- **macOS**: Uses `-DCMAKE_CXX_STANDARD=17` — `std::auto_ptr` fully removed.
 - **Linux**: Must use `-DCMAKE_POSITION_INDEPENDENT_CODE=ON` — Ubuntu Qt5 is built with `-reduce-relocations`.
 - **Windows**: DLL collection uses iterative `objdump` loop (not `windeployqt` which is unreliable on MSYS2). Must iterate until convergence — 2 passes are NOT enough (need 4-5).
 - **All platforms**: `concurrency: cancel-in-progress: true` to avoid stale CI runs.
@@ -68,14 +68,13 @@ translations/          # Qt Linguist .ts files
 Each filter has: `Filter.cpp/h`, `Task.cpp/h`, `CacheDrivenTask.cpp/h`, `Settings.cpp/h`, `OptionsWidget.cpp/h`, `Params.cpp/h`.
 
 ## Code conventions
-- **C++ standard**: C++14 (NOT C++17 — `std::auto_ptr` used throughout)
+- **C++ standard**: C++17 (`std::auto_ptr` fully removed, `std::unique_ptr` used throughout)
 - **Qt**: Qt5 with AUTOMOC, manual AUTOUIC (OFF)
-- **Pointers**: `std::auto_ptr` for ownership (legacy), `IntrusivePtr` for ref-counted objects
+- **Pointers**: `std::unique_ptr` for ownership, `IntrusivePtr` for ref-counted objects
 - **Naming**: CamelCase for classes, camelCase for methods, `m_` prefix for members, `m_ptr` prefix for smart pointer members
 - **Build system**: CMake with Ninja generator
 
 ## Important notes
-- Do NOT replace `std::auto_ptr` with `std::unique_ptr` without a dedicated migration effort — there are 150+ usages with subtle ownership-transfer semantics.
 - `QLineF::intersect()` is deprecated in Qt 5.14+ (use `intersects()`), but still compiles with warnings. Not worth bulk-fixing unless doing a Qt6 migration.
 - The `Q_WS_MAC` macro was replaced with `Q_OS_MAC` for Qt5 compatibility.
 - X11/XRender dependencies are Linux-only (guarded by `IF(UNIX AND NOT APPLE)`).

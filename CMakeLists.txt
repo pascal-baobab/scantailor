@@ -16,8 +16,8 @@ SET(
 
 PROJECT("Scan Tailor")
 
-# C++14 required (C++17 removes std::auto_ptr which is used extensively)
-SET(CMAKE_CXX_STANDARD 14)
+# C++17 (std::auto_ptr fully removed in Phase 4.3)
+SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_EXTENSIONS OFF)
 
