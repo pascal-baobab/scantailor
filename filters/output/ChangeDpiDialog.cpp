@@ -83,14 +83,14 @@ ChangeDpiDialog::ChangeDpiDialog(
 	}
 	
 	connect(
-		dpiSelector, SIGNAL(activated(int)),
-		this, SLOT(dpiSelectionChanged(int))
+		dpiSelector, qOverload<int>(&QComboBox::activated),
+		this, &ChangeDpiDialog::dpiSelectionChanged
 	);
 	connect(
-		dpiSelector, SIGNAL(editTextChanged(QString const&)),
-		this, SLOT(dpiEditTextChanged(QString const&))
+		dpiSelector, &QComboBox::editTextChanged,
+		this, &ChangeDpiDialog::dpiEditTextChanged
 	);
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &ChangeDpiDialog::onSubmit);
 }
 
 ChangeDpiDialog::~ChangeDpiDialog()

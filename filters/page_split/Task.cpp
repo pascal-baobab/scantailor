@@ -253,16 +253,16 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	ui->setImageWidget(view, ui->TRANSFER_OWNERSHIP, m_ptrDbg.get());
 	
 	QObject::connect(
-		view, SIGNAL(invalidateThumbnail(PageInfo const&)),
-		opt_widget, SIGNAL(invalidateThumbnail(PageInfo const&))
+		view, &ImageView::invalidateThumbnail,
+		opt_widget, qOverload<PageInfo const&>(&OptionsWidget::invalidateThumbnail)
 	);
 	QObject::connect(
-		view, SIGNAL(pageLayoutSetLocally(PageLayout const&)),
-		opt_widget, SLOT(pageLayoutSetExternally(PageLayout const&))
+		view, &ImageView::pageLayoutSetLocally,
+		opt_widget, &OptionsWidget::pageLayoutSetExternally
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(pageLayoutSetLocally(PageLayout const&)),
-		view, SLOT(pageLayoutSetExternally(PageLayout const&))
+		opt_widget, &OptionsWidget::pageLayoutSetLocally,
+		view, &ImageView::pageLayoutSetExternally
 	);
 }
 

@@ -37,10 +37,10 @@ OptionsWidget::OptionsWidget(
 {
 	setupUi(this);
 	
-	connect(rotateLeftBtn, SIGNAL(clicked()), this, SLOT(rotateLeft()));
-	connect(rotateRightBtn, SIGNAL(clicked()), this, SLOT(rotateRight()));
-	connect(resetBtn, SIGNAL(clicked()), this, SLOT(resetRotation()));
-	connect(applyToBtn, SIGNAL(clicked()), this, SLOT(showApplyToDialog()));
+	connect(rotateLeftBtn, &QAbstractButton::clicked, this, &OptionsWidget::rotateLeft);
+	connect(rotateRightBtn, &QAbstractButton::clicked, this, &OptionsWidget::rotateRight);
+	connect(resetBtn, &QAbstractButton::clicked, this, &OptionsWidget::resetRotation);
+	connect(applyToBtn, &QAbstractButton::clicked, this, &OptionsWidget::showApplyToDialog);
 }
 
 OptionsWidget::~OptionsWidget()
@@ -92,12 +92,12 @@ OptionsWidget::showApplyToDialog()
 	);
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	connect(
-		dialog, SIGNAL(appliedTo(std::set<PageId> const&)),
-		this, SLOT(appliedTo(std::set<PageId> const&))
+		dialog, &ApplyDialog::appliedTo,
+		this, &OptionsWidget::appliedTo
 	);
 	connect(
-		dialog, SIGNAL(appliedToAllPages(std::set<PageId> const&)),
-		this, SLOT(appliedToAllPages(std::set<PageId> const&))
+		dialog, &ApplyDialog::appliedToAllPages,
+		this, &OptionsWidget::appliedToAllPages
 	);
 	dialog->show();
 }

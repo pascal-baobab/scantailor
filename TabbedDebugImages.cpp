@@ -22,7 +22,7 @@ TabbedDebugImages::TabbedDebugImages(QWidget* parent)
 :	QTabWidget(parent)
 {
 	setDocumentMode(true);
-	connect(this, SIGNAL(currentChanged(int)), SLOT(currentTabChanged(int)));
+	connect(this, &QTabWidget::currentChanged, this, &TabbedDebugImages::currentTabChanged);
 }
 
 void

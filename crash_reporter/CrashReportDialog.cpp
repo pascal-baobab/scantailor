@@ -89,7 +89,7 @@ CrashReportDialog::CrashReportDialog(
 	ui.additionalInfo->installEventFilter(this);
 	ui.email->installEventFilter(this);
 
-	connect(ui.buttonBox, SIGNAL(accepted()), SLOT(onSubmit()));
+	connect(ui.buttonBox, &QDialogButtonBox::accepted, this, &CrashReportDialog::onSubmit);
 }
 
 CrashReportDialog::~CrashReportDialog()
@@ -111,8 +111,8 @@ CrashReportDialog::onSubmit()
 	
 	m_pDispatcher->get(QNetworkRequest(url));
 	connect(
-		m_pDispatcher, SIGNAL(finished(QNetworkReply*)),
-		SLOT(dispatchDone(QNetworkReply*))
+		m_pDispatcher, &QNetworkAccessManager::finished,
+		this, &CrashReportDialog::dispatchDone
 	);
 }
 
@@ -192,8 +192,8 @@ CrashReportDialog::dispatchDone(QNetworkReply* reply)
 
 	m_pSubmitter->post(request, form_data.finalize());
 	connect(
-		m_pSubmitter, SIGNAL(finished(QNetworkReply*)),
-		SLOT(submissionDone(QNetworkReply*))
+		m_pSubmitter, &QNetworkAccessManager::finished,
+		this, &CrashReportDialog::submissionDone
 	);
 
 	ui.infoGroup->setEnabled(false);

@@ -44,9 +44,9 @@ PictureZonePropDialog::PictureZonePropDialog(
 			break;
 	}
 
-	connect(ui.eraser1, SIGNAL(toggled(bool)), SLOT(itemToggled(bool)));
-	connect(ui.painter2, SIGNAL(toggled(bool)), SLOT(itemToggled(bool)));
-	connect(ui.eraser3, SIGNAL(toggled(bool)), SLOT(itemToggled(bool)));
+	connect(ui.eraser1, &QAbstractButton::toggled, this, &PictureZonePropDialog::itemToggled);
+	connect(ui.painter2, &QAbstractButton::toggled, this, &PictureZonePropDialog::itemToggled);
+	connect(ui.eraser3, &QAbstractButton::toggled, this, &PictureZonePropDialog::itemToggled);
 }
 
 void

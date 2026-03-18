@@ -96,7 +96,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 		if (idx >= 0) ui.colorSchemeBox->setCurrentIndex(idx);
 	}
 
-	connect(ui.buttonBox, SIGNAL(accepted()), SLOT(commitChanges()));
+	connect(ui.buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::commitChanges);
 }
 
 SettingsDialog::~SettingsDialog()

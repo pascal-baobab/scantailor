@@ -226,20 +226,20 @@ ProjectFilesDialog::ProjectFilesDialog(QWidget* parent)
 	offProjectList->setModel(m_ptrOffProjectFilesSorted->model());
 	inProjectList->setModel(m_ptrInProjectFilesSorted->model());
 	
-	connect(inpDirBrowseBtn, SIGNAL(clicked()), this, SLOT(inpDirBrowse()));
-	connect(importPdfBtn, SIGNAL(clicked()), this, SLOT(importPdfBrowse()));
-	connect(outDirBrowseBtn, SIGNAL(clicked()), this, SLOT(outDirBrowse()));
+	connect(inpDirBrowseBtn, &QPushButton::clicked, this, &ProjectFilesDialog::inpDirBrowse);
+	connect(importPdfBtn, &QPushButton::clicked, this, &ProjectFilesDialog::importPdfBrowse);
+	connect(outDirBrowseBtn, &QPushButton::clicked, this, &ProjectFilesDialog::outDirBrowse);
 	connect(
-		inpDirLine, SIGNAL(textEdited(QString const&)),
-		this, SLOT(inpDirEdited(QString const&))
+		inpDirLine, &QLineEdit::textEdited,
+		this, &ProjectFilesDialog::inpDirEdited
 	);
 	connect(
-		outDirLine, SIGNAL(textEdited(QString const&)),
-		this, SLOT(outDirEdited(QString const&))
+		outDirLine, &QLineEdit::textEdited,
+		this, &ProjectFilesDialog::outDirEdited
 	);
-	connect(addToProjectBtn, SIGNAL(clicked()), this, SLOT(addToProject()));
-	connect(removeFromProjectBtn, SIGNAL(clicked()), this, SLOT(removeFromProject()));
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(onOK()));
+	connect(addToProjectBtn, &QPushButton::clicked, this, &ProjectFilesDialog::addToProject);
+	connect(removeFromProjectBtn, &QPushButton::clicked, this, &ProjectFilesDialog::removeFromProject);
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &ProjectFilesDialog::onOK);
 }
 
 ProjectFilesDialog::~ProjectFilesDialog()

@@ -119,12 +119,12 @@ DefaultParamsDialog::DefaultParamsDialog(QWidget* parent)
 	);
 	mainLayout->addWidget(buttonBox);
 
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(commitChanges()));
-	connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &DefaultParamsDialog::commitChanges);
+	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-	connect(m_profileCB, SIGNAL(currentIndexChanged(int)), this, SLOT(profileChanged(int)));
-	connect(saveBtn, SIGNAL(clicked()), this, SLOT(profileSavePressed()));
-	connect(deleteBtn, SIGNAL(clicked()), this, SLOT(profileDeletePressed()));
+	connect(m_profileCB, qOverload<int>(&QComboBox::currentIndexChanged), this, &DefaultParamsDialog::profileChanged);
+	connect(saveBtn, &QPushButton::clicked, this, &DefaultParamsDialog::profileSavePressed);
+	connect(deleteBtn, &QPushButton::clicked, this, &DefaultParamsDialog::profileDeletePressed);
 
 	// Populate profile list
 	m_profileCB->blockSignals(true);

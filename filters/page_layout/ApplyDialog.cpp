@@ -50,7 +50,7 @@ ApplyDialog::ApplyDialog(QWidget* parent, PageId const& cur_page,
 		everyOtherSelectedHint->setText(tr("Can't do: more than one group is selected."));
 	}
 	
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &ApplyDialog::onSubmit);
 }
 
 ApplyDialog::~ApplyDialog()

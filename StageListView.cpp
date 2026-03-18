@@ -129,13 +129,13 @@ StageListView::StageListView(QWidget* parent)
 	m_pLaunchBtn->hide();
 	
 	connect(
-		m_pLaunchBtn, SIGNAL(clicked()),
-		this, SIGNAL(launchBatchProcessing())
+		static_cast<SkinnedButton*>(m_pLaunchBtn), &SkinnedButton::clicked,
+		this, &StageListView::launchBatchProcessing
 	);
 	
 	connect(
-		verticalScrollBar(), SIGNAL(rangeChanged(int, int)),
-		this, SLOT(ensureSelectedRowVisible()), Qt::QueuedConnection
+		verticalScrollBar(), &QScrollBar::rangeChanged,
+		this, &StageListView::ensureSelectedRowVisible, Qt::QueuedConnection
 	);
 }
 

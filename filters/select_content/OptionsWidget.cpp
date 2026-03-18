@@ -33,8 +33,8 @@ OptionsWidget::OptionsWidget(
 {
 	setupUi(this);
 	
-	connect(autoBtn, SIGNAL(toggled(bool)), this, SLOT(modeChanged(bool)));
-	connect(applyToBtn, SIGNAL(clicked()), this, SLOT(showApplyToDialog()));
+	connect(autoBtn, &QAbstractButton::toggled, this, &OptionsWidget::modeChanged);
+	connect(applyToBtn, &QAbstractButton::clicked, this, &OptionsWidget::showApplyToDialog);
 }
 
 OptionsWidget::~OptionsWidget()
@@ -130,8 +130,8 @@ OptionsWidget::showApplyToDialog()
 	);
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	connect(
-		dialog, SIGNAL(applySelection(std::set<PageId> const&)),
-		this, SLOT(applySelection(std::set<PageId> const&))
+		dialog, &ApplyDialog::applySelection,
+		this, &OptionsWidget::applySelection
 	);
 	dialog->show();
 }

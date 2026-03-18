@@ -42,13 +42,13 @@ OptionsWidget::OptionsWidget(IntrusivePtr<Settings> const& settings,
 	setSpinBoxUnknownState();
 	
 	connect(
-		angleSpinBox, SIGNAL(valueChanged(double)),
-		this, SLOT(spinBoxValueChanged(double))
+		angleSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		this, &OptionsWidget::spinBoxValueChanged
 	);
-	connect(autoBtn, SIGNAL(toggled(bool)), this, SLOT(modeChanged(bool)));
+	connect(autoBtn, &QAbstractButton::toggled, this, &OptionsWidget::modeChanged);
 	connect(
-		applyDeskewBtn, SIGNAL(clicked()),
-		this, SLOT(showDeskewDialog())
+		applyDeskewBtn, &QAbstractButton::clicked,
+		this, &OptionsWidget::showDeskewDialog
 	);
 }
 
@@ -65,12 +65,12 @@ OptionsWidget::showDeskewDialog()
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	dialog->setWindowTitle(tr("Apply Deskew"));
 	connect(
-		dialog, SIGNAL(appliedTo(std::set<PageId> const&)),
-		this, SLOT(appliedTo(std::set<PageId> const&))
+		dialog, &ApplyDialog::appliedTo,
+		this, &OptionsWidget::appliedTo
 	);
 	connect(
-		dialog, SIGNAL(appliedToAllPages(std::set<PageId> const&)),
-		this, SLOT(appliedToAllPages(std::set<PageId> const&))
+		dialog, &ApplyDialog::appliedToAllPages,
+		this, &OptionsWidget::appliedToAllPages
 	);
 	dialog->show();
 }

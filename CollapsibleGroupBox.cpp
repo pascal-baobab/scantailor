@@ -60,9 +60,9 @@ CollapsibleGroupBox::initialize()
 	setFocusPolicy(Qt::StrongFocus);
 	setAlignment(Qt::AlignCenter);
 
-	connect(m_collapseButton, SIGNAL(clicked()), this, SLOT(toggleCollapsed()));
-	connect(this, SIGNAL(toggled(bool)), this, SLOT(checkToggled(bool)));
-	connect(this, SIGNAL(clicked(bool)), this, SLOT(checkClicked(bool)));
+	connect(m_collapseButton, &QToolButton::clicked, this, &CollapsibleGroupBox::toggleCollapsed);
+	connect(this, &QGroupBox::toggled, this, &CollapsibleGroupBox::checkToggled);
+	connect(this, &QGroupBox::clicked, this, &CollapsibleGroupBox::checkClicked);
 }
 
 void

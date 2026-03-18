@@ -18,9 +18,8 @@
 
 #include "ChangeDewarpingDialog.h"
 #include "PageSelectionAccessor.h"
-#include "QtSignalForwarder.h"
 #include <QButtonGroup>
-#include <functional>
+#include <QRadioButton>
 
 namespace output
 {
@@ -56,12 +55,11 @@ ChangeDewarpingDialog::ChangeDewarpingDialog(
 			break;
 	}
 
-	// No, we don't leak memory here.
-	new QtSignalForwarder(ui.offRB, SIGNAL(clicked(bool)), [this]() { m_mode = DewarpingMode::OFF; });
-	new QtSignalForwarder(ui.autoRB, SIGNAL(clicked(bool)), [this]() { m_mode = DewarpingMode::AUTO; });
-	new QtSignalForwarder(ui.manualRB, SIGNAL(clicked(bool)), [this]() { m_mode = DewarpingMode::MANUAL; });
+	connect(ui.offRB, &QRadioButton::clicked, this, [this]() { m_mode = DewarpingMode::OFF; });
+	connect(ui.autoRB, &QRadioButton::clicked, this, [this]() { m_mode = DewarpingMode::AUTO; });
+	connect(ui.manualRB, &QRadioButton::clicked, this, [this]() { m_mode = DewarpingMode::MANUAL; });
 	
-	connect(ui.buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
+	connect(ui.buttonBox, &QDialogButtonBox::accepted, this, &ChangeDewarpingDialog::onSubmit);
 }
 
 ChangeDewarpingDialog::~ChangeDewarpingDialog()

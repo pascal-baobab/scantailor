@@ -55,9 +55,9 @@ SplitModeDialog::SplitModeDialog(
 		modeManual->setChecked(true);
 	}
 	
-	connect(modeAuto, SIGNAL(pressed()), this, SLOT(autoDetectionSelected()));
-	connect(modeManual, SIGNAL(pressed()), this, SLOT(manualModeSelected()));
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
+	connect(modeAuto, &QAbstractButton::pressed, this, &SplitModeDialog::autoDetectionSelected);
+	connect(modeManual, &QAbstractButton::pressed, this, &SplitModeDialog::manualModeSelected);
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &SplitModeDialog::onSubmit);
 }
 
 SplitModeDialog::~SplitModeDialog()

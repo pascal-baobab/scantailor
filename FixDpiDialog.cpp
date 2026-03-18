@@ -248,36 +248,40 @@ FixDpiDialog::FixDpiDialog(std::vector<ImageFileInfo> const& files, QWidget* par
 	yDpi->setValidator(new QIntValidator(yDpi));
 	
 	connect(
-		tabWidget, SIGNAL(currentChanged(int)),
-		this, SLOT(tabChanged(int))
+		tabWidget, &QTabWidget::currentChanged,
+		this, &FixDpiDialog::tabChanged
 	);
-	
+
 	connect(
 		undefinedDpiView->selectionModel(),
-		SIGNAL(selectionChanged(QItemSelection const&, QItemSelection const&)),
-		this, SLOT(selectionChanged(QItemSelection const&))
+		&QItemSelectionModel::selectionChanged,
+		this, [this](QItemSelection const& selected, QItemSelection const&) {
+			selectionChanged(selected);
+		}
 	);
 	connect(
 		allPagesView->selectionModel(),
-		SIGNAL(selectionChanged(QItemSelection const&, QItemSelection const&)),
-		this, SLOT(selectionChanged(QItemSelection const&))
+		&QItemSelectionModel::selectionChanged,
+		this, [this](QItemSelection const& selected, QItemSelection const&) {
+			selectionChanged(selected);
+		}
 	);
-	
+
 	connect(
-		dpiCombo, SIGNAL(activated(int)),
-		this, SLOT(dpiComboChangedByUser(int))
+		dpiCombo, qOverload<int>(&QComboBox::activated),
+		this, &FixDpiDialog::dpiComboChangedByUser
 	);
-	
+
 	connect(
-		xDpi, SIGNAL(textEdited(QString const&)),
-		this, SLOT(dpiValueChanged())
+		xDpi, &QLineEdit::textEdited,
+		this, &FixDpiDialog::dpiValueChanged
 	);
 	connect(
-		yDpi, SIGNAL(textEdited(QString const&)),
-		this, SLOT(dpiValueChanged())
+		yDpi, &QLineEdit::textEdited,
+		this, &FixDpiDialog::dpiValueChanged
 	);
-	
-	connect(applyBtn, SIGNAL(clicked()), this, SLOT(applyClicked()));
+
+	connect(applyBtn, &QPushButton::clicked, this, &FixDpiDialog::applyClicked);
 	
 	enableDisableOkButton();
 }

@@ -151,8 +151,8 @@ ImageView::ImageView(
 
 	QAction* create = m_pNoContentMenu->addAction(tr("Create Content Box"));
 	QAction* remove = m_pHaveContentMenu->addAction(tr("Remove Content Box"));
-	connect(create, SIGNAL(triggered(bool)), this, SLOT(createContentBox()));
-	connect(remove, SIGNAL(triggered(bool)), this, SLOT(removeContentBox()));
+	connect(create, &QAction::triggered, this, &ImageView::createContentBox);
+	connect(remove, &QAction::triggered, this, &ImageView::removeContentBox);
 
 	m_pNoContentMenu->addSeparator();
 	m_pHaveContentMenu->addSeparator();
@@ -160,9 +160,9 @@ ImageView::ImageView(
 	QAction* create_page = m_pNoContentMenu->addAction(tr("Create Page Box"));
 	QAction* create_page2 = m_pHaveContentMenu->addAction(tr("Create Page Box"));
 	QAction* remove_page = m_pHaveContentMenu->addAction(tr("Remove Page Box"));
-	connect(create_page, SIGNAL(triggered(bool)), this, SLOT(createPageBox()));
-	connect(create_page2, SIGNAL(triggered(bool)), this, SLOT(createPageBox()));
-	connect(remove_page, SIGNAL(triggered(bool)), this, SLOT(removePageBox()));
+	connect(create_page, &QAction::triggered, this, &ImageView::createPageBox);
+	connect(create_page2, &QAction::triggered, this, &ImageView::createPageBox);
+	connect(remove_page, &QAction::triggered, this, &ImageView::removePageBox);
 }
 
 ImageView::~ImageView()

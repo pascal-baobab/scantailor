@@ -306,12 +306,12 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	ui->setImageWidget(view, ui->TRANSFER_OWNERSHIP, m_ptrDbg.get());
 	
 	QObject::connect(
-		view, SIGNAL(manualDeskewAngleSet(double)),
-		opt_widget, SLOT(manualDeskewAngleSetExternally(double))
+		view, &ImageView::manualDeskewAngleSet,
+		opt_widget, &OptionsWidget::manualDeskewAngleSetExternally
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(manualDeskewAngleSet(double)),
-		view, SLOT(manualDeskewAngleSetExternally(double))
+		opt_widget, &OptionsWidget::manualDeskewAngleSet,
+		view, &ImageView::manualDeskewAngleSetExternally
 	);
 }
 

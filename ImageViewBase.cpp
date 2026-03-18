@@ -200,8 +200,8 @@ ImageViewBase::ImageViewBase(
 	m_timer.setSingleShot(true);
 	m_timer.setInterval(150); // msec
 	connect(
-		&m_timer, SIGNAL(timeout()),
-		this, SLOT(initiateBuildingHqVersion())
+		&m_timer, &QTimer::timeout,
+		this, &ImageViewBase::initiateBuildingHqVersion
 	);
 	
 	updateWidgetTransformAndFixFocalPoint(CENTER_IF_FITS);
@@ -211,10 +211,10 @@ ImageViewBase::ImageViewBase(
 	);
 	ensureStatusTip(interactionState().statusTip());
 
-	connect(horizontalScrollBar(), SIGNAL(sliderReleased()), SLOT(updateScrollBars()));
-	connect(verticalScrollBar(), SIGNAL(sliderReleased()), SLOT(updateScrollBars()));
-	connect(horizontalScrollBar(), SIGNAL(valueChanged(int)), SLOT(reactToScrollBars()));
-	connect(verticalScrollBar(), SIGNAL(valueChanged(int)), SLOT(reactToScrollBars()));
+	connect(horizontalScrollBar(), &QScrollBar::sliderReleased, this, &ImageViewBase::updateScrollBars);
+	connect(verticalScrollBar(), &QScrollBar::sliderReleased, this, &ImageViewBase::updateScrollBars);
+	connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &ImageViewBase::reactToScrollBars);
+	connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &ImageViewBase::reactToScrollBars);
 }
 
 ImageViewBase::~ImageViewBase()

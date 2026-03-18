@@ -27,7 +27,7 @@ TabbedImageView::TabbedImageView(QWidget* parent)
 :	QTabWidget(parent),
 	m_prevImageViewTabIndex(0)
 {
-	connect(this, SIGNAL(currentChanged(int)), SLOT(tabChangedSlot(int)));
+	connect(this, &QTabWidget::currentChanged, this, &TabbedImageView::tabChangedSlot);
 }
 
 void

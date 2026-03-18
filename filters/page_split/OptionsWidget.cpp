@@ -50,24 +50,24 @@ OptionsWidget::OptionsWidget(
 	grp->addButton(manualBtn);
 
 	connect(
-		singlePageUncutBtn, SIGNAL(toggled(bool)),
-		this, SLOT(layoutTypeButtonToggled(bool))
+		singlePageUncutBtn, &QAbstractButton::toggled,
+		this, &OptionsWidget::layoutTypeButtonToggled
 	);
 	connect(
-		pagePlusOffcutBtn, SIGNAL(toggled(bool)),
-		this, SLOT(layoutTypeButtonToggled(bool))
+		pagePlusOffcutBtn, &QAbstractButton::toggled,
+		this, &OptionsWidget::layoutTypeButtonToggled
 	);
 	connect(
-		twoPagesBtn, SIGNAL(toggled(bool)),
-		this, SLOT(layoutTypeButtonToggled(bool))
+		twoPagesBtn, &QAbstractButton::toggled,
+		this, &OptionsWidget::layoutTypeButtonToggled
 	);
 	connect(
-		changeBtn, SIGNAL(clicked()),
-		this, SLOT(showChangeDialog())
+		changeBtn, &QAbstractButton::clicked,
+		this, &OptionsWidget::showChangeDialog
 	);
 	connect(
-		autoBtn, SIGNAL(toggled(bool)),
-		this, SLOT(splitLineModeChanged(bool))
+		autoBtn, &QAbstractButton::toggled,
+		this, &OptionsWidget::splitLineModeChanged
 	);
 }
 
@@ -254,8 +254,8 @@ OptionsWidget::showChangeDialog()
 	);
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	connect(
-		dialog, SIGNAL(accepted(std::set<PageId> const&, bool, LayoutType)),
-		this, SLOT(layoutTypeSet(std::set<PageId> const&, bool, LayoutType))
+		dialog, &SplitModeDialog::accepted,
+		this, &OptionsWidget::layoutTypeSet
 	);
 	dialog->show();
 }

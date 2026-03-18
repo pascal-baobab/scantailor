@@ -20,16 +20,16 @@
 #include "ZoneInteractionContext.h"
 #include "ImageViewBase.h"
 #include "EditableZoneSet.h"
-#include "QtSignalForwarder.h"
 #include <QRectF>
 #include <QPolygonF>
 #include <QMenu>
+#include <QAction>
 #include <QPixmap>
 #include <QIcon>
 #include <QPainter>
 #include <QPainterPath>
 #include <QTransform>
-#include <QSignalMapper>
+#include <QTimer>
 #include <QCursor>
 #include <QMessageBox>
 #include <QDebug>
@@ -123,9 +123,6 @@ ZoneContextMenuInteraction::ZoneContextMenuInteraction(
 	int const alpha = 150;
 	QColor color;
 
-	QSignalMapper* hover_map = new QSignalMapper(this);
-	connect(hover_map, SIGNAL(mapped(int)), SLOT(highlightItem(int)));
-
 	QPixmap pixmap;
 
 	std::vector<Zone>::iterator it(m_selectableZones.begin());
@@ -147,15 +144,13 @@ ZoneContextMenuInteraction::ZoneContextMenuInteraction(
 
 		for (ZoneContextMenuItem const& item : menu_customizer(*it, std_items)) {
 			QAction* action = m_ptrMenu->addAction(pixmap, item.label());
-			new QtSignalForwarder(
-				action, SIGNAL(triggered()),
+			connect(action, &QAction::triggered, this,
 				[this, &interaction, cb = item.callback()]() {
 					menuItemTriggered(interaction, cb);
 				}
 			);
-			
-			hover_map->setMapping(action, i);
-			connect(action, SIGNAL(hovered()), hover_map, SLOT(map()));
+
+			connect(action, &QAction::hovered, this, [this, i]() { highlightItem(i); });
 		}
 
 		m_ptrMenu->addSeparator();
@@ -164,8 +159,8 @@ ZoneContextMenuInteraction::ZoneContextMenuInteraction(
 	// The queued connection is used to ensure it gets called *after*
 	// QAction::triggered().
 	connect(
-		m_ptrMenu.get(), SIGNAL(aboutToHide()),
-		SLOT(menuAboutToHide()), Qt::QueuedConnection
+		m_ptrMenu.get(), &QMenu::aboutToHide,
+		this, &ZoneContextMenuInteraction::menuAboutToHide, Qt::QueuedConnection
 	);
 
 	highlightItem(0);
@@ -202,7 +197,7 @@ ZoneContextMenuInteraction::menuAboutToHide()
 	// to tell whether the menu was just dismissed or a menu item was clicked.
 	// The only way to tell is to check back later, which we do here.
 	if (m_extraDelaysDone++ < 1) {
-		QTimer::singleShot(200, this, SLOT(menuAboutToHide()));
+		QTimer::singleShot(200, this, &ZoneContextMenuInteraction::menuAboutToHide);
 		return;
 	}
 #endif

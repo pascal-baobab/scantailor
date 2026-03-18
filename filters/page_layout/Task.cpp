@@ -188,36 +188,36 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	ui->setImageWidget(view, ui->TRANSFER_OWNERSHIP);
 	
 	QObject::connect(
-		view, SIGNAL(invalidateThumbnail(PageId const&)),
-		opt_widget, SIGNAL(invalidateThumbnail(PageId const&))
+		view, &ImageView::invalidateThumbnail,
+		opt_widget, qOverload<PageId const&>(&OptionsWidget::invalidateThumbnail)
 	);
 	QObject::connect(
-		view, SIGNAL(invalidateAllThumbnails()),
-		opt_widget, SIGNAL(invalidateAllThumbnails())
+		view, &ImageView::invalidateAllThumbnails,
+		opt_widget, &OptionsWidget::invalidateAllThumbnails
 	);
 	QObject::connect(
-		view, SIGNAL(marginsSetLocally(Margins const&)),
-		opt_widget, SLOT(marginsSetExternally(Margins const&))
+		view, &ImageView::marginsSetLocally,
+		opt_widget, &OptionsWidget::marginsSetExternally
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(marginsSetLocally(Margins const&)),
-		view, SLOT(marginsSetExternally(Margins const&))
+		opt_widget, &OptionsWidget::marginsSetLocally,
+		view, &ImageView::marginsSetExternally
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(topBottomLinkToggled(bool)),
-		view, SLOT(topBottomLinkToggled(bool))
+		opt_widget, &OptionsWidget::topBottomLinkToggled,
+		view, &ImageView::topBottomLinkToggled
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(leftRightLinkToggled(bool)),
-		view, SLOT(leftRightLinkToggled(bool))
+		opt_widget, &OptionsWidget::leftRightLinkToggled,
+		view, &ImageView::leftRightLinkToggled
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(alignmentChanged(Alignment const&)),
-		view, SLOT(alignmentChanged(Alignment const&))
+		opt_widget, &OptionsWidget::alignmentChanged,
+		view, &ImageView::alignmentChanged
 	);
 	QObject::connect(
-		opt_widget, SIGNAL(aggregateHardSizeChanged()),
-		view, SLOT(aggregateHardSizeChanged())
+		opt_widget, &OptionsWidget::aggregateHardSizeChanged,
+		view, &ImageView::aggregateHardSizeChanged
 	);
 }
 

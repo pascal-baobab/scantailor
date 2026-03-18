@@ -103,51 +103,51 @@ OptionsWidget::OptionsWidget(
 	);
 	
 	connect(
-		unitsComboBox, SIGNAL(currentIndexChanged(int)),
-		this, SLOT(unitsChanged(int))
+		unitsComboBox, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, &OptionsWidget::unitsChanged
 	);
 	connect(
-		topMarginSpinBox, SIGNAL(valueChanged(double)),
-		this, SLOT(vertMarginsChanged(double))
+		topMarginSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		this, &OptionsWidget::vertMarginsChanged
 	);
 	connect(
-		bottomMarginSpinBox, SIGNAL(valueChanged(double)),
-		this, SLOT(vertMarginsChanged(double))
+		bottomMarginSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		this, &OptionsWidget::vertMarginsChanged
 	);
 	connect(
-		leftMarginSpinBox, SIGNAL(valueChanged(double)),
-		this, SLOT(horMarginsChanged(double))
+		leftMarginSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		this, &OptionsWidget::horMarginsChanged
 	);
 	connect(
-		rightMarginSpinBox, SIGNAL(valueChanged(double)),
-		this, SLOT(horMarginsChanged(double))
+		rightMarginSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged),
+		this, &OptionsWidget::horMarginsChanged
 	);
 	connect(
-		topBottomLink, SIGNAL(clicked()),
-		this, SLOT(topBottomLinkClicked())
+		topBottomLink, &QAbstractButton::clicked,
+		this, &OptionsWidget::topBottomLinkClicked
 	);
 	connect(
-		leftRightLink, SIGNAL(clicked()),
-		this, SLOT(leftRightLinkClicked())
+		leftRightLink, &QAbstractButton::clicked,
+		this, &OptionsWidget::leftRightLinkClicked
 	);
 	connect(
-		applyMarginsBtn, SIGNAL(clicked()),
-		this, SLOT(showApplyMarginsDialog())
+		applyMarginsBtn, &QAbstractButton::clicked,
+		this, &OptionsWidget::showApplyMarginsDialog
 	);
 	connect(
-		alignWithOthersCB, SIGNAL(toggled(bool)),
-		this, SLOT(alignWithOthersToggled())
+		alignWithOthersCB, &QAbstractButton::toggled,
+		this, &OptionsWidget::alignWithOthersToggled
 	);
 	connect(
-		applyAlignmentBtn, SIGNAL(clicked()),
-		this, SLOT(showApplyAlignmentDialog())
+		applyAlignmentBtn, &QAbstractButton::clicked,
+		this, &OptionsWidget::showApplyAlignmentDialog
 	);
 	
 	typedef AlignmentByButton::value_type KeyVal;
 	for (KeyVal const& kv : m_alignmentByButton) {
 		connect(
-			kv.first, SIGNAL(clicked()),
-			this, SLOT(alignmentButtonClicked())
+			kv.first, &QAbstractButton::clicked,
+			this, &OptionsWidget::alignmentButtonClicked
 		);
 	}
 
@@ -370,8 +370,8 @@ OptionsWidget::showApplyMarginsDialog()
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	dialog->setWindowTitle(tr("Apply Margins"));
 	connect(
-		dialog, SIGNAL(accepted(std::set<PageId> const&)),
-		this, SLOT(applyMargins(std::set<PageId> const&))
+		dialog, &ApplyDialog::accepted,
+		this, &OptionsWidget::applyMargins
 	);
 	dialog->show();
 }
@@ -385,8 +385,8 @@ OptionsWidget::showApplyAlignmentDialog()
 	dialog->setAttribute(Qt::WA_DeleteOnClose);
 	dialog->setWindowTitle(tr("Apply Alignment"));
 	connect(
-		dialog, SIGNAL(accepted(std::set<PageId> const&)),
-		this, SLOT(applyAlignment(std::set<PageId> const&))
+		dialog, &ApplyDialog::accepted,
+		this, &OptionsWidget::applyAlignment
 	);
 	dialog->show();
 }

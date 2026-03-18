@@ -41,7 +41,7 @@ ApplyColorsDialog::ApplyColorsDialog(
 		selectedPagesWidget->setEnabled(false);
 	}
 	
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &ApplyColorsDialog::onSubmit);
 }
 
 ApplyColorsDialog::~ApplyColorsDialog()

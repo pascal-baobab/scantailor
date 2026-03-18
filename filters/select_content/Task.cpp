@@ -204,12 +204,12 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	ui->setImageWidget(view, ui->TRANSFER_OWNERSHIP, m_ptrDbg.get());
 
 	QObject::connect(
-		view, SIGNAL(manualContentRectSet(QRectF const&)),
-		opt_widget, SLOT(manualContentRectSet(QRectF const&))
+		view, &ImageView::manualContentRectSet,
+		opt_widget, &OptionsWidget::manualContentRectSet
 	);
 	QObject::connect(
-		view, SIGNAL(manualPageRectSet(QRectF const&)),
-		opt_widget, SLOT(manualPageRectSet(QRectF const&))
+		view, &ImageView::manualPageRectSet,
+		opt_widget, &OptionsWidget::manualPageRectSet
 	);
 }
 

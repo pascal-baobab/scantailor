@@ -138,8 +138,7 @@ RelinkablePathVisualization::setPath(RelinkablePath const& path, bool clickable)
 		}
 		stylePathComponentButton(btn, path_component.exists);
 		
-		new QtSignalForwarder(
-			btn, SIGNAL(clicked()),
+		connect(btn, &QAbstractButton::clicked, this,
 			[this, component_idx, path_component]() {
 				onClicked(component_idx, path_component.prefixPath,
 					path_component.suffixPath, path_component.type);

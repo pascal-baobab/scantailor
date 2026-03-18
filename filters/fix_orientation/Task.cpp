@@ -129,8 +129,8 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	ImageView* view = new ImageView(m_image, m_downscaledImage, m_xform);
 	ui->setImageWidget(view, ui->TRANSFER_OWNERSHIP);
 	QObject::connect(
-		opt_widget, SIGNAL(rotated(OrthogonalRotation)),
-		view, SLOT(setPreRotation(OrthogonalRotation))
+		opt_widget, &OptionsWidget::rotated,
+		view, &ImageView::setPreRotation
 	);
 }
 

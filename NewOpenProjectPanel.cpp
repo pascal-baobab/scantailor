@@ -67,12 +67,12 @@ NewOpenProjectPanel::NewOpenProjectPanel(QWidget* parent)
 	}
 	
 	connect(
-		newProjectLabel, SIGNAL(linkActivated(QString const&)),
-		this, SIGNAL(newProject())
+		newProjectLabel, &QLabel::linkActivated,
+		this, &NewOpenProjectPanel::newProject
 	);
 	connect(
-		openProjectLabel, SIGNAL(linkActivated(QString const&)),
-		this, SIGNAL(openProject())
+		openProjectLabel, &QLabel::linkActivated,
+		this, &NewOpenProjectPanel::openProject
 	);
 
 }
@@ -93,8 +93,8 @@ NewOpenProjectPanel::addRecentProject(QString const& file_path)
 	recentProjectsGroup->layout()->addWidget(label);
 	
 	connect(
-		label, SIGNAL(linkActivated(QString const&)),
-		this, SIGNAL(openRecentProject(QString const&))
+		label, &QLabel::linkActivated,
+		this, &NewOpenProjectPanel::openRecentProject
 	);
 }
 

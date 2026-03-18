@@ -533,13 +533,14 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	);
 	QPixmap const downscaled_orig_pixmap(dewarping_view->downscaledPixmap());
 	(*tab_image_rect_map)[TAB_DEWARPING] = m_xform.resultingPreCropArea().boundingRect();
+	auto* const dewarping_ptr = static_cast<DewarpingView*>(dewarping_view.get());
 	QObject::connect(
-		opt_widget, SIGNAL(depthPerceptionChanged(double)),
-		dewarping_view.get(), SLOT(depthPerceptionChanged(double))
+		opt_widget, &OptionsWidget::depthPerceptionChanged,
+		dewarping_ptr, &DewarpingView::depthPerceptionChanged
 	);
 	QObject::connect(
-		dewarping_view.get(), SIGNAL(distortionModelChanged(dewarping::DistortionModel const&)),
-		opt_widget, SLOT(distortionModelChanged(dewarping::DistortionModel const&))
+		dewarping_ptr, &DewarpingView::distortionModelChanged,
+		opt_widget, &OptionsWidget::distortionModelChanged
 	);
 
 	std::unique_ptr<QWidget> picture_zone_editor;
@@ -556,8 +557,9 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 			)
 		);
 		QObject::connect(
-			picture_zone_editor.get(), SIGNAL(invalidateThumbnail(PageId const&)),
-			opt_widget, SIGNAL(invalidateThumbnail(PageId const&))
+			static_cast<PictureZoneEditor*>(picture_zone_editor.get()),
+			&PictureZoneEditor::invalidateThumbnail,
+			opt_widget, qOverload<PageId const&>(&OptionsWidget::invalidateThumbnail)
 		);
 		(*tab_image_rect_map)[TAB_PICTURE_ZONES] = m_xform.resultingPreCropArea().boundingRect();
 	}
@@ -592,8 +594,9 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 		)
 	);
 	QObject::connect(
-		fill_zone_editor.get(), SIGNAL(invalidateThumbnail(PageId const&)),
-		opt_widget, SIGNAL(invalidateThumbnail(PageId const&))
+		static_cast<FillZoneEditor*>(fill_zone_editor.get()),
+		&FillZoneEditor::invalidateThumbnail,
+		opt_widget, qOverload<PageId const&>(&OptionsWidget::invalidateThumbnail)
 	);
 	(*tab_image_rect_map)[TAB_FILL_ZONES] = m_xform.resultingRect();
 
@@ -609,8 +612,9 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 			)
 		);
 		QObject::connect(
-			opt_widget, SIGNAL(despeckleLevelChanged(DespeckleLevel, bool*)),
-			despeckle_view.get(), SLOT(despeckleLevelChanged(DespeckleLevel, bool*))
+			opt_widget, &OptionsWidget::despeckleLevelChanged,
+			static_cast<DespeckleView*>(despeckle_view.get()),
+			&DespeckleView::despeckleLevelChanged
 		);
 		(*tab_image_rect_map)[TAB_DESPECKLING] = m_xform.resultingRect();
 	}
@@ -627,8 +631,8 @@ Task::UiUpdater::updateUI(FilterUiInterface* ui)
 	tab_widget->setImageRectMap(std::move(tab_image_rect_map));
 
 	QObject::connect(
-		tab_widget.get(), SIGNAL(tabChanged(ImageViewTab)),
-		opt_widget, SLOT(tabChanged(ImageViewTab))
+		tab_widget.get(), &TabbedImageView::tabChanged,
+		opt_widget, &OptionsWidget::tabChanged
 	);
 
 	ui->setImageWidget(tab_widget.release(), ui->TRANSFER_OWNERSHIP, m_ptrDbg.get());

@@ -96,7 +96,12 @@
 #include "config.h"
 #include "version.h"
 #include <functional>
+#include <QAction>
 #include <QApplication>
+#include <QAbstractButton>
+#include <QComboBox>
+#include <QItemSelectionModel>
+#include <QToolButton>
 #include <QFileInfo>
 #include <QInputDialog>
 #include <QKeySequence>
@@ -189,7 +194,7 @@ MainWindow::MainWindow()
 	QMainWindow::statusBar()->addPermanentWidget(m_ptrStatusLabel, 1);
 
 	QShortcut* goToPageShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_G), this);
-	connect(goToPageShortcut, SIGNAL(activated()), this, SLOT(goToPageByNumber()));
+	connect(goToPageShortcut, &QShortcut::activated, this, &MainWindow::goToPageByNumber);
 
 	createBatchProcessingWidget();
 	m_ptrProcessingIndicationWidget.reset(new ProcessingIndicationWidget);
@@ -219,111 +224,111 @@ MainWindow::MainWindow()
 	// Should be enough to save a project.
 	OutOfMemoryHandler::instance().allocateEmergencyMemory(3*1024*1024);
 
-	connect(actionFirstPage, SIGNAL(triggered(bool)), SLOT(goFirstPage()));
-	connect(actionLastPage, SIGNAL(triggered(bool)), SLOT(goLastPage()));
-	connect(actionPrevPage, SIGNAL(triggered(bool)), SLOT(goPrevPage()));
-	connect(actionNextPage, SIGNAL(triggered(bool)), SLOT(goNextPage()));
-	connect(actionPrevPageQ, SIGNAL(triggered(bool)), this, SLOT(goPrevPage()));
-	connect(actionNextPageW, SIGNAL(triggered(bool)), this, SLOT(goNextPage()));
-	connect(actionAbout, SIGNAL(triggered(bool)), this, SLOT(showAboutDialog()));
+	connect(actionFirstPage, &QAction::triggered, this, &MainWindow::goFirstPage);
+	connect(actionLastPage, &QAction::triggered, this, &MainWindow::goLastPage);
+	connect(actionPrevPage, &QAction::triggered, this, &MainWindow::goPrevPage);
+	connect(actionNextPage, &QAction::triggered, this, &MainWindow::goNextPage);
+	connect(actionPrevPageQ, &QAction::triggered, this, &MainWindow::goPrevPage);
+	connect(actionNextPageW, &QAction::triggered, this, &MainWindow::goNextPage);
+	connect(actionAbout, &QAction::triggered, this, &MainWindow::showAboutDialog);
 	connect(
 		&OutOfMemoryHandler::instance(),
-		SIGNAL(outOfMemory()), SLOT(handleOutOfMemorySituation())
+		&OutOfMemoryHandler::outOfMemory, this, &MainWindow::handleOutOfMemorySituation
 	);
 	
 	connect(
 		filterList->selectionModel(),
-		SIGNAL(selectionChanged(QItemSelection const&, QItemSelection const&)),
-		this, SLOT(filterSelectionChanged(QItemSelection const&))
+		&QItemSelectionModel::selectionChanged,
+		this, &MainWindow::filterSelectionChanged
 	);
 	connect(
-		filterList, SIGNAL(launchBatchProcessing()),
-		this, SLOT(startBatchProcessing())
+		filterList, &StageListView::launchBatchProcessing,
+		this, &MainWindow::startBatchProcessing
 	);
-	
-	connect(
-		m_ptrWorkerThreadPool.get(),
-		SIGNAL(taskResult(BackgroundTaskPtr const&, FilterResultPtr const&)),
-		this, SLOT(filterResult(BackgroundTaskPtr const&, FilterResultPtr const&))
-	);
-	
-	connect(
-		m_ptrThumbSequence.get(),
-		SIGNAL(newSelectionLeader(PageInfo const&, QRectF const&, ThumbnailSequence::SelectionFlags)),
-		this, SLOT(currentPageChanged(PageInfo const&, QRectF const&, ThumbnailSequence::SelectionFlags))
-	);
-	connect(
-		m_ptrThumbSequence.get(),
-		SIGNAL(pageContextMenuRequested(PageInfo const&, QPoint const&, bool)),
-		this, SLOT(pageContextMenuRequested(PageInfo const&, QPoint const&, bool))
-	);
-	connect(
-		m_ptrThumbSequence.get(),
-		SIGNAL(pastLastPageContextMenuRequested(QPoint const&)),
-		SLOT(pastLastPageContextMenuRequested(QPoint const&))
-	);
-	
-	connect(
-		thumbView->verticalScrollBar(), SIGNAL(sliderMoved(int)),
-		this, SLOT(thumbViewScrolled())
-	);
-	connect(
-		thumbView->verticalScrollBar(), SIGNAL(valueChanged(int)),
-		this, SLOT(thumbViewScrolled())
-	);
-	connect(
-		focusButton, SIGNAL(clicked(bool)),
-		this, SLOT(thumbViewFocusToggled(bool))
-	);
-	connect(
-		sortOptions, SIGNAL(currentIndexChanged(int)),
-		this, SLOT(pageOrderingChanged(int))
-	);
-	
-	connect(actionFixDpi, SIGNAL(triggered(bool)), SLOT(fixDpiDialogRequested()));
-	connect(actionRelinking, SIGNAL(triggered(bool)), SLOT(showRelinkingDialog()));
-	connect(actionDebug, SIGNAL(toggled(bool)), SLOT(debugToggled(bool)));
 
 	connect(
-		actionSettings, SIGNAL(triggered(bool)),
-		this, SLOT(openSettingsDialog())
+		m_ptrWorkerThreadPool.get(),
+		&WorkerThreadPool::taskResult,
+		this, &MainWindow::filterResult
+	);
+
+	connect(
+		m_ptrThumbSequence.get(),
+		&ThumbnailSequence::newSelectionLeader,
+		this, &MainWindow::currentPageChanged
 	);
 	connect(
-		actionDefaultParams, SIGNAL(triggered(bool)),
-		this, SLOT(openDefaultParamsDialog())
+		m_ptrThumbSequence.get(),
+		&ThumbnailSequence::pageContextMenuRequested,
+		this, &MainWindow::pageContextMenuRequested
+	);
+	connect(
+		m_ptrThumbSequence.get(),
+		&ThumbnailSequence::pastLastPageContextMenuRequested,
+		this, &MainWindow::pastLastPageContextMenuRequested
+	);
+
+	connect(
+		thumbView->verticalScrollBar(), &QScrollBar::sliderMoved,
+		this, &MainWindow::thumbViewScrolled
+	);
+	connect(
+		thumbView->verticalScrollBar(), &QScrollBar::valueChanged,
+		this, &MainWindow::thumbViewScrolled
+	);
+	connect(
+		focusButton, &QToolButton::clicked,
+		this, &MainWindow::thumbViewFocusToggled
+	);
+	connect(
+		sortOptions, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, &MainWindow::pageOrderingChanged
 	);
 	
+	connect(actionFixDpi, &QAction::triggered, this, &MainWindow::fixDpiDialogRequested);
+	connect(actionRelinking, &QAction::triggered, this, &MainWindow::showRelinkingDialog);
+	connect(actionDebug, &QAction::toggled, this, &MainWindow::debugToggled);
+
 	connect(
-		actionNewProject, SIGNAL(triggered(bool)),
-		this, SLOT(newProject())
+		actionSettings, &QAction::triggered,
+		this, &MainWindow::openSettingsDialog
 	);
 	connect(
-		actionOpenProject, SIGNAL(triggered(bool)),
-		this, SLOT(openProject())
+		actionDefaultParams, &QAction::triggered,
+		this, &MainWindow::openDefaultParamsDialog
+	);
+
+	connect(
+		actionNewProject, &QAction::triggered,
+		this, &MainWindow::newProject
 	);
 	connect(
-		actionSaveProject, SIGNAL(triggered(bool)),
-		this, SLOT(saveProjectTriggered())
+		actionOpenProject, &QAction::triggered,
+		this, qOverload<>(&MainWindow::openProject)
 	);
 	connect(
-		actionSaveProjectAs, SIGNAL(triggered(bool)),
-		this, SLOT(saveProjectAsTriggered())
+		actionSaveProject, &QAction::triggered,
+		this, &MainWindow::saveProjectTriggered
 	);
 	connect(
-		actionCloseProject, SIGNAL(triggered(bool)),
-		this, SLOT(closeProject())
+		actionSaveProjectAs, &QAction::triggered,
+		this, &MainWindow::saveProjectAsTriggered
 	);
 	connect(
-		actionExportPdf, SIGNAL(triggered(bool)),
-		this, SLOT(exportPdfTriggered())
+		actionCloseProject, &QAction::triggered,
+		this, &MainWindow::closeProject
 	);
 	connect(
-		actionExportRag, SIGNAL(triggered(bool)),
-		this, SLOT(exportRagTriggered())
+		actionExportPdf, &QAction::triggered,
+		this, &MainWindow::exportPdfTriggered
 	);
 	connect(
-		actionQuit, SIGNAL(triggered(bool)),
-		this, SLOT(close())
+		actionExportRag, &QAction::triggered,
+		this, &MainWindow::exportRagTriggered
+	);
+	connect(
+		actionQuit, &QAction::triggered,
+		this, &MainWindow::close
 	);
 	
 	updateProjectActions();
@@ -424,8 +429,8 @@ MainWindow::switchToNewProject(
 		// selection model, so we have to reconnect to it.
 		connect(
 			filterList->selectionModel(),
-			SIGNAL(selectionChanged(QItemSelection const&, QItemSelection const&)),
-			this, SLOT(filterSelectionChanged(QItemSelection const&))
+			&QItemSelectionModel::selectionChanged,
+			this, &MainWindow::filterSelectionChanged
 		);
 	}
 
@@ -481,18 +486,18 @@ MainWindow::showNewOpenProjectPanel()
 	// would be deleting a widget from its event handler, which
 	// Qt doesn't like.
 	connect(
-		nop, SIGNAL(newProject()),
-		this, SLOT(newProject()),
+		nop, &NewOpenProjectPanel::newProject,
+		this, &MainWindow::newProject,
 		Qt::QueuedConnection
 	);
 	connect(
-		nop, SIGNAL(openProject()),
-		this, SLOT(openProject()),
+		nop, &NewOpenProjectPanel::openProject,
+		this, qOverload<>(&MainWindow::openProject),
 		Qt::QueuedConnection
 	);
 	connect(
-		nop, SIGNAL(openRecentProject(QString const&)),
-		this, SLOT(openProject(QString const&)),
+		nop, &NewOpenProjectPanel::openRecentProject,
+		this, qOverload<QString const&>(&MainWindow::openProject),
 		Qt::QueuedConnection
 	);
 	layout->addWidget(nop, 1, 1);
@@ -539,7 +544,7 @@ MainWindow::createBatchProcessingWidget()
 	layout->setRowStretch(0, 1);
 	layout->setRowStretch(row, 1);
 	
-	connect(stop_btn, SIGNAL(clicked()), SLOT(stopBatchProcessing()));
+	connect(stop_btn, &SkinnedButton::clicked, this, [this]() { stopBatchProcessing(); });
 }
 
 void
@@ -736,24 +741,24 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 
 	if (m_ptrOptionsWidget) {
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(reloadRequested()),
-			this, SLOT(reloadRequested())
+			m_ptrOptionsWidget, &FilterOptionsWidget::reloadRequested,
+			this, &MainWindow::reloadRequested
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(invalidateThumbnail(PageId const&)),
-			this, SLOT(invalidateThumbnail(PageId const&))
+			m_ptrOptionsWidget, qOverload<PageId const&>(&FilterOptionsWidget::invalidateThumbnail),
+			this, qOverload<PageId const&>(&MainWindow::invalidateThumbnail)
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(invalidateThumbnail(PageInfo const&)),
-			this, SLOT(invalidateThumbnail(PageInfo const&))
+			m_ptrOptionsWidget, qOverload<PageInfo const&>(&FilterOptionsWidget::invalidateThumbnail),
+			this, qOverload<PageInfo const&>(&MainWindow::invalidateThumbnail)
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(invalidateAllThumbnails()),
-			this, SLOT(invalidateAllThumbnails())
+			m_ptrOptionsWidget, &FilterOptionsWidget::invalidateAllThumbnails,
+			this, &MainWindow::invalidateAllThumbnails
 		);
 		disconnect(
-			m_ptrOptionsWidget, SIGNAL(goToPage(PageId const&)),
-			this, SLOT(goToPage(PageId const&))
+			m_ptrOptionsWidget, &FilterOptionsWidget::goToPage,
+			this, &MainWindow::goToPage
 		);
 		disconnect(
 			m_ptrOptionsWidget, SIGNAL(generatePdfChanged(bool)),
@@ -788,27 +793,29 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 	// responsible for the emission of this signal.  Qt doesn't
 	// like when we delete an object while it's emitting a signal.
 	connect(
-		widget, SIGNAL(reloadRequested()),
-		this, SLOT(reloadRequested()), Qt::QueuedConnection
+		widget, &FilterOptionsWidget::reloadRequested,
+		this, &MainWindow::reloadRequested, Qt::QueuedConnection
 	);
 	connect(
-		widget, SIGNAL(invalidateThumbnail(PageId const&)),
-		this, SLOT(invalidateThumbnail(PageId const&))
+		widget, qOverload<PageId const&>(&FilterOptionsWidget::invalidateThumbnail),
+		this, qOverload<PageId const&>(&MainWindow::invalidateThumbnail)
 	);
 	connect(
-		widget, SIGNAL(invalidateThumbnail(PageInfo const&)),
-		this, SLOT(invalidateThumbnail(PageInfo const&))
+		widget, qOverload<PageInfo const&>(&FilterOptionsWidget::invalidateThumbnail),
+		this, qOverload<PageInfo const&>(&MainWindow::invalidateThumbnail)
 	);
 	connect(
-		widget, SIGNAL(invalidateAllThumbnails()),
-		this, SLOT(invalidateAllThumbnails())
+		widget, &FilterOptionsWidget::invalidateAllThumbnails,
+		this, &MainWindow::invalidateAllThumbnails
 	);
 	connect(
-		widget, SIGNAL(goToPage(PageId const&)),
-		this, SLOT(goToPage(PageId const&))
+		widget, &FilterOptionsWidget::goToPage,
+		this, &MainWindow::goToPage
 	);
 
 	// Connect PDF generation signals from output options widget.
+	// These signals are on output::OptionsWidget (subclass), not FilterOptionsWidget,
+	// so we must use string-based connect since widget is typed as FilterOptionsWidget*.
 	connect(
 		widget, SIGNAL(generatePdfChanged(bool)),
 		this, SLOT(generatePdfToggled(bool))
@@ -920,8 +927,7 @@ MainWindow::showRelinkingDialog()
 	dialog->pathCollector()(RelinkablePath(m_outFileNameGen.outDir(), RelinkablePath::Dir));
 	
 	IntrusivePtr<AbstractRelinker> const relinker = dialog->relinker();
-	new QtSignalForwarder(
-		dialog, SIGNAL(accepted()),
+	connect(dialog, &QDialog::accepted, this,
 		[this, relinker]() { this->performRelinking(relinker); }
 	);
 
@@ -1503,7 +1509,7 @@ MainWindow::fixDpiDialogRequested()
 	m_ptrFixDpiDialog->setAttribute(Qt::WA_DeleteOnClose);
 	m_ptrFixDpiDialog->setWindowModality(Qt::WindowModal);
 
-	connect(m_ptrFixDpiDialog, SIGNAL(accepted()), SLOT(fixedDpiSubmitted()));
+	connect(m_ptrFixDpiDialog, &QDialog::accepted, this, &MainWindow::fixedDpiSubmitted);
 
 	m_ptrFixDpiDialog->show();
 }
@@ -1736,8 +1742,8 @@ MainWindow::newProject()
 	// It will delete itself when it's done.
 	ProjectCreationContext* context = new ProjectCreationContext(this);
 	connect(
-		context, SIGNAL(done(ProjectCreationContext*)),
-		this, SLOT(newProjectCreated(ProjectCreationContext*))
+		context, &ProjectCreationContext::done,
+		this, &MainWindow::newProjectCreated
 	);
 }
 
@@ -1808,7 +1814,7 @@ MainWindow::openProject(QString const& project_file)
 	file.close();
 	
 	ProjectOpeningContext* context = new ProjectOpeningContext(this, project_file, doc);
-	connect(context, SIGNAL(done(ProjectOpeningContext*)), SLOT(projectOpened(ProjectOpeningContext*)));
+	connect(context, &ProjectOpeningContext::done, this, &MainWindow::projectOpened);
 	context->proceed();
 }
 

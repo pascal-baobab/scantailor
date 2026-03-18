@@ -36,9 +36,9 @@ OutOfMemoryDialog::OutOfMemoryDialog(QWidget* parent)
 
 	ui.topLevelStack->setCurrentWidget(ui.mainPage);
 
-	connect(ui.saveProjectBtn, SIGNAL(clicked()), SLOT(saveProject()));
-	connect(ui.saveProjectAsBtn, SIGNAL(clicked()), SLOT(saveProjectAs()));
-	connect(ui.dontSaveBtn, SIGNAL(clicked()), SLOT(reject()));
+	connect(ui.saveProjectBtn, &QPushButton::clicked, this, &OutOfMemoryDialog::saveProject);
+	connect(ui.saveProjectAsBtn, &QPushButton::clicked, this, &OutOfMemoryDialog::saveProjectAs);
+	connect(ui.dontSaveBtn, &QPushButton::clicked, this, &QDialog::reject);
 }
 
 void

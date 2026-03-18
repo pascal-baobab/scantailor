@@ -39,7 +39,7 @@ ApplyDialog::ApplyDialog(QWidget* parent, PageId const& cur_page,
 		selectedPagesWidget->setEnabled(false);
 	}
 	
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(onSubmit()));
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &ApplyDialog::onSubmit);
 }
 
 ApplyDialog::~ApplyDialog()

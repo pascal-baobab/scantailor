@@ -20,6 +20,7 @@
 #include "RelinkingSortingModel.h"
 #include <QDir>
 #include <QFileDialog>
+#include <QPushButton>
 #include <QDebug>
 #include <assert.h>
 
@@ -37,19 +38,19 @@ RelinkingDialog::RelinkingDialog(QString const& project_file_path, QWidget* pare
 
 	connect(
 		ui.listView->selectionModel(),
-		SIGNAL(selectionChanged(QItemSelection const&, QItemSelection const&)),
-		SLOT(selectionChanged(QItemSelection const&, QItemSelection const&))
+		&QItemSelectionModel::selectionChanged,
+		this, &RelinkingDialog::selectionChanged
 	);
 
 	connect(
-		ui.pathVisualization, SIGNAL(clicked(QString const&, QString const&, int)),
-		SLOT(pathButtonClicked(QString const&, QString const&, int))
+		ui.pathVisualization, &RelinkablePathVisualization::clicked,
+		this, &RelinkingDialog::pathButtonClicked
 	);
 
-	connect(ui.undoButton, SIGNAL(clicked()), SLOT(undoButtonClicked()));
-	
-	disconnect(ui.buttonBox, SIGNAL(accepted())); 
-	connect(ui.buttonBox, SIGNAL(accepted()), SLOT(commitChanges()));
+	connect(ui.undoButton, &QPushButton::clicked, this, &RelinkingDialog::undoButtonClicked);
+
+	disconnect(ui.buttonBox, &QDialogButtonBox::accepted, nullptr, nullptr);
+	connect(ui.buttonBox, &QDialogButtonBox::accepted, this, &RelinkingDialog::commitChanges);
 }
 
 void

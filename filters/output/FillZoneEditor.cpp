@@ -87,7 +87,7 @@ FillZoneEditor::FillZoneEditor(
 		[this](InteractionState& interaction) { return createContextMenuInteraction(interaction); }
 	);
 
-	connect(&m_zones, SIGNAL(committed()), SLOT(commitZones()));
+	connect(&m_zones, &EditableZoneSet::committed, this, &FillZoneEditor::commitZones);
 
 	makeLastFollower(*m_context.createDefaultInteraction());
 
