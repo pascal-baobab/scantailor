@@ -58,7 +58,7 @@ public:
 	};
 
 	ColorGrayscaleOptions()
-	: m_whiteMargins(false), m_normalizeIllumination(false) {}
+	: m_whiteMargins(true), m_normalizeIllumination(true) {}
 
 	ColorGrayscaleOptions(QDomElement const& el);
 

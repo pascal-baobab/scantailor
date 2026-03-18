@@ -30,7 +30,7 @@ namespace output
 {
 
 Params::Params()
-:	m_dpi(600, 600),
+:	m_dpi(300, 300),
 	m_despeckleLevel(DESPECKLE_CAUTIOUS)
 {
 }

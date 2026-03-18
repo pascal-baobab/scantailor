@@ -30,14 +30,36 @@
 class VectorPdfExporter
 {
 public:
-	struct Options {
-		QString language;     ///< Tesseract language code (e.g. "eng", "eng+ita")
-		QString tessDataPath; ///< Parent dir containing tessdata/ (empty = default)
-		int     dpi;          ///< Resolution (default 300)
-		int     jpegQuality;  ///< JPEG quality 1-100
-		bool    vectorize;    ///< Use Potrace vectorization for B&W text (default true)
+	enum PageFormat { PAGE_AUTO, PAGE_A4, PAGE_A5, PAGE_LETTER };
 
-		Options() : language("eng"), dpi(300), jpegQuality(70), vectorize(true) {}
+	enum CompressionMode {
+		COMPRESS_TEXT_OPTIMAL,  ///< Binarize → 1-bit FlateDecode (~40-70 KB/page)
+		COMPRESS_JPEG,          ///< Grayscale/RGB JPEG (~150-500 KB/page)
+		COMPRESS_LOSSLESS,      ///< 8-bit grayscale FlateDecode (~300-800 KB/page)
+		COMPRESS_NONE           ///< Uncompressed (debug only)
+	};
+
+	struct Options {
+		QString language;        ///< Tesseract language code (e.g. "eng", "eng+ita")
+		QString tessDataPath;    ///< Parent dir containing tessdata/ (empty = default)
+		int     dpi;             ///< Image resolution (default 300)
+		int     jpegQuality;     ///< JPEG quality 1-100 (default 85)
+		bool    vectorize;       ///< Use Potrace for 1-bit (default true)
+		bool    enableOcr;       ///< OCR searchable text (default true)
+		PageFormat pageFormat;   ///< Page size (default AUTO)
+		CompressionMode compression; ///< Compression mode (default TEXT_OPTIMAL)
+		bool    downsample;      ///< Downsample images above threshold (default false)
+		int     downsampleThreshold; ///< Only downsample above this DPI (default 600)
+		int     sharpening;      ///< 0=smooth/denoise, 50=neutral, 100=sharpen (default 30)
+		QString pdfVersion;      ///< "1.4", "1.5", "1.7" (default "1.4")
+		bool    forceGrayscale;  ///< Convert color to grayscale (default true)
+
+		Options()
+			: language("eng"), dpi(300), jpegQuality(85),
+			  vectorize(true), enableOcr(true), pageFormat(PAGE_AUTO),
+			  compression(COMPRESS_TEXT_OPTIMAL), downsample(false),
+			  downsampleThreshold(600), sharpening(30),
+			  pdfVersion("1.4"), forceGrayscale(true) {}
 	};
 
 	/// Result from export with diagnostic info.

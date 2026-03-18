@@ -15,6 +15,237 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_6">
    <item>
+    <widget class="QGroupBox" name="macroPresetsPanel">
+     <property name="title">
+      <string>Quick Settings</string>
+     </property>
+     <layout class="QVBoxLayout" name="macroPresetsLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="sharpnessLayout">
+        <item>
+         <layout class="QVBoxLayout" name="sharpnessLabelLayout">
+          <item>
+           <widget class="QLabel" name="macroSharpnessLabel">
+            <property name="text">
+             <string>Text Sharpness</string>
+            </property>
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="macroSharpnessDesc">
+            <property name="text">
+             <string>Blur → Crisp</string>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>7</pointsize>
+             </font>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QSlider" name="macroSharpnessSlider">
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="macroSharpnessPreview">
+          <property name="minimumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::Box</enum>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="scaledContents">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="cleaningLayout">
+        <item>
+         <layout class="QVBoxLayout" name="cleaningLabelLayout">
+          <item>
+           <widget class="QLabel" name="macroCleaningLabel">
+            <property name="text">
+             <string>Background Cleaning</string>
+            </property>
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="macroCleaningDesc">
+            <property name="text">
+             <string>Noisy → Clean</string>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>7</pointsize>
+             </font>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QSlider" name="macroCleaningSlider">
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="macroCleaningPreview">
+          <property name="minimumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::Box</enum>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="scaledContents">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="resolutionLayout">
+        <item>
+         <layout class="QVBoxLayout" name="resolutionLabelLayout">
+          <item>
+           <widget class="QLabel" name="macroResolutionLabel">
+            <property name="text">
+             <string>Output Quality</string>
+            </property>
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="macroResolutionDesc">
+            <property name="text">
+             <string>Small file → High detail</string>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>7</pointsize>
+             </font>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QSlider" name="macroResolutionSlider">
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="macroResolutionPreview">
+          <property name="minimumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::Box</enum>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="scaledContents">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="dpiPanel">
      <property name="title">
       <string>Output Resolution (DPI)</string>
@@ -1011,6 +1242,191 @@
             </widget>
            </item>
           </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="pdfPageFormatLayout">
+           <item>
+            <widget class="QLabel" name="pdfPageFormatLabel">
+             <property name="text">
+              <string>Page format:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="pdfPageFormatCombo">
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="pdfOcrCB">
+           <property name="text">
+            <string>Enable OCR (searchable text)</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+           <property name="toolTip">
+            <string>Add invisible searchable text layer via Tesseract OCR. Disable for faster export.</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="CollapsibleGroupBox" name="pdfTweaksPanel">
+           <property name="title">
+            <string>PDF Tweaks</string>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+           <property name="checkable">
+            <bool>false</bool>
+           </property>
+           <layout class="QFormLayout" name="tweaksFormLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="tweakCompressionLabel">
+              <property name="text">
+               <string>Compression:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="tweakCompressionCombo">
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="tweakJpegLabel">
+              <property name="text">
+               <string>JPEG quality:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <layout class="QHBoxLayout" name="tweakJpegLayout">
+              <item>
+               <widget class="QSlider" name="tweakJpegSlider">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>85</number>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="tweakJpegValueLabel">
+                <property name="text">
+                 <string>85</string>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>24</width>
+                  <height>0</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="tweakSharpenLabel">
+              <property name="text">
+               <string>Sharpening:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <layout class="QHBoxLayout" name="tweakSharpenLayout">
+              <item>
+               <widget class="QSlider" name="tweakSharpenSlider">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>30</number>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="tweakSharpenValueLabel">
+                <property name="text">
+                 <string>30</string>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>24</width>
+                  <height>0</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="tweakColorLabel">
+              <property name="text">
+               <string>Color mode:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="tweakColorCombo">
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="tweakPdfVersionLabel">
+              <property name="text">
+               <string>PDF version:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QComboBox" name="tweakPdfVersionCombo">
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QCheckBox" name="tweakDownsampleCB">
+              <property name="text">
+               <string>Downsample above:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QSpinBox" name="tweakDownsampleSpin">
+              <property name="minimum">
+               <number>72</number>
+              </property>
+              <property name="maximum">
+               <number>1200</number>
+              </property>
+              <property name="value">
+               <number>600</number>
+              </property>
+              <property name="singleStep">
+               <number>50</number>
+              </property>
+              <property name="suffix">
+               <string> DPI</string>
+              </property>
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </item>
          <item>
           <widget class="QLabel" name="pdfSizeEstLabel">

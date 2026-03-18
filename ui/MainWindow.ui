@@ -194,6 +194,9 @@
     <addaction name="separator"/>
     <addaction name="actionExportPdf"/>
     <addaction name="actionExportRag"/>
+    <addaction name="actionExportTiff"/>
+    <addaction name="actionExportJpeg"/>
+    <addaction name="actionExportText"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -383,6 +386,21 @@
   <action name="actionExportRag">
    <property name="text">
     <string>Export for RAG ...</string>
+   </property>
+  </action>
+  <action name="actionExportTiff">
+   <property name="text">
+    <string>Export as Multi-Page TIFF ...</string>
+   </property>
+  </action>
+  <action name="actionExportJpeg">
+   <property name="text">
+    <string>Export as JPEG Pages ...</string>
+   </property>
+  </action>
+  <action name="actionExportText">
+   <property name="text">
+    <string>Extract Text (OCR) ...</string>
    </property>
   </action>
  </widget>

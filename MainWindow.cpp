@@ -36,6 +36,7 @@
 #include "ImageId.h"
 #include "Utils.h"
 #include "FilterOptionsWidget.h"
+#include "ImageViewBase.h"
 #include "ErrorWidget.h"
 #include "AutoRemovingFile.h"
 #include "DebugImages.h"
@@ -68,6 +69,9 @@
 #include "OutOfMemoryDialog.h"
 #include "RagExporter.h"
 #include "VectorPdfExporter.h"
+#include "MultiPageTiffExporter.h"
+#include "JpegBatchExporter.h"
+#include "TextExporter.h"
 #include "QtSignalForwarder.h"
 #include "filters/fix_orientation/Filter.h"
 #include "filters/fix_orientation/Task.h"
@@ -144,6 +148,10 @@
 #include <Qt>
 #include <QDebug>
 #include <QProgressDialog>
+#include <QPainter>
+#include <QPushButton>
+#include <QToolButton>
+#include <QVBoxLayout>
 #include <QTimer>
 #include <algorithm>
 #include <atomic>
@@ -189,7 +197,16 @@ MainWindow::MainWindow()
 	m_generatePdf(false),
 	m_vectorizePdf(true),
 	m_ocrLanguage("eng+ita"),
-	m_pdfDpi(300)
+	m_pdfDpi(300),
+	m_pdfPageFormat(0),
+	m_pdfOcrEnabled(true),
+	m_pdfCompression(0),
+	m_pdfJpegQuality(85),
+	m_pdfSharpening(30),
+	m_pdfColorMode(0),
+	m_pdfVersion("1.4"),
+	m_pdfDownsample(false),
+	m_pdfDownsampleThreshold(600)
 {
 	m_maxLogicalThumbSize = QSize(250, 160);
 	m_ptrThumbSequence.reset(new ThumbnailSequence(m_maxLogicalThumbSize));
@@ -225,6 +242,37 @@ MainWindow::MainWindow()
 	}
 
 	QMainWindow::statusBar()->addPermanentWidget(m_ptrStatusLabel, 1);
+
+	// ── Zoom controls in status bar ──
+	m_zoomOutBtn = new QToolButton(this);
+	m_zoomOutBtn->setText("-");
+	m_zoomOutBtn->setFixedSize(24, 24);
+	m_zoomOutBtn->setAutoRaise(true);
+	m_zoomOutBtn->setToolTip(tr("Zoom Out"));
+	connect(m_zoomOutBtn, &QToolButton::clicked, this, &MainWindow::zoomOut);
+
+	m_zoomLabel = new QLabel("100%", this);
+	m_zoomLabel->setFixedWidth(48);
+	m_zoomLabel->setAlignment(Qt::AlignCenter);
+
+	m_zoomInBtn = new QToolButton(this);
+	m_zoomInBtn->setText("+");
+	m_zoomInBtn->setFixedSize(24, 24);
+	m_zoomInBtn->setAutoRaise(true);
+	m_zoomInBtn->setToolTip(tr("Zoom In"));
+	connect(m_zoomInBtn, &QToolButton::clicked, this, &MainWindow::zoomIn);
+
+	QMainWindow::statusBar()->addPermanentWidget(m_zoomOutBtn);
+	QMainWindow::statusBar()->addPermanentWidget(m_zoomLabel);
+	QMainWindow::statusBar()->addPermanentWidget(m_zoomInBtn);
+
+	m_lastZoom = 1.0;
+
+	// Zoom display update timer (polls current image view zoom)
+	QTimer* zoomUpdateTimer = new QTimer(this);
+	zoomUpdateTimer->setInterval(200);
+	connect(zoomUpdateTimer, &QTimer::timeout, this, &MainWindow::updateZoomDisplay);
+	zoomUpdateTimer->start();
 
 	QShortcut* goToPageShortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_G), this);
 	connect(goToPageShortcut, &QShortcut::activated, this, &MainWindow::goToPageByNumber);
@@ -358,6 +406,18 @@ MainWindow::MainWindow()
 	connect(
 		actionExportRag, &QAction::triggered,
 		this, &MainWindow::exportRagTriggered
+	);
+	connect(
+		actionExportTiff, &QAction::triggered,
+		this, &MainWindow::exportTiffTriggered
+	);
+	connect(
+		actionExportJpeg, &QAction::triggered,
+		this, &MainWindow::exportJpegTriggered
+	);
+	connect(
+		actionExportText, &QAction::triggered,
+		this, &MainWindow::exportTextTriggered
 	);
 	connect(
 		actionQuit, &QAction::triggered,
@@ -810,6 +870,38 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 			m_ptrOptionsWidget, SIGNAL(pdfDpiChanged(int)),
 			this, SLOT(pdfDpiChanged(int))
 		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfPageFormatChanged(int)),
+			this, SLOT(pdfPageFormatChanged(int))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfOcrChanged(bool)),
+			this, SLOT(pdfOcrChanged(bool))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfCompressionChanged(int)),
+			this, SLOT(pdfCompressionChanged(int))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfJpegQualityChanged(int)),
+			this, SLOT(pdfJpegQualityChanged(int))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfSharpeningChanged(int)),
+			this, SLOT(pdfSharpeningChanged(int))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfColorModeChanged(int)),
+			this, SLOT(pdfColorModeChanged(int))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfVersionChanged(QString const&)),
+			this, SLOT(pdfVersionChanged(QString const&))
+		);
+		disconnect(
+			m_ptrOptionsWidget, SIGNAL(pdfDownsampleChanged(bool, int)),
+			this, SLOT(pdfDownsampleChanged(bool, int))
+		);
 	}
 
 	// Detach old widget from scroll area before deleting it.
@@ -866,6 +958,47 @@ MainWindow::setOptionsWidget(FilterOptionsWidget* widget, Ownership const owners
 		widget, SIGNAL(pdfDpiChanged(int)),
 		this, SLOT(pdfDpiChanged(int))
 	);
+	connect(
+		widget, SIGNAL(pdfPageFormatChanged(int)),
+		this, SLOT(pdfPageFormatChanged(int))
+	);
+	connect(
+		widget, SIGNAL(pdfOcrChanged(bool)),
+		this, SLOT(pdfOcrChanged(bool))
+	);
+	connect(
+		widget, SIGNAL(pdfCompressionChanged(int)),
+		this, SLOT(pdfCompressionChanged(int))
+	);
+	connect(
+		widget, SIGNAL(pdfJpegQualityChanged(int)),
+		this, SLOT(pdfJpegQualityChanged(int))
+	);
+	connect(
+		widget, SIGNAL(pdfSharpeningChanged(int)),
+		this, SLOT(pdfSharpeningChanged(int))
+	);
+	connect(
+		widget, SIGNAL(pdfColorModeChanged(int)),
+		this, SLOT(pdfColorModeChanged(int))
+	);
+	connect(
+		widget, SIGNAL(pdfVersionChanged(QString const&)),
+		this, SLOT(pdfVersionChanged(QString const&))
+	);
+	connect(
+		widget, SIGNAL(pdfDownsampleChanged(bool, int)),
+		this, SLOT(pdfDownsampleChanged(bool, int))
+	);
+
+	// Set total page count for size estimate (use invokeMethod to avoid
+	// including output/OptionsWidget.h which has unresolvable include paths).
+	if (m_ptrPages) {
+		int const pageCount = static_cast<int>(
+			m_ptrPages->toPageSequence(PAGE_VIEW).numPages());
+		QMetaObject::invokeMethod(widget, "setTotalPageCount",
+			Q_ARG(int, pageCount));
+	}
 }
 
 void
@@ -1129,42 +1262,85 @@ MainWindow::runPdfExportInBackground(
 		exportDone.store(true, std::memory_order_release);
 	});
 
-	QProgressDialog progress(
-		tr("Generating PDF..."), tr("Cancel"), 0, 100, this);
-	progress.setWindowTitle(tr("PDF Export"));
-	progress.setWindowModality(Qt::WindowModal);
-	progress.setMinimumDuration(0);
-	progress.setValue(0);
+	// ── Circular spinner dialog (indeterminate) ──
+	QDialog spinnerDlg(this);
+	spinnerDlg.setWindowTitle(tr("PDF Export"));
+	spinnerDlg.setWindowModality(Qt::WindowModal);
+	spinnerDlg.setFixedSize(280, 160);
+	spinnerDlg.setWindowFlags(
+		spinnerDlg.windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-	// Poll progress at 20 fps — UI stays fully responsive
-	QTimer timer;
-	timer.setInterval(50);
-	connect(&timer, &QTimer::timeout, this, [&]() {
+	QVBoxLayout* spinLayout = new QVBoxLayout(&spinnerDlg);
+	spinLayout->setAlignment(Qt::AlignCenter);
+
+	// Spinning arc widget (painted by timer)
+	int spinAngle = 0;
+	QWidget* spinWidget = new QWidget(&spinnerDlg);
+	spinWidget->setFixedSize(48, 48);
+	spinLayout->addWidget(spinWidget, 0, Qt::AlignCenter);
+
+	QLabel* spinLabel = new QLabel(tr("Generating PDF..."), &spinnerDlg);
+	spinLabel->setAlignment(Qt::AlignCenter);
+	spinLayout->addWidget(spinLabel);
+
+	QPushButton* cancelBtn = new QPushButton(tr("Cancel"), &spinnerDlg);
+	cancelBtn->setFixedWidth(80);
+	spinLayout->addWidget(cancelBtn, 0, Qt::AlignCenter);
+	connect(cancelBtn, &QPushButton::clicked, [&]() {
+		cancelRequested.store(true, std::memory_order_relaxed);
+		spinLabel->setText(tr("Cancelling..."));
+		cancelBtn->setEnabled(false);
+	});
+
+	// Animation timer — spin the arc at ~30 fps
+	QTimer spinTimer;
+	spinTimer.setInterval(33);
+	connect(&spinTimer, &QTimer::timeout, [&]() {
+		spinAngle = (spinAngle + 10) % 360;
+		spinWidget->update();
 		if (exportDone.load(std::memory_order_acquire)) {
-			timer.stop();
-			return;
-		}
-		int tot = totalPagesAtom.load(std::memory_order_relaxed);
-		int cur = currentPage.load(std::memory_order_relaxed);
-		if (tot > 0) {
-			progress.setValue(cur * 100 / tot);
-		}
-		if (progress.wasCanceled()) {
-			cancelRequested.store(true, std::memory_order_relaxed);
+			spinTimer.stop();
+			spinnerDlg.accept();
 		}
 	});
-	timer.start();
+
+	// Paint the spinning arc
+	spinWidget->installEventFilter(new QObject());  // placeholder
+	// Use a custom paint via lambda through event filter
+	class SpinPainter : public QObject {
+	public:
+		int* angle;
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			if (ev->type() == QEvent::Paint) {
+				QWidget* w = static_cast<QWidget*>(obj);
+				QPainter p(w);
+				p.setRenderHint(QPainter::Antialiasing);
+				QPen pen(QColor(0x42, 0x85, 0xF4), 4);
+				pen.setCapStyle(Qt::RoundCap);
+				p.setPen(pen);
+				QRect r(6, 6, w->width() - 12, w->height() - 12);
+				p.drawArc(r, (*angle) * 16, 270 * 16);
+				return true;
+			}
+			return QObject::eventFilter(obj, ev);
+		}
+	};
+	SpinPainter* painter = new SpinPainter();
+	painter->angle = &spinAngle;
+	painter->setParent(&spinnerDlg); // auto-delete
+	spinWidget->removeEventFilter(spinWidget); // remove placeholder
+	spinWidget->installEventFilter(painter);
+
+	spinTimer.start();
+	spinnerDlg.show();
 
 	// Spin the event loop until the export thread finishes.
-	// The UI stays responsive because work runs in the background.
 	while (!exportDone.load(std::memory_order_acquire)) {
 		QApplication::processEvents(QEventLoop::AllEvents, 100);
 	}
-	timer.stop();
+	spinTimer.stop();
 	exportThread.join();
-
-	progress.setValue(100);
-	progress.close();
+	spinnerDlg.close();
 
 	return exportResult;
 }
@@ -1510,23 +1686,17 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 				opts.language = m_ocrLanguage;
 				opts.dpi = m_pdfDpi;
 				opts.vectorize = m_vectorizePdf;
+				opts.enableOcr = m_pdfOcrEnabled;
+				opts.pageFormat = static_cast<VectorPdfExporter::PageFormat>(m_pdfPageFormat);
+				opts.compression = static_cast<VectorPdfExporter::CompressionMode>(m_pdfCompression);
+				opts.jpegQuality = m_pdfJpegQuality;
+				opts.sharpening = m_pdfSharpening;
+				opts.forceGrayscale = (m_pdfColorMode == 0);
+				opts.pdfVersion = m_pdfVersion;
+				opts.downsample = m_pdfDownsample;
+				opts.downsampleThreshold = m_pdfDownsampleThreshold;
 
-				QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
-				if (QDir(appTessdata).exists()) {
-					opts.tessDataPath = QApplication::applicationDirPath();
-				} else {
-					static QStringList const systemPaths = {
-						"C:/msys64/mingw64/share/tessdata",
-						"/usr/share/tessdata",
-						"/usr/local/share/tessdata"
-					};
-					for (QString const& p : systemPaths) {
-						if (QDir(p).exists()) {
-							opts.tessDataPath = QFileInfo(p).absolutePath();
-							break;
-						}
-					}
-				}
+				opts.tessDataPath = findTessDataPath();
 
 				VectorPdfExporter::ExportResult const er =
 					runPdfExportInBackground(pdfPath, opts);
@@ -1706,6 +1876,89 @@ MainWindow::pdfDpiChanged(int const dpi)
 }
 
 void
+MainWindow::pdfPageFormatChanged(int const format)
+{
+	m_pdfPageFormat = format;
+}
+
+void
+MainWindow::pdfOcrChanged(bool const enabled)
+{
+	m_pdfOcrEnabled = enabled;
+}
+
+void
+MainWindow::pdfCompressionChanged(int const mode)
+{
+	m_pdfCompression = mode;
+}
+
+void
+MainWindow::pdfJpegQualityChanged(int const quality)
+{
+	m_pdfJpegQuality = quality;
+}
+
+void
+MainWindow::pdfSharpeningChanged(int const sharpening)
+{
+	m_pdfSharpening = sharpening;
+}
+
+void
+MainWindow::pdfColorModeChanged(int const mode)
+{
+	m_pdfColorMode = mode;
+}
+
+void
+MainWindow::pdfVersionChanged(QString const& version)
+{
+	m_pdfVersion = version;
+}
+
+void
+MainWindow::pdfDownsampleChanged(bool const enabled, int const threshold)
+{
+	m_pdfDownsample = enabled;
+	m_pdfDownsampleThreshold = threshold;
+}
+
+void
+MainWindow::zoomIn()
+{
+	// Find the current ImageViewBase in the image view frame
+	ImageViewBase* view = imageViewFrame->findChild<ImageViewBase*>();
+	if (!view) return;
+	double zoom = view->zoomLevel() * 1.25; // 25% increments
+	QPointF center = QRectF(view->rect()).center();
+	view->setWidgetFocalPointWithoutMoving(center);
+	view->setZoomLevel(zoom);
+}
+
+void
+MainWindow::zoomOut()
+{
+	ImageViewBase* view = imageViewFrame->findChild<ImageViewBase*>();
+	if (!view) return;
+	double zoom = qMax(1.0, view->zoomLevel() * 0.8); // 25% decrements
+	QPointF center = QRectF(view->rect()).center();
+	view->setWidgetFocalPointWithoutMoving(center);
+	view->setZoomLevel(zoom);
+}
+
+void
+MainWindow::updateZoomDisplay()
+{
+	ImageViewBase* view = imageViewFrame->findChild<ImageViewBase*>();
+	double zoom = view ? view->zoomLevel() : 1.0;
+	if (qAbs(zoom - m_lastZoom) > 0.005) {
+		m_lastZoom = zoom;
+		m_zoomLabel->setText(QString::number(qRound(zoom * 100)) + "%");
+	}
+}
+
+void
 MainWindow::exportPdfTriggered()
 {
 	if (!isProjectLoaded()) {
@@ -1726,23 +1979,17 @@ MainWindow::exportPdfTriggered()
 	opts.language = m_ocrLanguage;
 	opts.dpi = m_pdfDpi;
 	opts.vectorize = m_vectorizePdf;
+	opts.enableOcr = m_pdfOcrEnabled;
+	opts.pageFormat = static_cast<VectorPdfExporter::PageFormat>(m_pdfPageFormat);
+	opts.compression = static_cast<VectorPdfExporter::CompressionMode>(m_pdfCompression);
+	opts.jpegQuality = m_pdfJpegQuality;
+	opts.sharpening = m_pdfSharpening;
+	opts.forceGrayscale = (m_pdfColorMode == 0);
+	opts.pdfVersion = m_pdfVersion;
+	opts.downsample = m_pdfDownsample;
+	opts.downsampleThreshold = m_pdfDownsampleThreshold;
 
-	QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
-	if (QDir(appTessdata).exists()) {
-		opts.tessDataPath = QApplication::applicationDirPath();
-	} else {
-		static QStringList const systemPaths = {
-			"C:/msys64/mingw64/share/tessdata",
-			"/usr/share/tessdata",
-			"/usr/local/share/tessdata"
-		};
-		for (QString const& p : systemPaths) {
-			if (QDir(p).exists()) {
-				opts.tessDataPath = QFileInfo(p).absolutePath();
-				break;
-			}
-		}
-	}
+	opts.tessDataPath = findTessDataPath();
 
 	VectorPdfExporter::ExportResult const er =
 		runPdfExportInBackground(path, opts);
@@ -1802,6 +2049,258 @@ MainWindow::exportRagTriggered()
 			tr("Export complete.\nOutput directory:\n%1").arg(dir));
 	} else {
 		QMessageBox::critical(this, tr("RAG Export Error"), err);
+	}
+}
+
+QString
+MainWindow::findTessDataPath() const
+{
+	QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
+	if (QDir(appTessdata).exists()) {
+		return QApplication::applicationDirPath();
+	}
+
+	static QStringList const systemPaths = {
+		"C:/msys64/mingw64/share/tessdata",
+		"/usr/share/tessdata",
+		"/usr/local/share/tessdata"
+	};
+	for (QString const& p : systemPaths) {
+		if (QDir(p).exists()) {
+			return QFileInfo(p).absolutePath();
+		}
+	}
+	return QString();
+}
+
+template<typename R, typename F>
+R MainWindow::runWithSpinner(QString const& title, QString const& label, F func)
+{
+	std::atomic<bool> cancelRequested{false};
+	std::atomic<bool> exportDone{false};
+	R exportResult;
+
+	std::thread workerThread([&]() {
+		exportResult = func([&](int, int) -> bool {
+			return cancelRequested.load(std::memory_order_relaxed);
+		});
+		exportDone.store(true, std::memory_order_release);
+	});
+
+	// Circular spinner dialog
+	QDialog spinnerDlg(this);
+	spinnerDlg.setWindowTitle(title);
+	spinnerDlg.setWindowModality(Qt::WindowModal);
+	spinnerDlg.setFixedSize(280, 160);
+	spinnerDlg.setWindowFlags(
+		spinnerDlg.windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+	QVBoxLayout* spinLayout = new QVBoxLayout(&spinnerDlg);
+	spinLayout->setAlignment(Qt::AlignCenter);
+
+	int spinAngle = 0;
+	QWidget* spinWidget = new QWidget(&spinnerDlg);
+	spinWidget->setFixedSize(48, 48);
+	spinLayout->addWidget(spinWidget, 0, Qt::AlignCenter);
+
+	QLabel* spinLabel = new QLabel(label, &spinnerDlg);
+	spinLabel->setAlignment(Qt::AlignCenter);
+	spinLayout->addWidget(spinLabel);
+
+	QPushButton* cancelBtn = new QPushButton(tr("Cancel"), &spinnerDlg);
+	cancelBtn->setFixedWidth(80);
+	spinLayout->addWidget(cancelBtn, 0, Qt::AlignCenter);
+	connect(cancelBtn, &QPushButton::clicked, [&]() {
+		cancelRequested.store(true, std::memory_order_relaxed);
+		spinLabel->setText(tr("Cancelling..."));
+		cancelBtn->setEnabled(false);
+	});
+
+	QTimer spinTimer;
+	spinTimer.setInterval(33);
+	connect(&spinTimer, &QTimer::timeout, [&]() {
+		spinAngle = (spinAngle + 10) % 360;
+		spinWidget->update();
+		if (exportDone.load(std::memory_order_acquire)) {
+			spinTimer.stop();
+			spinnerDlg.accept();
+		}
+	});
+
+	class SpinPainter : public QObject {
+	public:
+		int* angle;
+		bool eventFilter(QObject* obj, QEvent* ev) override {
+			if (ev->type() == QEvent::Paint) {
+				QWidget* w = static_cast<QWidget*>(obj);
+				QPainter p(w);
+				p.setRenderHint(QPainter::Antialiasing);
+				QPen pen(QColor(0x42, 0x85, 0xF4), 4);
+				pen.setCapStyle(Qt::RoundCap);
+				p.setPen(pen);
+				QRect r(6, 6, w->width() - 12, w->height() - 12);
+				p.drawArc(r, (*angle) * 16, 270 * 16);
+				return true;
+			}
+			return QObject::eventFilter(obj, ev);
+		}
+	};
+	SpinPainter* painter = new SpinPainter();
+	painter->angle = &spinAngle;
+	painter->setParent(&spinnerDlg);
+	spinWidget->installEventFilter(painter);
+
+	spinTimer.start();
+	spinnerDlg.show();
+
+	while (!exportDone.load(std::memory_order_acquire)) {
+		QApplication::processEvents(QEventLoop::AllEvents, 100);
+	}
+	spinTimer.stop();
+	workerThread.join();
+	spinnerDlg.close();
+
+	return exportResult;
+}
+
+void
+MainWindow::exportTiffTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const path = QFileDialog::getSaveFileName(
+		this,
+		tr("Export as Multi-Page TIFF"),
+		QFileInfo(m_projectFile).absolutePath(),
+		tr("TIFF Files (*.tif *.tiff)")
+	);
+	if (path.isEmpty()) {
+		return;
+	}
+
+	MultiPageTiffExporter::Options opts;
+	opts.compression = MultiPageTiffExporter::COMPRESS_CCITT_G4;
+	opts.forceBW = true;
+	opts.dpi = m_pdfDpi;
+
+	IntrusivePtr<ProjectPages> pagesCopy = m_ptrPages;
+	OutputFileNameGenerator fngCopy = m_outFileNameGen;
+
+	auto er = runWithSpinner<MultiPageTiffExporter::ExportResult>(
+		tr("TIFF Export"), tr("Exporting TIFF..."),
+		[pagesCopy, fngCopy, path, opts](
+			std::function<bool(int,int)> progress) {
+			return MultiPageTiffExporter::exportTiff(
+				pagesCopy, fngCopy, path, opts, progress);
+		});
+
+	if (er.pageCount > 0) {
+		QMessageBox::information(this, tr("Export"),
+			tr("Multi-page TIFF exported: %1 pages, %2 KB\n%3")
+				.arg(er.pageCount)
+				.arg(er.fileSize / 1024)
+				.arg(path));
+	} else if (!er.errorDetail.contains("Cancelled")) {
+		QMessageBox::critical(this, tr("Export Error"),
+			er.errorDetail);
+	}
+}
+
+void
+MainWindow::exportJpegTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const dir = QFileDialog::getExistingDirectory(
+		this,
+		tr("Select JPEG Export Directory"),
+		QFileInfo(m_projectFile).absolutePath()
+	);
+	if (dir.isEmpty()) {
+		return;
+	}
+
+	JpegBatchExporter::Options opts;
+	opts.quality = m_pdfJpegQuality > 0 ? m_pdfJpegQuality : 85;
+	opts.dpi = m_pdfDpi;
+	opts.grayscale = (m_pdfColorMode == 0);
+	opts.generateViewer = true;
+
+	IntrusivePtr<ProjectPages> pagesCopy = m_ptrPages;
+	OutputFileNameGenerator fngCopy = m_outFileNameGen;
+
+	auto er = runWithSpinner<JpegBatchExporter::ExportResult>(
+		tr("JPEG Export"), tr("Exporting JPEGs..."),
+		[pagesCopy, fngCopy, dir, opts](
+			std::function<bool(int,int)> progress) {
+			return JpegBatchExporter::exportJpegs(
+				pagesCopy, fngCopy, dir, opts, progress);
+		});
+
+	if (er.pageCount > 0) {
+		QMessageBox::information(this, tr("Export"),
+			tr("JPEG export complete: %1 pages, %2 KB total\n%3")
+				.arg(er.pageCount)
+				.arg(er.totalSize / 1024)
+				.arg(dir));
+	} else if (!er.errorDetail.contains("Cancelled")) {
+		QMessageBox::critical(this, tr("Export Error"),
+			er.errorDetail);
+	}
+}
+
+void
+MainWindow::exportTextTriggered()
+{
+	if (!isProjectLoaded()) {
+		return;
+	}
+
+	QString const path = QFileDialog::getSaveFileName(
+		this,
+		tr("Export Text (OCR)"),
+		QFileInfo(m_projectFile).absolutePath(),
+		tr("Text Files (*.txt)")
+	);
+	if (path.isEmpty()) {
+		return;
+	}
+
+	TextExporter::Options opts;
+	opts.language = m_ocrLanguage.isEmpty()
+		? QLatin1String("eng") : m_ocrLanguage;
+	opts.dpi = m_pdfDpi;
+	opts.tessDataPath = findTessDataPath();
+
+	IntrusivePtr<ProjectPages> pagesCopy = m_ptrPages;
+	OutputFileNameGenerator fngCopy = m_outFileNameGen;
+
+	auto er = runWithSpinner<TextExporter::ExportResult>(
+		tr("Text Export"), tr("Extracting text (OCR)..."),
+		[pagesCopy, fngCopy, path, opts](
+			std::function<bool(int,int)> progress) {
+			return TextExporter::exportText(
+				pagesCopy, fngCopy, path, opts, progress);
+		});
+
+	if (er.pageCount > 0) {
+		QString msg = tr("Text extracted: %1 pages\n"
+			"%2 words, %3 characters\n%4")
+			.arg(er.pageCount)
+			.arg(er.wordCount)
+			.arg(er.charCount)
+			.arg(path);
+		if (!er.tessInitOk) {
+			msg += tr("\nWarning: Tesseract init issue");
+		}
+		QMessageBox::information(this, tr("Export"), msg);
+	} else if (!er.errorDetail.contains("Cancelled")) {
+		QMessageBox::critical(this, tr("Export Error"),
+			er.errorDetail);
 	}
 }
 

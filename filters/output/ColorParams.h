@@ -35,7 +35,7 @@ class ColorParams
 public:
 	enum ColorMode { BLACK_AND_WHITE, COLOR_GRAYSCALE, MIXED };
 	
-	ColorParams(): m_colorMode(BLACK_AND_WHITE), m_fillingColor(FILL_WHITE) {}
+	ColorParams(): m_colorMode(COLOR_GRAYSCALE), m_fillingColor(FILL_WHITE) {}
 	
 	ColorParams(QDomElement const& el);
 	

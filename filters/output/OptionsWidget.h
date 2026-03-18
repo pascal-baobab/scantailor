@@ -66,6 +66,8 @@ public:
 	ImageViewTab lastTab() const { return m_lastTab; }
 
 	DepthPerception const& depthPerception() const { return m_depthPerception; }
+
+	Q_INVOKABLE void setTotalPageCount(int count);
 signals:
 	void despeckleLevelChanged(DespeckleLevel level, bool* handled);
 
@@ -76,6 +78,17 @@ signals:
 	void ocrLanguageChanged(QString const& languages);
 
 	void pdfDpiChanged(int dpi);
+
+	void pdfPageFormatChanged(int format);
+
+	void pdfOcrChanged(bool enabled);
+
+	void pdfCompressionChanged(int mode);
+	void pdfJpegQualityChanged(int quality);
+	void pdfSharpeningChanged(int sharpening);
+	void pdfColorModeChanged(int mode);
+	void pdfVersionChanged(QString const& version);
+	void pdfDownsampleChanged(bool enabled, int threshold);
 public slots:
 	void tabChanged(ImageViewTab tab);
 
@@ -167,7 +180,24 @@ private slots:
 
 	void pdfDpiSpinChanged(int val);
 
+	void pdfPageFormatComboChanged(int idx);
+
+	void pdfOcrToggled(bool checked);
+
 	void updatePdfSizeEstimate();
+
+	void tweakCompressionChanged(int idx);
+	void tweakJpegSliderMoved(int val);
+	void tweakSharpenSliderMoved(int val);
+	void tweakColorChanged(int idx);
+	void tweakPdfVersionChanged(int idx);
+	void tweakDownsampleToggled(bool checked);
+	void tweakDownsampleSpinChanged(int val);
+
+	void macroSharpnessChanged(int val);
+	void macroCleaningChanged(int val);
+	void macroResolutionChanged(int val);
+	void updateMacroPreviews();
 private:
 	void handleDespeckleLevelChange(DespeckleLevel level);
 
@@ -192,6 +222,10 @@ private:
 	int m_ignoreThresholdChanges;
 	QSpinBox* m_windowSizeSB;
 	QLabel* m_windowSizeLabel;
+	QString m_outputDir;          ///< Output TIFF directory for size estimate sampling
+	qint64 m_cachedSampleSize;    ///< Cached compressed size of a sample page (bytes)
+	int m_cachedSampleCompression; ///< Compression mode used for cached sample
+	int m_totalPageCount;         ///< Total pages in project
 };
 
 } // namespace output

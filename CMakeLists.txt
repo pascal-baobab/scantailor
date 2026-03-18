@@ -593,6 +593,9 @@ SET(
 	OutputFileNameGenerator.cpp OutputFileNameGenerator.h
 	RagExporter.cpp RagExporter.h
 	VectorPdfExporter.cpp VectorPdfExporter.h
+	MultiPageTiffExporter.cpp MultiPageTiffExporter.h
+	JpegBatchExporter.cpp JpegBatchExporter.h
+	TextExporter.cpp TextExporter.h
 	PotraceVectorizer.cpp PotraceVectorizer.h
 	DefaultParams.cpp DefaultParams.h
 	DefaultParamsProfileManager.cpp DefaultParamsProfileManager.h

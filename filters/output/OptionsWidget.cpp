@@ -32,6 +32,8 @@
 #include "ScopedIncDec.h"
 #include "config.h"
 #include <QtGlobal>
+#include <QPixmap>
+#include <QPainter>
 #include <QVariant>
 #include <QColorDialog>
 #include <QToolTip>
@@ -302,16 +304,109 @@ OptionsWidget::OptionsWidget(
 		this, &OptionsWidget::pdfDpiSpinChanged
 	);
 
+	// Page format combo: Auto, A4, A5, Letter.
+	pdfPageFormatCombo->addItem(tr("Auto"), 0);
+	pdfPageFormatCombo->addItem(tr("A4"), 1);
+	pdfPageFormatCombo->addItem(tr("A5"), 2);
+	pdfPageFormatCombo->addItem(tr("Letter"), 3);
+	pdfPageFormatCombo->setCurrentIndex(0);
+	connect(
+		pdfPageFormatCombo, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, &OptionsWidget::pdfPageFormatComboChanged
+	);
+
+	connect(
+		pdfOcrCB, &QCheckBox::toggled,
+		this, &OptionsWidget::pdfOcrToggled
+	);
+
+	// ── PDF Tweaks panel initialization ──
+	tweakCompressionCombo->addItem(tr("Text optimal (1-bit)"), 0);
+	tweakCompressionCombo->addItem(tr("Grayscale JPEG"), 1);
+	tweakCompressionCombo->addItem(tr("Lossless (ZIP 8-bit)"), 2);
+	tweakCompressionCombo->addItem(tr("None (uncompressed)"), 3);
+	tweakCompressionCombo->setCurrentIndex(0);
+	connect(
+		tweakCompressionCombo, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, &OptionsWidget::tweakCompressionChanged
+	);
+
+	connect(
+		tweakJpegSlider, &QSlider::valueChanged,
+		this, &OptionsWidget::tweakJpegSliderMoved
+	);
+
+	connect(
+		tweakSharpenSlider, &QSlider::valueChanged,
+		this, &OptionsWidget::tweakSharpenSliderMoved
+	);
+
+	tweakColorCombo->addItem(tr("Greyscale"), 0);
+	tweakColorCombo->addItem(tr("sRGB Color"), 1);
+	tweakColorCombo->setCurrentIndex(0);
+	connect(
+		tweakColorCombo, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, &OptionsWidget::tweakColorChanged
+	);
+
+	tweakPdfVersionCombo->addItem("1.4", 0);
+	tweakPdfVersionCombo->addItem("1.5", 1);
+	tweakPdfVersionCombo->addItem("1.7", 2);
+	tweakPdfVersionCombo->setCurrentIndex(0);
+	connect(
+		tweakPdfVersionCombo, qOverload<int>(&QComboBox::currentIndexChanged),
+		this, &OptionsWidget::tweakPdfVersionChanged
+	);
+
+	connect(
+		tweakDownsampleCB, &QCheckBox::toggled,
+		this, &OptionsWidget::tweakDownsampleToggled
+	);
+	connect(
+		tweakDownsampleSpin, qOverload<int>(&QSpinBox::valueChanged),
+		this, &OptionsWidget::tweakDownsampleSpinChanged
+	);
+
+	// JPEG slider/label only relevant for JPEG mode
+	tweakJpegSlider->setEnabled(false);
+	tweakJpegValueLabel->setEnabled(false);
+
+	m_cachedSampleSize = -1;
+	m_cachedSampleCompression = -1;
+	m_totalPageCount = 0;
+
 	pdfOptionsWidget->setVisible(generatePdfCB->isChecked());
 	updatePdfSizeEstimate();
 
 	thresholdSlider->setMinimum(-50);
 	thresholdSlider->setMaximum(50);
 	thresholLabel->setText(QString::number(thresholdSlider->value()));
+
+	// ── Macro-preset slider connections ──
+	connect(macroSharpnessSlider, &QSlider::valueChanged,
+		this, &OptionsWidget::macroSharpnessChanged);
+	connect(macroCleaningSlider, &QSlider::valueChanged,
+		this, &OptionsWidget::macroCleaningChanged);
+	connect(macroResolutionSlider, &QSlider::valueChanged,
+		this, &OptionsWidget::macroResolutionChanged);
+
+	// Initial preview thumbnails (gray placeholder)
+	QPixmap placeholder(48, 48);
+	placeholder.fill(QColor(200, 200, 200));
+	macroSharpnessPreview->setPixmap(placeholder);
+	macroCleaningPreview->setPixmap(placeholder);
+	macroResolutionPreview->setPixmap(placeholder);
 }
 
 OptionsWidget::~OptionsWidget()
 {
+}
+
+void
+OptionsWidget::setTotalPageCount(int count)
+{
+	m_totalPageCount = count;
+	updatePdfSizeEstimate();
 }
 
 void
@@ -1106,28 +1201,284 @@ OptionsWidget::pdfDpiSpinChanged(int const val)
 }
 
 void
+OptionsWidget::pdfPageFormatComboChanged(int const idx)
+{
+	int const format = pdfPageFormatCombo->itemData(idx).toInt();
+	updatePdfSizeEstimate();
+	emit pdfPageFormatChanged(format);
+}
+
+void
+OptionsWidget::pdfOcrToggled(bool const checked)
+{
+	updatePdfSizeEstimate();
+	emit pdfOcrChanged(checked);
+}
+
+// ── PDF Tweaks slots ──
+
+void
+OptionsWidget::tweakCompressionChanged(int const idx)
+{
+	int const mode = tweakCompressionCombo->itemData(idx).toInt();
+	// JPEG slider only relevant in JPEG mode
+	bool const isJpeg = (mode == 1);
+	tweakJpegSlider->setEnabled(isJpeg);
+	tweakJpegValueLabel->setEnabled(isJpeg);
+	m_cachedSampleSize = -1; // invalidate cache
+	updatePdfSizeEstimate();
+	emit pdfCompressionChanged(mode);
+}
+
+void
+OptionsWidget::tweakJpegSliderMoved(int const val)
+{
+	tweakJpegValueLabel->setText(QString::number(val));
+	m_cachedSampleSize = -1;
+	updatePdfSizeEstimate();
+	emit pdfJpegQualityChanged(val);
+}
+
+void
+OptionsWidget::tweakSharpenSliderMoved(int const val)
+{
+	tweakSharpenValueLabel->setText(QString::number(val));
+	updatePdfSizeEstimate();
+	emit pdfSharpeningChanged(val);
+}
+
+void
+OptionsWidget::tweakColorChanged(int const idx)
+{
+	int const mode = tweakColorCombo->itemData(idx).toInt();
+	m_cachedSampleSize = -1;
+	updatePdfSizeEstimate();
+	emit pdfColorModeChanged(mode);
+}
+
+void
+OptionsWidget::tweakPdfVersionChanged(int const idx)
+{
+	QString const version = tweakPdfVersionCombo->itemText(idx);
+	emit pdfVersionChanged(version);
+}
+
+void
+OptionsWidget::tweakDownsampleToggled(bool const checked)
+{
+	tweakDownsampleSpin->setEnabled(checked);
+	m_cachedSampleSize = -1;
+	updatePdfSizeEstimate();
+	emit pdfDownsampleChanged(checked, tweakDownsampleSpin->value());
+}
+
+void
+OptionsWidget::tweakDownsampleSpinChanged(int const val)
+{
+	if (tweakDownsampleCB->isChecked()) {
+		m_cachedSampleSize = -1;
+		updatePdfSizeEstimate();
+		emit pdfDownsampleChanged(true, val);
+	}
+}
+
+void
 OptionsWidget::updatePdfSizeEstimate()
 {
 	double const dpiVal = pdfDpiSpin->value();
+	int const compression = tweakCompressionCombo->currentData().toInt();
 
-	// Estimate lossless FlateDecode size for an A5 page (5.83 x 8.27 in).
-	// zlib compression ratio on scanned page images: ~3-5x for text, ~2x for photos.
-	// Use conservative 3x estimate.
-	double const pxW   = 5.83 * dpiVal;
-	double const pxH   = 8.27 * dpiVal;
-	double const rawMB = pxW * pxH * 3.0 / (1024.0 * 1024.0);
-	double const estMB = rawMB / 3.0 + 0.02; // +20 KB overhead per page
+	// Page dimensions based on selected format.
+	int const fmt = pdfPageFormatCombo->currentData().toInt();
+	double inW, inH;
+	QString fmtName;
+	switch (fmt) {
+		case 1:  inW = 8.27; inH = 11.69; fmtName = "A4";     break;
+		case 2:  inW = 5.83; inH = 8.27;  fmtName = "A5";     break;
+		case 3:  inW = 8.50; inH = 11.00; fmtName = "Letter"; break;
+		default: inW = 5.83; inH = 8.27;  fmtName = "A5";     break;
+	}
 
-	QString est;
-	if (estMB < 1.0)
-		est = tr("~%1 KB / page (A5)").arg(int(estMB * 1024));
-	else
-		est = tr("~%1 MB / page (A5)").arg(estMB, 0, 'f', 1);
+	double const pxW = inW * dpiVal;
+	double const pxH = inH * dpiVal;
+	double const rawBytes = pxW * pxH; // 1 byte/px grayscale
 
-	// Color hint: green < 1 MB, orange 1-3 MB, red > 3 MB
-	QString color = estMB < 1.0 ? "#4CAF50" : (estMB < 3.0 ? "#FF8C00" : "#CC3333");
+	// Estimate per-page size based on compression mode.
+	double estBytes;
+	switch (compression) {
+		case 0: // Text optimal (1-bit binarized + zlib)
+			// 1-bit raw = W*H/8, zlib ratio ~6-7x on text
+			estBytes = (rawBytes / 8.0) / 6.0;
+			break;
+		case 1: { // JPEG
+			int const q = tweakJpegSlider->value();
+			// JPEG ratio varies with quality: Q85 ~6x, Q50 ~15x, Q95 ~3x
+			double const ratio = 3.0 + (100 - q) * 0.15;
+			estBytes = rawBytes / ratio;
+			break;
+		}
+		case 2: // Lossless ZIP 8-bit
+			estBytes = rawBytes / 3.0; // zlib on grayscale ~3x
+			break;
+		case 3: // None
+			estBytes = rawBytes;
+			break;
+		default:
+			estBytes = rawBytes / 6.0;
+	}
+
+	// Add OCR overhead (~2 KB/page) + PDF structure (~1 KB)
+	double ocrOverhead = pdfOcrCB->isChecked() ? 2048.0 : 0.0;
+	double const perPage = estBytes + ocrOverhead + 1024.0;
+
+	// Total estimate
+	int const pages = qMax(1, m_totalPageCount);
+	double const totalBytes = perPage * pages;
+
+	QString estStr;
+	if (perPage < 1024.0 * 1024.0) {
+		estStr = tr("~%1 KB/page").arg(static_cast<int>(perPage / 1024.0));
+	} else {
+		estStr = tr("~%1 MB/page").arg(perPage / (1024.0 * 1024.0), 0, 'f', 1);
+	}
+
+	QString totalStr;
+	if (totalBytes < 1024.0 * 1024.0) {
+		totalStr = tr("%1 KB").arg(static_cast<int>(totalBytes / 1024.0));
+	} else {
+		totalStr = tr("%1 MB").arg(totalBytes / (1024.0 * 1024.0), 0, 'f', 1);
+	}
+
+	QString const display = tr("%1 — Total: ~%2 (%3 pages, %4)")
+		.arg(estStr).arg(totalStr).arg(pages).arg(fmtName);
+
+	// Color hint: green < 100 KB/page, orange 100-500 KB, red > 500 KB
+	double const perPageKB = perPage / 1024.0;
+	QString color = perPageKB < 100.0 ? "#4CAF50"
+	              : (perPageKB < 500.0 ? "#FF8C00" : "#CC3333");
 	pdfSizeEstLabel->setText(
-		QString("<small><span style='color:%1'>%2</span></small>").arg(color).arg(est));
+		QString("<small><span style='color:%1'>%2</span></small>").arg(color, display));
+}
+
+// ── Macro-preset slots ──
+
+void
+OptionsWidget::macroSharpnessChanged(int const val)
+{
+	// Map 0-100 to threshold adjustment: 0=soft(-30), 50=neutral(0), 100=sharp(+30)
+	int const thresh = (val - 50) * 30 / 50;
+	thresholdSlider->setValue(thresh);
+
+	// Also adjust despeckle: lower sharpness = more despeckle
+	if (val < 25) {
+		handleDespeckleLevelChange(DESPECKLE_AGGRESSIVE);
+	} else if (val < 50) {
+		handleDespeckleLevelChange(DESPECKLE_NORMAL);
+	} else if (val < 75) {
+		handleDespeckleLevelChange(DESPECKLE_CAUTIOUS);
+	} else {
+		handleDespeckleLevelChange(DESPECKLE_OFF);
+	}
+
+	updateMacroPreviews();
+}
+
+void
+OptionsWidget::macroCleaningChanged(int const val)
+{
+	// Map 0-100: 0=no cleaning, 100=max cleaning
+	// Drive white margins + equalize illumination + noise reduction
+	bool const clean = (val > 30);
+	whiteMarginsToggled(clean);
+	equalizeIlluminationToggled(clean);
+
+	// Noise reduction: scale 0-10 based on slider
+	int const noiseRed = val * 10 / 100;
+	if (colorSegmentationPanel->isChecked()) {
+		noiseReductionChanged(noiseRed);
+	}
+
+	updateMacroPreviews();
+}
+
+void
+OptionsWidget::macroResolutionChanged(int const val)
+{
+	// Map 0-100 to DPI: 0=150, 50=300, 100=600
+	int dpi;
+	if (val < 25) dpi = 150;
+	else if (val < 50) dpi = 200;
+	else if (val < 75) dpi = 300;
+	else dpi = 600;
+
+	// This would need to trigger DPI change through the dialog system
+	// For now, just update the PDF export DPI in tweaks
+	pdfDpiSpin->setValue(dpi);
+
+	// Also adjust PDF compression: low quality = more aggressive
+	if (val < 30) {
+		tweakCompressionCombo->setCurrentIndex(0); // Text optimal
+		tweakJpegSlider->setValue(60);
+	} else if (val < 70) {
+		tweakCompressionCombo->setCurrentIndex(0); // Text optimal
+		tweakJpegSlider->setValue(85);
+	} else {
+		tweakCompressionCombo->setCurrentIndex(2); // Lossless
+		tweakJpegSlider->setValue(95);
+	}
+
+	updateMacroPreviews();
+	updatePdfSizeEstimate();
+}
+
+void
+OptionsWidget::updateMacroPreviews()
+{
+	// Generate simple preview thumbnails showing the effect of each macro
+	int const sz = 48;
+
+	// Sharpness preview: draw text "Aa" with varying blur
+	{
+		QPixmap pm(sz, sz);
+		pm.fill(Qt::white);
+		QPainter p(&pm);
+		int const sharpVal = macroSharpnessSlider->value();
+		QFont f("Serif", 18);
+		f.setBold(sharpVal > 60);
+		p.setFont(f);
+		// Simulate blur with opacity
+		int const alpha = 80 + sharpVal * 175 / 100;
+		p.setPen(QColor(0, 0, 0, qMin(255, alpha)));
+		p.drawText(pm.rect(), Qt::AlignCenter, "Aa");
+		macroSharpnessPreview->setPixmap(pm);
+	}
+
+	// Cleaning preview: draw background from yellow→white
+	{
+		QPixmap pm(sz, sz);
+		int const cleanVal = macroCleaningSlider->value();
+		int const bg = 200 + cleanVal * 55 / 100;
+		int const bgR = qMin(255, bg + 15 - cleanVal * 15 / 100); // yellowed → white
+		pm.fill(QColor(bgR, bg, bg - 20 + cleanVal * 20 / 100));
+		QPainter p(&pm);
+		p.setPen(Qt::black);
+		p.setFont(QFont("Serif", 14));
+		p.drawText(pm.rect(), Qt::AlignCenter, "Text");
+		macroCleaningPreview->setPixmap(pm);
+	}
+
+	// Resolution preview: draw text at varying sizes to simulate DPI
+	{
+		QPixmap pm(sz, sz);
+		pm.fill(Qt::white);
+		QPainter p(&pm);
+		int const resVal = macroResolutionSlider->value();
+		int const fontSize = 8 + resVal * 12 / 100; // 8pt → 20pt
+		p.setFont(QFont("Serif", fontSize));
+		p.setPen(Qt::black);
+		p.drawText(pm.rect(), Qt::AlignCenter, "Aa");
+		macroResolutionPreview->setPixmap(pm);
+	}
 }
 
 } // namespace output

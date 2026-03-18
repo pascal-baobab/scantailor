@@ -5,7 +5,7 @@ ScanTailor is a desktop application (C++/Qt5) for post-processing scanned book p
 fix orientation, split pages, deskew, select content, adjust margins, and produce
 clean output images. It has both a GUI (`scantailor`) and a CLI (`scantailor-cli`).
 
-Version: **0.9.12** — forked from scantailor-advanced, migrated from Qt4 to Qt5.
+Version: **2.2** — forked from scantailor-advanced, migrated from Qt4 to Qt5, modernized to C++17.
 
 ## Build (local, Windows/MSYS2)
 
@@ -73,6 +73,11 @@ Each filter has: `Filter.cpp/h`, `Task.cpp/h`, `CacheDrivenTask.cpp/h`, `Setting
 - **Pointers**: `std::unique_ptr` for ownership, `IntrusivePtr` for ref-counted objects
 - **Naming**: CamelCase for classes, camelCase for methods, `m_` prefix for members, `m_ptr` prefix for smart pointer members
 - **Build system**: CMake with Ninja generator
+
+## Versioning
+- **Version file**: `version.h` — defines VERSION and VERSION_QUAD
+- **Rule**: Every time the exe changes, bump version by 0.1 (e.g. 2.2 → 2.3)
+- **Current version**: 3.0
 
 ## Important notes
 - `QLineF::intersect()` is deprecated in Qt 5.14+ (use `intersects()`), but still compiles with warnings. Not worth bulk-fixing unless doing a Qt6 migration.

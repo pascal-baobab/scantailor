@@ -57,6 +57,8 @@ class StageSequence;
 class PageOrderProvider;
 class PageSelectionAccessor;
 class FilterOptionsWidget;
+class QToolButton;
+class QLabel;
 class ProcessingIndicationWidget;
 class ImageInfo;
 class PageInfo;
@@ -160,6 +162,12 @@ private slots:
 
   void exportRagTriggered();
 
+  void exportTiffTriggered();
+
+  void exportJpegTriggered();
+
+  void exportTextTriggered();
+
   void newProject();
 
   void newProjectCreated(ProjectCreationContext *context);
@@ -176,7 +184,22 @@ private slots:
 
   void pdfDpiChanged(int dpi);
 
+  void pdfPageFormatChanged(int format);
+
+  void pdfOcrChanged(bool enabled);
+
+  void pdfCompressionChanged(int mode);
+  void pdfJpegQualityChanged(int quality);
+  void pdfSharpeningChanged(int sharpening);
+  void pdfColorModeChanged(int mode);
+  void pdfVersionChanged(QString const& version);
+  void pdfDownsampleChanged(bool enabled, int threshold);
+
   void exportPdfTriggered();
+
+  void zoomIn();
+  void zoomOut();
+  void updateZoomDisplay();
 
   void openSettingsDialog();
 
@@ -292,6 +315,13 @@ private:
   VectorPdfExporter::ExportResult runPdfExportInBackground(
       QString const& pdfPath, VectorPdfExporter::Options const& opts);
 
+  /// Run a callable in a background thread with a spinner dialog.
+  /// F must be: R func(std::function<bool(int,int)> progress)
+  template<typename R, typename F>
+  R runWithSpinner(QString const& title, QString const& label, F func);
+
+  QString findTessDataPath() const;
+
   QLabel* m_ptrStatusLabel;
   QSizeF m_maxLogicalThumbSize;
   IntrusivePtr<ProjectPages> m_ptrPages;
@@ -328,6 +358,21 @@ private:
   bool m_vectorizePdf;
   QString m_ocrLanguage;
   int m_pdfDpi;
+  int m_pdfPageFormat; // 0=Auto, 1=A4, 2=A5, 3=Letter
+  bool m_pdfOcrEnabled;
+  int m_pdfCompression;     // 0=TextOptimal, 1=JPEG, 2=Lossless, 3=None
+  int m_pdfJpegQuality;
+  int m_pdfSharpening;
+  int m_pdfColorMode;       // 0=Greyscale, 1=sRGB
+  QString m_pdfVersion;
+  bool m_pdfDownsample;
+  int m_pdfDownsampleThreshold;
+
+  // Zoom controls
+  QToolButton* m_zoomInBtn;
+  QToolButton* m_zoomOutBtn;
+  QLabel* m_zoomLabel;
+  double m_lastZoom;
 };
 
 #endif
