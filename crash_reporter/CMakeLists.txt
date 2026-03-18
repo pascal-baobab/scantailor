@@ -1,6 +1,5 @@
 PROJECT(CrashReporter)
 
-ADD_DEFINITIONS(-D_UNICODE)
 INCLUDE_DIRECTORIES(google-breakpad)
 
 MACRO(LIST_ITEMS_PREPEND LIST PREFIX)
@@ -22,6 +21,7 @@ LIST_ITEMS_PREPEND(common_sources google-breakpad/common/windows/)
 
 IF(ENABLE_CRASH_REPORTER)
 	ADD_LIBRARY(crash_handler ${eh_sources} ${cg_sources} ${common_sources})
+	target_compile_definitions(crash_handler PRIVATE _UNICODE)
 ENDIF(ENABLE_CRASH_REPORTER)
 
 SET(
@@ -41,11 +41,13 @@ INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}") # for ui files
 
 IF(ENABLE_CRASH_REPORTER)
 	ADD_EXECUTABLE(CrashReporter WIN32 ${crash_reporter_sources} ${ui_sources})
+	target_compile_definitions(CrashReporter PRIVATE _UNICODE)
 
 	TARGET_LINK_LIBRARIES(
-		CrashReporter ${QT_QTGUI_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTNETWORK_LIBRARY}
-		${QT_QTXML_LIBRARY} ${QT_QTCORE_LIBRARY} ${QT_QTMAIN_LIBRARY} ${PNG_LIBRARY}
-		${JPEG_LIBRARY} winmm imm32 ws2_32
+		CrashReporter PRIVATE
+		Qt5::Widgets Qt5::Xml Qt5::Network Qt5::Core
+		${PNG_LIBRARY} ${JPEG_LIBRARY}
+		winmm imm32 ws2_32
 	)
 ENDIF(ENABLE_CRASH_REPORTER)
 

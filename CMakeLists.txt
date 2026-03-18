@@ -121,17 +121,8 @@ GET_FILENAME_COMPONENT(QT_BIN_DIR "${_qmake}" PATH)
 FIND_PROGRAM(QT_LUPDATE_EXECUTABLE lupdate HINTS "${QT_BIN_DIR}")
 FIND_PROGRAM(QT_LRELEASE_EXECUTABLE lrelease HINTS "${QT_BIN_DIR}")
 
-# Compatibility variables so rest of the file still works
-SET(QT_DEFINITIONS "")
-SET(QT_INCLUDES
-	${Qt5Core_INCLUDE_DIRS}
-	${Qt5Gui_INCLUDE_DIRS}
-	${Qt5Widgets_INCLUDE_DIRS}
-	${Qt5Xml_INCLUDE_DIRS}
-)
-SET(QT_QTGUI_LIBRARY   Qt5::Widgets Qt5::PrintSupport)
-SET(QT_QTXML_LIBRARY   Qt5::Xml)
-SET(QT_QTCORE_LIBRARY  Qt5::Core)
+# Qt5 imported targets used directly: Qt5::Core, Qt5::Gui, Qt5::Widgets,
+# Qt5::Xml, Qt5::PrintSupport (no compatibility variables needed).
 
 INCLUDE(FindOpenGL)
 SET(use_opengl OFF)
@@ -301,7 +292,6 @@ IF(NOT Boost_FOUND)
 ENDIF(NOT Boost_FOUND)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
-LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
 
 SET(EXTRA_LIBS "")
 
@@ -323,7 +313,7 @@ IF(UNIX AND NOT APPLE)
 	FindPthreads()
 	IF(PTHREADS_FOUND)
 		ADD_DEFINITIONS(${PTHREADS_CFLAGS})
-		LINK_LIBRARIES(${PTHREADS_LIBS})
+		LIST(APPEND EXTRA_LIBS ${PTHREADS_LIBS})
 	ELSE(PTHREADS_FOUND)
 		MESSAGE(
 			FATAL_ERROR
@@ -336,11 +326,11 @@ ELSEIF(APPLE)
 	FindPthreads()
 	IF(PTHREADS_FOUND)
 		ADD_DEFINITIONS(${PTHREADS_CFLAGS})
-		LINK_LIBRARIES(${PTHREADS_LIBS})
+		LIST(APPEND EXTRA_LIBS ${PTHREADS_LIBS})
 	ENDIF(PTHREADS_FOUND)
 ELSEIF(MINGW)
-	ADD_DEFINITIONS(-mthreads)
-	LINK_LIBRARIES(-mthreads)
+	ADD_COMPILE_OPTIONS(-mthreads)
+	LIST(APPEND EXTRA_LIBS -mthreads)
 ELSEIF(WIN32)
 	ADD_DEFINITIONS(-DNOMINMAX)
 ENDIF()
@@ -353,12 +343,10 @@ ELSE(NOT HAVE_STDINT_H)
 	FILE(REMOVE "${CMAKE_CURRENT_BINARY_DIR}/stdint.h")
 ENDIF(NOT HAVE_STDINT_H)
 
-ADD_DEFINITIONS(
-	${QT_DEFINITIONS} -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION
-)
+ADD_DEFINITIONS(-DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION)
 
-INCLUDE_DIRECTORIES(${QT_INCLUDES})
-LINK_DIRECTORIES(${QT_LIBRARY_DIR})
+# Qt5 imported targets provide their own include directories; no global
+# INCLUDE_DIRECTORIES or LINK_DIRECTORIES needed.
 
 #SET(QJPEG_LIBRARIES "")
 IF(WIN32)
@@ -375,7 +363,7 @@ IF(WIN32)
 #	SET(QJPEG_LIBRARIES "debug;${QJPEG_DEBUG};optimized;${QJPEG_RELEASE}")
 #
 	LIST(
-		APPEND EXTRA_LIBS "${QT_QTMAIN_LIBRARY}"
+		APPEND EXTRA_LIBS
 		winmm imm32 ws2_32 ole32 oleaut32 uuid gdi32 comdlg32 winspool
 	)
 ENDIF()
@@ -724,6 +712,7 @@ IF(WIN32)
 ENDIF(WIN32)
 
 ADD_LIBRARY(stcore STATIC ${common_sources} ${common_ui_sources})
+target_link_libraries(stcore PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Xml Qt5::PrintSupport)
 
 IF(APPLE)
 	SET(MACOSX_BUNDLE_ICON_FILE ScanTailor.icns)
@@ -756,20 +745,19 @@ ENDIF()
 
 ADD_EXECUTABLE(scantailor-cli ${cli_only_sources} ${common_ui_sources})
 
-# Note that order of static libraries matters with gcc.  Specifically,
-# QJPEG_LIBRARIES needs to go before Qt libraries and EXTRA_LIBS needs
-# to go after both of them.
 TARGET_LINK_LIBRARIES(
-	scantailor
+	scantailor PRIVATE
 	fix_orientation page_split deskew select_content page_layout output stcore
-	dewarping zones interaction imageproc math foundation ${QJPEG_LIBRARIES}
-	${QT_QTGUI_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTCORE_LIBRARY} ${EXTRA_LIBS}
+	dewarping zones interaction imageproc math foundation
+	Qt5::Widgets Qt5::Xml Qt5::Core Qt5::PrintSupport
+	${EXTRA_LIBS}
 )
 TARGET_LINK_LIBRARIES(
-	scantailor-cli
+	scantailor-cli PRIVATE
 	fix_orientation page_split deskew select_content page_layout output
-	stcore dewarping zones interaction imageproc math foundation ${QJPEG_LIBRARIES}
-	${QT_QTGUI_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTCORE_LIBRARY} ${EXTRA_LIBS}
+	stcore dewarping zones interaction imageproc math foundation
+	Qt5::Widgets Qt5::Xml Qt5::Core Qt5::PrintSupport
+	${EXTRA_LIBS}
 )
 INSTALL(TARGETS scantailor scantailor-cli
 	RUNTIME DESTINATION bin
@@ -800,7 +788,7 @@ IF(ENABLE_CRASH_REPORTER)
 	ENDIF(NOT DUMP_SYMS_EXECUTABLE)
 
 	INCLUDE_DIRECTORIES(crash_reporter crash_reporter/google-breakpad)
-	TARGET_LINK_LIBRARIES(scantailor crash_handler)
+	TARGET_LINK_LIBRARIES(scantailor PRIVATE crash_handler)
 ENDIF(ENABLE_CRASH_REPORTER)
 
 # Translations

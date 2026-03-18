@@ -25,5 +25,6 @@ SOURCE_GROUP(Sources FILES ${sources})
 # AUTOMOC handled globally by CMAKE_AUTOMOC ON
 
 ADD_LIBRARY(zones STATIC ${sources})
+target_link_libraries(zones PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Xml)
 
 TRANSLATION_SOURCES(scantailor ${sources})

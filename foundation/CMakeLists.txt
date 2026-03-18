@@ -33,3 +33,4 @@ SOURCE_GROUP("Sources" FILES ${sources})
 # AUTOMOC handled globally by CMAKE_AUTOMOC ON
 
 ADD_LIBRARY(foundation STATIC ${sources})
+target_link_libraries(foundation PUBLIC Qt5::Core Qt5::Gui Qt5::Xml)

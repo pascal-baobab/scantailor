@@ -44,6 +44,7 @@ SET(
 SOURCE_GROUP("Sources\\Differentiation Framework" FILES ${ADIFF_SOURCES})
 
 ADD_LIBRARY(math STATIC ${GENERIC_SOURCES} ${SPFIT_SOURCES} ${ADIFF_SOURCES})
+target_link_libraries(math PUBLIC Qt5::Core Qt5::Gui)
 
 ADD_SUBDIRECTORY(spfit/tests)
 ADD_SUBDIRECTORY(adiff/tests)
