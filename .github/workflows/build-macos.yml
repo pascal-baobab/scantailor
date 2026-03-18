@@ -29,7 +29,7 @@ jobs:
 
       # ── 2. Install dependencies via Homebrew ─────────────────────────────
       - name: Install dependencies
-        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib potrace tesseract tesseract-lang leptonica
+        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib poppler potrace tesseract tesseract-lang leptonica
 
       # ── 3. Put Qt5 bin on PATH and set CMAKE_PREFIX_PATH ─────────────────
       - name: Set Qt5 environment
@@ -48,12 +48,13 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" \
             -DCMAKE_CXX_STANDARD=14 \
+            -DENABLE_POPPLER=ON \
             -DENABLE_POTRACE=ON \
             -DENABLE_TESSERACT=ON
 
       # ── 5. Build (also runs macdeployqt via the macos_bundle ALL target) ──
       - name: Build
-        run: cmake --build build --parallel 4
+        run: cmake --build build --parallel
 
       # ── 6. Bundle non-Qt Homebrew dylibs into .app ───────────────────────
       #    macdeployqt handles Qt frameworks but NOT third-party dylibs

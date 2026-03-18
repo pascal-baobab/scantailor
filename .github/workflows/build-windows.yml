@@ -15,6 +15,9 @@ jobs:
   build-windows:
     name: Windows x64 (MSYS2 MinGW64 Qt5)
     runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CMAKE_BUILD_TYPE: Release
 
     defaults:
       run:
@@ -60,8 +63,9 @@ jobs:
         run: |
           cmake -S . -B build \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
             -DCMAKE_PREFIX_PATH=/mingw64 \
+            -DCMAKE_CXX_STANDARD=14 \
             -DENABLE_POPPLER=ON \
             -DENABLE_POTRACE=ON \
             -DENABLE_TESSERACT=ON

@@ -36,6 +36,7 @@ jobs:
             libxrender-dev libx11-dev \
             libfuse2 patchelf \
             librsvg2-bin \
+            libpoppler-qt5-dev \
             libpotrace-dev \
             libtesseract-dev libleptonica-dev \
             tesseract-ocr-eng tesseract-ocr-ita \
@@ -50,6 +51,8 @@ jobs:
             -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DCMAKE_CXX_STANDARD=14 \
+            -DENABLE_POPPLER=ON \
             -DENABLE_POTRACE=ON \
             -DENABLE_TESSERACT=ON
 
