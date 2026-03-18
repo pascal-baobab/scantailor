@@ -32,9 +32,11 @@
 #include "PageView.h"
 #include "SelectedPage.h"
 #include "ThumbnailSequence.h"
+#include "VectorPdfExporter.h"
 #include "ui_MainWindow.h"
 
 #include <functional>
+#include <atomic>
 #include <QMainWindow>
 #include <QObjectCleanupHandler>
 #include <QPointer>
@@ -287,6 +289,9 @@ private:
 
   void updateStatusBar(PageInfo const& page_info);
 
+  VectorPdfExporter::ExportResult runPdfExportInBackground(
+      QString const& pdfPath, VectorPdfExporter::Options const& opts);
+
   QLabel* m_ptrStatusLabel;
   QSizeF m_maxLogicalThumbSize;
   IntrusivePtr<ProjectPages> m_ptrPages;
@@ -320,6 +325,7 @@ private:
   bool m_closing;
   bool m_beepOnBatchProcessingCompletion;
   bool m_generatePdf;
+  bool m_vectorizePdf;
   QString m_ocrLanguage;
   int m_pdfDpi;
 };

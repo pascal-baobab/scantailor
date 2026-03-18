@@ -29,7 +29,7 @@ jobs:
 
       # ── 2. Install dependencies via Homebrew ─────────────────────────────
       - name: Install dependencies
-        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib potrace tesseract tesseract-lang leptonica
+        run: brew install ninja qt@5 boost libtiff libjpeg-turbo libpng zlib potrace poppler-qt5 tesseract tesseract-lang leptonica
 
       # ── 3. Put Qt5 bin on PATH and set CMAKE_PREFIX_PATH ─────────────────
       - name: Set Qt5 environment
@@ -48,6 +48,7 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="10.14" \
             -DCMAKE_CXX_STANDARD=17 \
+            -DENABLE_POPPLER=ON \
             -DENABLE_POTRACE=ON \
             -DENABLE_TESSERACT=ON
 

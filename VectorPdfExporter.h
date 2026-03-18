@@ -22,7 +22,9 @@
 
 /**
  * Creates a compact searchable PDF from processed TIFF pages:
- *   - Grayscale JPEG raster (DCTDecode) for compact file size
+ *   - B&W/grayscale pages: Potrace vector paths (crisp at any zoom)
+ *   - Color pages: JPEG raster (DCTDecode)
+ *   - Hybrid pages (Mixed mode): JPEG background + Potrace foreground
  *   - Invisible OCR text overlay (searchable/selectable via Tesseract)
  */
 class VectorPdfExporter
@@ -33,8 +35,9 @@ public:
 		QString tessDataPath; ///< Parent dir containing tessdata/ (empty = default)
 		int     dpi;          ///< Resolution (default 300)
 		int     jpegQuality;  ///< JPEG quality 1-100
+		bool    vectorize;    ///< Use Potrace vectorization for B&W text (default true)
 
-		Options() : language("eng"), dpi(300), jpegQuality(70) {}
+		Options() : language("eng"), dpi(300), jpegQuality(70), vectorize(true) {}
 	};
 
 	/// Result from export with diagnostic info.
@@ -50,7 +53,8 @@ public:
 
 	/**
 	 * Export all processed pages to a compact searchable PDF.
-	 * Pipeline: load TIFFs → JPEG compress → Tesseract OCR → write PDF.
+	 * Streaming single-pass: each page is loaded, OCR'd, JPEG-encoded,
+	 * and written to the file immediately — only one page in memory at a time.
 	 */
 	static ExportResult exportPdf(
 		IntrusivePtr<ProjectPages> const& pages,
@@ -66,17 +70,6 @@ private:
 		int x, y, w, h;
 		float confidence;
 	};
-
-	struct PageData {
-		QImage image;
-		QList<OcrWord> ocrWords;
-	};
-
-	static bool writePdf(
-		QString const& outputPdfPath,
-		QList<PageData> const& pages,
-		Options const& opts
-	);
 };
 
 #endif // VECTOR_PDF_EXPORTER_H_

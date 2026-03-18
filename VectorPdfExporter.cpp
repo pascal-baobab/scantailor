@@ -8,6 +8,7 @@
 */
 
 #include "VectorPdfExporter.h"
+#include "PotraceVectorizer.h"
 #include "TiffReader.h"
 #include "PageSequence.h"
 #include "PageInfo.h"
@@ -20,7 +21,6 @@
 #include <QByteArray>
 #include <QPair>
 #include <QDebug>
-#include <QTextStream>
 #include <algorithm>
 #include <cstdio>
 
@@ -29,21 +29,41 @@
 #include <leptonica/allheaders.h>
 #endif
 
-// ==================== PDF Writer ====================
+// ==================== Streaming PDF Writer ====================
 //
-// Grayscale JPEG raster + invisible OCR text overlay.
+// Single-pass: each page is loaded, OCR'd, JPEG-encoded, and written
+// to the PDF file immediately — only one page in memory at a time.
 
-bool
-VectorPdfExporter::writePdf(
+VectorPdfExporter::ExportResult
+VectorPdfExporter::exportPdf(
+	IntrusivePtr<ProjectPages> const& pages,
+	OutputFileNameGenerator const& fileNameGen,
 	QString const& outputPdfPath,
-	QList<PageData> const& pages,
-	Options const& opts)
+	Options const& opts,
+	ProgressCallback progress)
 {
-	QFile file(outputPdfPath);
-	if (!file.open(QIODevice::WriteOnly)) {
-		return false;
+	ExportResult result;
+	result.pageCount = 0;
+	result.ocrWordCount = 0;
+	result.tessInitOk = false;
+
+	PageSequence const seq = pages->toPageSequence(PAGE_VIEW);
+	int const totalPages = static_cast<int>(seq.numPages());
+
+	if (totalPages == 0) {
+		return result;
 	}
 
+	QDir().mkpath(QFileInfo(outputPdfPath).absolutePath());
+
+	QFile file(outputPdfPath);
+	if (!file.open(QIODevice::WriteOnly)) {
+		result.pageCount = -1;
+		result.errorDetail = "Cannot open file: " + outputPdfPath;
+		return result;
+	}
+
+	// ── PDF object bookkeeping ──
 	int nextObjId = 1;
 	QList<QPair<int, qint64>> xrefEntries;
 
@@ -56,31 +76,182 @@ VectorPdfExporter::writePdf(
 		return id;
 	};
 
+	// ── PDF header ──
 	file.write("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
 
 	int const fontId = writeObj(
 		"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
 	);
 
+	// Reserve the Pages object ID (written at the end).
 	int const pagesObjId = nextObjId++;
 	QList<int> pageObjIds;
 
-	for (int p = 0; p < pages.size(); ++p) {
-		PageData const& pd = pages[p];
-		QImage const& origImg = pd.image;
+	// ── Init Tesseract (once) ──
+#ifdef HAVE_TESSERACT
+	tesseract::TessBaseAPI tessApi;
+	{
+		QByteArray langBytes = opts.language.toUtf8();
 
-		// Detect grayscale for ~3x better JPEG compression.
-		QImage::Format const fmt = origImg.format();
+		QStringList candidates;
+		QString userPath = opts.tessDataPath;
+		if (!userPath.isEmpty()) {
+			if (userPath.endsWith("/tessdata") || userPath.endsWith("\\tessdata")) {
+				candidates << userPath;
+			} else if (userPath.endsWith("/tessdata/") || userPath.endsWith("\\tessdata\\")) {
+				userPath.chop(1);
+				candidates << userPath;
+			} else {
+				candidates << (userPath + "/tessdata");
+			}
+		}
+
+		static QStringList const systemTessdataDirs = {
+			"C:/msys64/mingw64/share/tessdata",
+			"/usr/share/tessdata",
+			"/usr/local/share/tessdata"
+		};
+		for (QString const& td : systemTessdataDirs) {
+			if (QDir(td).exists()) {
+				candidates << td;
+			}
+		}
+
+		QString firstLang = opts.language.split('+').first();
+		QString chosenPath;
+		for (QString const& c : candidates) {
+			if (QFile::exists(c + "/" + firstLang + ".traineddata")) {
+				chosenPath = c;
+				break;
+			}
+		}
+
+		QByteArray pathBytes = chosenPath.toUtf8();
+		char const* tessDataDir = chosenPath.isEmpty()
+			? nullptr : pathBytes.constData();
+
+		if (tessApi.Init(tessDataDir, langBytes.constData()) == 0) {
+			tessApi.SetVariable("tessedit_do_invert", "0");
+			result.tessInitOk = true;
+		} else {
+			result.errorDetail = QString("Tesseract init failed.\n"
+				"Language: %1\nData path: %2")
+				.arg(opts.language)
+				.arg(chosenPath.isEmpty() ? "(auto)" : chosenPath);
+		}
+	}
+#else
+	result.errorDetail = "Tesseract not compiled (HAVE_TESSERACT not defined)";
+#endif
+
+	// ── Stream pages one at a time ──
+	bool cancelled = false;
+	for (int i = 0; i < totalPages; ++i) {
+		// Progress: starting page i
+		if (progress && progress(i, totalPages)) {
+			cancelled = true;
+			break;
+		}
+
+		PageInfo const& info = seq.pageAt(i);
+		QString const imgPath = fileNameGen.filePathFor(info.id());
+		QFile tiffFile(imgPath);
+		if (!tiffFile.open(QIODevice::ReadOnly)) {
+			continue;
+		}
+		QImage img = TiffReader::readImage(tiffFile);
+		tiffFile.close();
+		if (img.isNull()) {
+			continue;
+		}
+
+		// Check cancel after loading
+		if (progress && progress(i, totalPages)) {
+			cancelled = true;
+			break;
+		}
+
+		// ── OCR this page ──
+		QList<OcrWord> ocrWords;
+#ifdef HAVE_TESSERACT
+		if (result.tessInitOk) {
+			double const actualDpi = (img.dotsPerMeterX() > 0)
+				? img.dotsPerMeterX() / 39.3701
+				: static_cast<double>(opts.dpi);
+
+			QImage gray = img.convertToFormat(QImage::Format_Grayscale8);
+
+			// Downscale to ~300 DPI for OCR — Tesseract quality plateaus
+			// at 300 DPI, so processing 600 DPI wastes ~3x the time.
+			double ocrScale = 1.0;
+			int ocrDpi = static_cast<int>(actualDpi);
+			if (ocrDpi > 350) {
+				ocrScale = 300.0 / ocrDpi;
+				gray = gray.scaled(
+					static_cast<int>(gray.width() * ocrScale),
+					static_cast<int>(gray.height() * ocrScale),
+					Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+				ocrDpi = 300;
+			}
+
+			tessApi.SetImage(gray.constBits(), gray.width(), gray.height(),
+				1, gray.bytesPerLine());
+			tessApi.SetSourceResolution(ocrDpi > 0 ? ocrDpi : opts.dpi);
+
+			if (tessApi.Recognize(nullptr) == 0) {
+				tesseract::ResultIterator* ri = tessApi.GetIterator();
+				if (ri) {
+					tesseract::PageIteratorLevel const level = tesseract::RIL_WORD;
+					do {
+						char const* text = ri->GetUTF8Text(level);
+						if (!text) continue;
+						OcrWord word;
+						word.text       = QString::fromUtf8(text);
+						word.confidence = ri->Confidence(level);
+						delete[] text;
+						if (word.confidence < 10.0f || word.text.trimmed().isEmpty())
+							continue;
+						int x1, y1, x2, y2;
+						ri->BoundingBox(level, &x1, &y1, &x2, &y2);
+						// Map OCR coordinates back to full-resolution image space.
+						if (ocrScale < 1.0) {
+							double const inv = 1.0 / ocrScale;
+							x1 = static_cast<int>(x1 * inv);
+							y1 = static_cast<int>(y1 * inv);
+							x2 = static_cast<int>(x2 * inv);
+							y2 = static_cast<int>(y2 * inv);
+						}
+						word.x = x1;
+						word.y = y1;
+						word.w = x2 - x1;
+						word.h = y2 - y1;
+						ocrWords.append(word);
+					} while (ri->Next(level));
+				}
+				result.ocrWordCount += ocrWords.size();
+			}
+			tessApi.Clear();
+		}
+#endif
+
+		// Check cancel after OCR
+		if (progress && progress(i, totalPages)) {
+			cancelled = true;
+			break;
+		}
+
+		// ── Detect grayscale vs color ──
+		QImage::Format const fmt = img.format();
 		bool isGray = (fmt == QImage::Format_Grayscale8
 		            || fmt == QImage::Format_Mono
 		            || fmt == QImage::Format_MonoLSB
 		            || fmt == QImage::Format_Indexed8);
 		if (!isGray && (fmt == QImage::Format_RGB32 || fmt == QImage::Format_ARGB32)) {
 			isGray = true;
-			int const step = qMax(1, qMin(origImg.width(), origImg.height()) / 30);
-			for (int y = 0; y < origImg.height() && isGray; y += step) {
-				QRgb const* line = reinterpret_cast<QRgb const*>(origImg.constScanLine(y));
-				for (int x = 0; x < origImg.width() && isGray; x += step) {
+			int const step = qMax(1, qMin(img.width(), img.height()) / 30);
+			for (int y = 0; y < img.height() && isGray; y += step) {
+				QRgb const* line = reinterpret_cast<QRgb const*>(img.constScanLine(y));
+				for (int x = 0; x < img.width() && isGray; x += step) {
 					QRgb const px = line[x];
 					if (qAbs(qRed(px) - qGreen(px)) > 4 || qAbs(qGreen(px) - qBlue(px)) > 4)
 						isGray = false;
@@ -88,86 +259,127 @@ VectorPdfExporter::writePdf(
 			}
 		}
 
-		// DPI from TIFF metadata.
-		double const imgDpi = (origImg.dotsPerMeterX() > 0)
-		    ? origImg.dotsPerMeterX() / 39.3701
+		double const imgDpi = (img.dotsPerMeterX() > 0)
+		    ? img.dotsPerMeterX() / 39.3701
 		    : static_cast<double>(opts.dpi);
 
-		// No downscaling — preserve original resolution for quality.
-		// File size is controlled via JPEG quality only.
+		int const imgW = img.width();
+		int const imgH = img.height();
 
-		// JPEG quality: use the user-configured value directly.
-		int const quality = opts.jpegQuality;
-
-		// Encode as JPEG.
-		QByteArray jpegData;
-		QByteArray imgObj;
-		int imgW, imgH;
-
-		if (isGray) {
-			QImage grayImg = origImg.convertToFormat(QImage::Format_Grayscale8);
-			imgW = grayImg.width();
-			imgH = grayImg.height();
-			QBuffer buffer(&jpegData);
-			buffer.open(QIODevice::WriteOnly);
-			grayImg.save(&buffer, "JPEG", quality);
-
-			imgObj += "<< /Type /XObject /Subtype /Image";
-			imgObj += " /Width " + QByteArray::number(imgW);
-			imgObj += " /Height " + QByteArray::number(imgH);
-			imgObj += " /ColorSpace /DeviceGray";
-			imgObj += " /BitsPerComponent 8";
-			imgObj += " /Filter /DCTDecode";
-			imgObj += " /Length " + QByteArray::number(jpegData.size());
-			imgObj += " >>\nstream\n";
-			imgObj += jpegData;
-			imgObj += "\nendstream";
-		} else {
-			QImage rgbImg = origImg.convertToFormat(QImage::Format_RGB888);
-			imgW = rgbImg.width();
-			imgH = rgbImg.height();
-			QBuffer buffer(&jpegData);
-			buffer.open(QIODevice::WriteOnly);
-			rgbImg.save(&buffer, "JPEG", quality);
-
-			imgObj += "<< /Type /XObject /Subtype /Image";
-			imgObj += " /Width " + QByteArray::number(imgW);
-			imgObj += " /Height " + QByteArray::number(imgH);
-			imgObj += " /ColorSpace /DeviceRGB";
-			imgObj += " /BitsPerComponent 8";
-			imgObj += " /Filter /DCTDecode";
-			imgObj += " /Length " + QByteArray::number(jpegData.size());
-			imgObj += " >>\nstream\n";
-			imgObj += jpegData;
-			imgObj += "\nendstream";
+		// ── Check for foreground TIFF (Mixed mode split output) ──
+		// If the output was generated in Mixed mode with Split Output,
+		// a separate *_foreground.tiff exists with pure B&W text.
+		QString fgPath;
+		QImage fgImg;
+		if (opts.vectorize) {
+			QFileInfo fi(imgPath);
+			fgPath = fi.absolutePath() + "/" + fi.completeBaseName()
+			       + "_foreground.tif";
+			if (!QFile::exists(fgPath)) {
+				fgPath = fi.absolutePath() + "/" + fi.completeBaseName()
+				       + "_foreground.tiff";
+			}
+			if (QFile::exists(fgPath)) {
+				QFile fgFile(fgPath);
+				if (fgFile.open(QIODevice::ReadOnly)) {
+					fgImg = TiffReader::readImage(fgFile);
+					fgFile.close();
+				}
+			}
 		}
 
-		int const imgObjId = writeObj(imgObj);
+		// Determine rendering mode for this page:
+		//   hybrid  = foreground TIFF exists (JPEG bg + Potrace fg)
+		//   vector  = B&W/gray page with vectorize enabled (Potrace only)
+		//   raster  = color page or vectorize disabled (JPEG only)
+		bool const useHybrid = opts.vectorize && !fgImg.isNull();
+		bool const useVector = opts.vectorize && isGray && !useHybrid;
 
-		// Page size in PDF points (72 pt/inch).
-		double const pageW = (origImg.width()  / imgDpi) * 72.0;
-		double const pageH = (origImg.height() / imgDpi) * 72.0;
+		// ── Try Potrace vectorization ──
+		QByteArray potracePaths;
+		double const pageW = (imgW / imgDpi) * 72.0;
+		double const pageH = (imgH / imgDpi) * 72.0;
 
-		// Content stream.
+		if (useVector) {
+			// Full-page vectorization for B&W/grayscale pages.
+			potracePaths = PotraceVectorizer::traceToPathStream(
+				img, pageW, pageH, static_cast<int>(imgDpi));
+		} else if (useHybrid) {
+			// Vectorize only the foreground (text) layer.
+			potracePaths = PotraceVectorizer::traceToPathStream(
+				fgImg, pageW, pageH, static_cast<int>(imgDpi));
+		}
+		fgImg = QImage(); // Release foreground image.
+
+		// If Potrace returned empty (not compiled or tracing failed),
+		// fall back to JPEG raster for this page.
+		bool const hasVectors = !potracePaths.isEmpty();
+
+		// ── Encode JPEG raster (when needed) ──
+		int imgObjId = -1;
+		bool needsRaster = !hasVectors || useHybrid;
+
+		if (needsRaster) {
+			QByteArray jpegData;
+			if (isGray && !useHybrid) {
+				QImage grayImg = img.convertToFormat(QImage::Format_Grayscale8);
+				QBuffer buffer(&jpegData);
+				buffer.open(QIODevice::WriteOnly);
+				grayImg.save(&buffer, "JPEG", opts.jpegQuality);
+			} else {
+				QImage rgbImg = img.convertToFormat(QImage::Format_RGB888);
+				QBuffer buffer(&jpegData);
+				buffer.open(QIODevice::WriteOnly);
+				rgbImg.save(&buffer, "JPEG", opts.jpegQuality);
+			}
+
+			QByteArray imgObj;
+			imgObj += "<< /Type /XObject /Subtype /Image";
+			imgObj += " /Width " + QByteArray::number(imgW);
+			imgObj += " /Height " + QByteArray::number(imgH);
+			imgObj += (isGray && !useHybrid)
+			        ? " /ColorSpace /DeviceGray" : " /ColorSpace /DeviceRGB";
+			imgObj += " /BitsPerComponent 8";
+			imgObj += " /Filter /DCTDecode";
+			imgObj += " /Length " + QByteArray::number(jpegData.size());
+			imgObj += " >>\nstream\n";
+			imgObj += jpegData;
+			imgObj += "\nendstream";
+
+			imgObjId = writeObj(imgObj);
+		}
+
+		// Release the original image.
+		img = QImage();
+
+		// ── Content stream ──
 		QByteArray content;
 
-		// Draw raster image.
-		content += "q\n";
-		content += QByteArray::number(pageW, 'f', 2) + " 0 0 "
-		         + QByteArray::number(pageH, 'f', 2) + " 0 0 cm\n";
-		content += "/Img Do\n";
-		content += "Q\n";
+		// Layer 1: JPEG raster background (for raster-only and hybrid pages).
+		if (needsRaster && imgObjId >= 0) {
+			content += "q\n";
+			content += QByteArray::number(pageW, 'f', 2) + " 0 0 "
+			         + QByteArray::number(pageH, 'f', 2) + " 0 0 cm\n";
+			content += "/Img Do\n";
+			content += "Q\n";
+		}
 
-		// Invisible OCR text overlay.
-		if (!pd.ocrWords.isEmpty()) {
-			double const origW = origImg.width();
-			double const origH = origImg.height();
+		// Layer 2: Potrace vector paths (for vector-only and hybrid pages).
+		if (hasVectors) {
+			content += potracePaths;
+		}
+		potracePaths.clear();
+
+		// Layer 3: Invisible OCR text overlay.
+		if (!ocrWords.isEmpty()) {
+			double const origW = imgW;
+			double const origH = imgH;
 
 			content += "BT\n";
 			content += "3 Tr\n";
 
-			for (int w = 0; w < pd.ocrWords.size(); ++w) {
-				OcrWord const& word = pd.ocrWords[w];
+			for (int w = 0; w < ocrWords.size(); ++w) {
+				OcrWord const& word = ocrWords[w];
 				if (word.text.isEmpty()) continue;
 
 				double const x = (word.x / origW) * pageW;
@@ -191,7 +403,6 @@ VectorPdfExporter::writePdf(
 				hex += ">";
 				content += hex + " Tj\n";
 			}
-
 			content += "ET\n";
 		}
 
@@ -203,6 +414,7 @@ VectorPdfExporter::writePdf(
 
 		int const contentObjId = writeObj(contentObj);
 
+		// ── Page object ──
 		QByteArray pageObj;
 		pageObj += "<< /Type /Page";
 		pageObj += " /Parent " + QByteArray::number(pagesObjId) + " 0 R";
@@ -210,17 +422,35 @@ VectorPdfExporter::writePdf(
 		         + QByteArray::number(pageW, 'f', 2) + " "
 		         + QByteArray::number(pageH, 'f', 2) + "]";
 		pageObj += " /Contents " + QByteArray::number(contentObjId) + " 0 R";
-		pageObj += " /Resources <<"
-		           " /XObject << /Img " + QByteArray::number(imgObjId) + " 0 R >>"
-		           " /Font << /F1 " + QByteArray::number(fontId) + " 0 R >>"
+		pageObj += " /Resources <<";
+		if (imgObjId >= 0) {
+			pageObj += " /XObject << /Img " + QByteArray::number(imgObjId) + " 0 R >>";
+		}
+		pageObj += " /Font << /F1 " + QByteArray::number(fontId) + " 0 R >>"
 		           " >>";
 		pageObj += " >>";
 
 		int const pageObjId = writeObj(pageObj);
 		pageObjIds.append(pageObjId);
+		++result.pageCount;
 	}
 
-	// Pages object.
+#ifdef HAVE_TESSERACT
+	if (result.tessInitOk) tessApi.End();
+#endif
+
+	if (cancelled || pageObjIds.isEmpty()) {
+		file.close();
+		if (cancelled) {
+			// Clean up partial file on cancel.
+			QFile::remove(outputPdfPath);
+			result.pageCount = 0;
+			result.errorDetail = "Cancelled by user";
+		}
+		return result;
+	}
+
+	// ── Pages catalog (deferred) ──
 	xrefEntries.append(qMakePair(pagesObjId, file.pos()));
 	file.write(QByteArray::number(pagesObjId) + " 0 obj\n");
 	QByteArray pagesObj;
@@ -237,6 +467,7 @@ VectorPdfExporter::writePdf(
 		"<< /Type /Catalog /Pages " + QByteArray::number(pagesObjId) + " 0 R >>"
 	);
 
+	// ── Cross-reference table ──
 	qint64 const xrefOffset = file.pos();
 
 	std::sort(xrefEntries.begin(), xrefEntries.end(),
@@ -263,221 +494,6 @@ VectorPdfExporter::writePdf(
 	file.write("%%EOF\n");
 
 	file.close();
-	return true;
-}
-
-// ==================== Public: exportPdf ====================
-
-VectorPdfExporter::ExportResult
-VectorPdfExporter::exportPdf(
-	IntrusivePtr<ProjectPages> const& pages,
-	OutputFileNameGenerator const& fileNameGen,
-	QString const& outputPdfPath,
-	Options const& opts,
-	ProgressCallback progress)
-{
-	ExportResult result;
-	result.pageCount = 0;
-	result.ocrWordCount = 0;
-	result.tessInitOk = false;
-
-	// Debug log file (temporary — remove after OCR is working).
-	QFile logFile("C:/Users/Pass/Documents/ocr_debug.log");
-	logFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
-	QTextStream log(&logFile);
-
-	PageSequence const seq = pages->toPageSequence(PAGE_VIEW);
-	int const totalPages = static_cast<int>(seq.numPages());
-
-	if (totalPages == 0) {
-		return result;
-	}
-
-	QDir().mkpath(QFileInfo(outputPdfPath).absolutePath());
-
-	QList<PageData> allPages;
-
-	// ── Init Tesseract ──
-#ifdef HAVE_TESSERACT
-	tesseract::TessBaseAPI tessApi;
-	{
-		QByteArray langBytes = opts.language.toUtf8();
-
-		// Find the tessdata directory that contains the needed .traineddata files.
-		// Tesseract 5.x Init(datapath, ...) looks for datapath/*.traineddata
-		// (i.e. files directly inside the path, NOT in a tessdata/ subdirectory).
-		QStringList candidates;  // each entry is an actual tessdata/ directory
-
-		// 1) User-supplied path — normalize to the tessdata dir itself.
-		QString userPath = opts.tessDataPath;
-		if (!userPath.isEmpty()) {
-			if (userPath.endsWith("/tessdata") || userPath.endsWith("\\tessdata")) {
-				candidates << userPath;
-			} else if (userPath.endsWith("/tessdata/") || userPath.endsWith("\\tessdata\\")) {
-				userPath.chop(1);
-				candidates << userPath;
-			} else {
-				// Assume it's the parent — append tessdata.
-				candidates << (userPath + "/tessdata");
-			}
-		}
-
-		// 2) Well-known system tessdata directories.
-		static QStringList const systemTessdataDirs = {
-			"C:/msys64/mingw64/share/tessdata",
-			"/usr/share/tessdata",
-			"/usr/local/share/tessdata"
-		};
-		for (QString const& td : systemTessdataDirs) {
-			if (QDir(td).exists()) {
-				candidates << td;
-			}
-		}
-
-		// Pick the first candidate that has the primary language .traineddata file.
-		QString firstLang = opts.language.split('+').first();
-		QString chosenPath;
-		for (QString const& c : candidates) {
-			QString trainedFile = c + "/" + firstLang + ".traineddata";
-			if (QFile::exists(trainedFile)) {
-				chosenPath = c;
-				break;
-			}
-		}
-
-		QByteArray pathBytes = chosenPath.toUtf8();
-		char const* tessDataDir = chosenPath.isEmpty()
-			? nullptr : pathBytes.constData();
-
-		log << "Candidates: " << candidates.join(" | ") << "\n";
-		log << "chosenPath: " << (chosenPath.isEmpty() ? "(empty)" : chosenPath) << "\n";
-		log << "tessDataDir: " << (tessDataDir ? tessDataDir : "(nullptr)") << "\n";
-		log << "lang: " << langBytes << "\n";
-		log.flush();
-
-		if (tessApi.Init(tessDataDir, langBytes.constData()) == 0) {
-			tessApi.SetVariable("tessedit_do_invert", "0");
-			result.tessInitOk = true;
-			log << "Tesseract Init: OK\n";
-		} else {
-			result.errorDetail = QString("Tesseract init failed.\n"
-				"Language: %1\nData path: %2\n"
-				"Check that tessdata files exist.")
-				.arg(opts.language)
-				.arg(chosenPath.isEmpty() ? "(auto)" : chosenPath);
-			log << "Tesseract Init: FAILED - " << result.errorDetail << "\n";
-		}
-		log.flush();
-	}
-#else
-	result.errorDetail = "Tesseract not compiled (HAVE_TESSERACT not defined)";
-	qWarning() << result.errorDetail;
-#endif
-
-	for (int i = 0; i < totalPages; ++i) {
-		if (progress && progress(i, totalPages)) {
-			break;
-		}
-
-		PageInfo const& info = seq.pageAt(i);
-		QString const imgPath = fileNameGen.filePathFor(info.id());
-		QFile tiffFile(imgPath);
-		if (!tiffFile.open(QIODevice::ReadOnly)) {
-			continue;
-		}
-		QImage img = TiffReader::readImage(tiffFile);
-		if (img.isNull()) {
-			continue;
-		}
-
-		if (progress && progress(i, totalPages)) {
-			break;
-		}
-
-		PageData pd;
-		pd.image = img;
-
-		// ── OCR ──
-#ifdef HAVE_TESSERACT
-		if (result.tessInitOk) {
-			double const actualDpi = (img.dotsPerMeterX() > 0)
-				? img.dotsPerMeterX() / 39.3701
-				: static_cast<double>(opts.dpi);
-
-			QImage gray = img.convertToFormat(QImage::Format_Grayscale8);
-			int const useDpi = static_cast<int>(actualDpi);
-
-			log << "OCR page " << i << ": " << gray.width() << "x" << gray.height()
-			    << " dpi=" << useDpi
-			    << " bytesPerLine=" << gray.bytesPerLine()
-			    << " format=" << gray.format() << "\n";
-			log.flush();
-
-			tessApi.SetImage(gray.constBits(), gray.width(), gray.height(),
-				1, gray.bytesPerLine());
-			tessApi.SetSourceResolution(useDpi > 0 ? useDpi : opts.dpi);
-
-			int recResult = tessApi.Recognize(nullptr);
-			log << "  Recognize() returned " << recResult << "\n";
-			log.flush();
-
-			if (recResult == 0) {
-				tesseract::ResultIterator* ri = tessApi.GetIterator();
-				int rawWords = 0, keptWords = 0;
-				if (ri) {
-					tesseract::PageIteratorLevel const level = tesseract::RIL_WORD;
-					do {
-						char const* text = ri->GetUTF8Text(level);
-						if (!text) continue;
-						++rawWords;
-						OcrWord word;
-						word.text       = QString::fromUtf8(text);
-						word.confidence = ri->Confidence(level);
-						delete[] text;
-						if (word.confidence < 10.0f || word.text.trimmed().isEmpty())
-							continue;
-						int x1, y1, x2, y2;
-						ri->BoundingBox(level, &x1, &y1, &x2, &y2);
-						word.x = x1;
-						word.y = y1;
-						word.w = x2 - x1;
-						word.h = y2 - y1;
-						pd.ocrWords.append(word);
-						++keptWords;
-					} while (ri->Next(level));
-				}
-				log << "  rawWords=" << rawWords
-				    << " keptWords=" << keptWords << "\n";
-				log.flush();
-			}
-			result.ocrWordCount += pd.ocrWords.size();
-			tessApi.Clear();
-		}
-#endif
-
-		allPages.append(pd);
-	}
-
-#ifdef HAVE_TESSERACT
-	if (result.tessInitOk) tessApi.End();
-#endif
-
-	if (allPages.isEmpty()) {
-		return result;
-	}
-
-	if (!writePdf(outputPdfPath, allPages, opts)) {
-		result.pageCount = -1;
-		result.errorDetail = "Failed to write PDF file: " + outputPdfPath;
-		return result;
-	}
-
-	result.pageCount = allPages.size();
-
-	QFileInfo fi(outputPdfPath);
-	qDebug() << "PDF done:" << result.pageCount << "pages,"
-	         << fi.size() / 1024 << "KB,"
-	         << result.ocrWordCount << "OCR words";
 
 	if (progress) {
 		progress(totalPages, totalPages);

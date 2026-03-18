@@ -103,6 +103,8 @@
 #include <QItemSelectionModel>
 #include <QToolButton>
 #include <QFileInfo>
+#include <QFrame>
+#include <QHBoxLayout>
 #include <QInputDialog>
 #include <QKeySequence>
 #include <QLabel>
@@ -142,7 +144,10 @@
 #include <Qt>
 #include <QDebug>
 #include <QProgressDialog>
+#include <QTimer>
 #include <algorithm>
+#include <atomic>
+#include <thread>
 #include <vector>
 #include <stddef.h>
 #include <math.h>
@@ -182,6 +187,7 @@ MainWindow::MainWindow()
 	m_debug(false),
 	m_closing(false),
 	m_generatePdf(false),
+	m_vectorizePdf(true),
 	m_ocrLanguage("eng+ita"),
 	m_pdfDpi(300)
 {
@@ -190,6 +196,33 @@ MainWindow::MainWindow()
 	
 	setupUi(this);
 	sortOptions->setVisible(false);
+
+	// Green version banner to distinguish from legacy 0.9.x builds
+	{
+		auto* banner = new QFrame(this);
+		banner->setFixedHeight(24);
+		banner->setStyleSheet(
+			"background-color: #2e7d32;"
+			"color: white;"
+			"font-weight: bold;"
+			"font-size: 12px;"
+		);
+		auto* bannerLayout = new QHBoxLayout(banner);
+		bannerLayout->setContentsMargins(8, 0, 8, 0);
+		auto* bannerLabel = new QLabel(
+			QString("Scan Tailor %1 — Modernized Edition").arg(VERSION), banner
+		);
+		bannerLabel->setStyleSheet("color: white; font-weight: bold;");
+		bannerLayout->addWidget(bannerLabel);
+		// Insert banner above the central widget
+		auto* wrapper = new QWidget(this);
+		auto* wrapperLayout = new QVBoxLayout(wrapper);
+		wrapperLayout->setContentsMargins(0, 0, 0, 0);
+		wrapperLayout->setSpacing(0);
+		wrapperLayout->addWidget(banner);
+		wrapperLayout->addWidget(centralWidget());
+		setCentralWidget(wrapper);
+	}
 
 	QMainWindow::statusBar()->addPermanentWidget(m_ptrStatusLabel, 1);
 
@@ -1067,6 +1100,75 @@ MainWindow::updateStatusBar(PageInfo const& page_info)
 	);
 }
 
+VectorPdfExporter::ExportResult
+MainWindow::runPdfExportInBackground(
+	QString const& pdfPath, VectorPdfExporter::Options const& opts)
+{
+	// Thread-safe communication via atomics
+	std::atomic<int> currentPage{0};
+	std::atomic<int> totalPagesAtom{1};
+	std::atomic<bool> cancelRequested{false};
+	std::atomic<bool> exportDone{false};
+	VectorPdfExporter::ExportResult exportResult;
+
+	// Copy data for the background thread (avoid races on shared state)
+	IntrusivePtr<ProjectPages> pagesCopy = m_ptrPages;
+	OutputFileNameGenerator fileNameGenCopy = m_outFileNameGen;
+
+	std::thread exportThread([&exportResult, pagesCopy, fileNameGenCopy,
+	                          pdfPath, opts,
+	                          &currentPage, &totalPagesAtom,
+	                          &cancelRequested, &exportDone]() {
+		exportResult = VectorPdfExporter::exportPdf(
+			pagesCopy, fileNameGenCopy, pdfPath, opts,
+			[&](int cur, int tot) -> bool {
+				currentPage.store(cur, std::memory_order_relaxed);
+				totalPagesAtom.store(tot, std::memory_order_relaxed);
+				return cancelRequested.load(std::memory_order_relaxed);
+			});
+		exportDone.store(true, std::memory_order_release);
+	});
+
+	QProgressDialog progress(
+		tr("Generating PDF..."), tr("Cancel"), 0, 100, this);
+	progress.setWindowTitle(tr("PDF Export"));
+	progress.setWindowModality(Qt::WindowModal);
+	progress.setMinimumDuration(0);
+	progress.setValue(0);
+
+	// Poll progress at 20 fps — UI stays fully responsive
+	QTimer timer;
+	timer.setInterval(50);
+	connect(&timer, &QTimer::timeout, this, [&]() {
+		if (exportDone.load(std::memory_order_acquire)) {
+			timer.stop();
+			return;
+		}
+		int tot = totalPagesAtom.load(std::memory_order_relaxed);
+		int cur = currentPage.load(std::memory_order_relaxed);
+		if (tot > 0) {
+			progress.setValue(cur * 100 / tot);
+		}
+		if (progress.wasCanceled()) {
+			cancelRequested.store(true, std::memory_order_relaxed);
+		}
+	});
+	timer.start();
+
+	// Spin the event loop until the export thread finishes.
+	// The UI stays responsive because work runs in the background.
+	while (!exportDone.load(std::memory_order_acquire)) {
+		QApplication::processEvents(QEventLoop::AllEvents, 100);
+	}
+	timer.stop();
+	exportThread.join();
+
+	progress.setValue(100);
+	progress.close();
+
+	return exportResult;
+}
+
 void
 MainWindow::currentPageChanged(
 	PageInfo const& page_info, QRectF const& thumb_rect,
@@ -1407,15 +1509,12 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 				VectorPdfExporter::Options opts;
 				opts.language = m_ocrLanguage;
 				opts.dpi = m_pdfDpi;
+				opts.vectorize = m_vectorizePdf;
 
-				// Tessdata path: find the directory that CONTAINS tessdata/.
-				// Tesseract Init() appends "/tessdata/" internally.
 				QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
 				if (QDir(appTessdata).exists()) {
 					opts.tessDataPath = QApplication::applicationDirPath();
 				} else {
-					// Check system paths: each is the tessdata/ dir itself,
-					// so we pass the parent.
 					static QStringList const systemPaths = {
 						"C:/msys64/mingw64/share/tessdata",
 						"/usr/share/tessdata",
@@ -1429,24 +1528,8 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 					}
 				}
 
-				QProgressDialog progress(
-					tr("Generating PDF..."), tr("Cancel"), 0, 100, this);
-				progress.setWindowTitle(tr("PDF Export"));
-				progress.setWindowModality(Qt::WindowModal);
-				progress.setMinimumDuration(0);
-				progress.setValue(0);
-
 				VectorPdfExporter::ExportResult const er =
-					VectorPdfExporter::exportPdf(
-						m_ptrPages, m_outFileNameGen, pdfPath, opts,
-						[&progress](int cur, int tot) -> bool {
-							if (tot > 0)
-								progress.setValue(cur * 100 / tot);
-							QApplication::processEvents();
-							return progress.wasCanceled();
-						});
-
-				progress.setValue(100);
+					runPdfExportInBackground(pdfPath, opts);
 
 				if (er.pageCount > 0) {
 					QFileInfo fi(pdfPath);
@@ -1464,7 +1547,7 @@ MainWindow::filterResult(BackgroundTaskPtr const& task, FilterResultPtr const& r
 					QMessageBox::warning(this, tr("Export"),
 						tr("No pages found in output directory.\n"
 						   "Run the batch first (step 6 Output)."));
-				} else {
+				} else if (!er.errorDetail.contains("Cancelled")) {
 					QMessageBox::critical(this, tr("Export"),
 						tr("Failed to write PDF:\n%1\n%2")
 							.arg(pdfPath).arg(er.errorDetail));
@@ -1642,6 +1725,7 @@ MainWindow::exportPdfTriggered()
 	VectorPdfExporter::Options opts;
 	opts.language = m_ocrLanguage;
 	opts.dpi = m_pdfDpi;
+	opts.vectorize = m_vectorizePdf;
 
 	QString const appTessdata = QApplication::applicationDirPath() + "/tessdata";
 	if (QDir(appTessdata).exists()) {
@@ -1660,24 +1744,8 @@ MainWindow::exportPdfTriggered()
 		}
 	}
 
-	QProgressDialog progress(
-		tr("Generating PDF..."), tr("Cancel"), 0, 100, this);
-	progress.setWindowTitle(tr("PDF Export"));
-	progress.setWindowModality(Qt::WindowModal);
-	progress.setMinimumDuration(0);
-	progress.setValue(0);
-
 	VectorPdfExporter::ExportResult const er =
-		VectorPdfExporter::exportPdf(
-			m_ptrPages, m_outFileNameGen, path, opts,
-			[&progress](int cur, int tot) -> bool {
-				if (tot > 0)
-					progress.setValue(cur * 100 / tot);
-				QApplication::processEvents();
-				return progress.wasCanceled();
-			});
-
-	progress.setValue(100);
+		runPdfExportInBackground(path, opts);
 
 	if (er.pageCount > 0) {
 		QFileInfo fi(path);
@@ -1695,7 +1763,7 @@ MainWindow::exportPdfTriggered()
 		QMessageBox::warning(this, tr("Export"),
 			tr("No processed output images found.\n"
 			   "Run batch processing first, then export."));
-	} else {
+	} else if (!er.errorDetail.contains("Cancelled")) {
 		QMessageBox::critical(this, tr("Export"),
 			tr("Failed to write PDF:\n%1\n%2")
 				.arg(path).arg(er.errorDetail));
