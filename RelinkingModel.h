@@ -51,11 +51,11 @@ public:
 
 	RelinkingModel();
 
-	virtual ~RelinkingModel();
+	~RelinkingModel() override;
 	
-	virtual int rowCount(QModelIndex const& parent = QModelIndex()) const;
+	int rowCount(QModelIndex const& parent = QModelIndex()) const override;
 	
-	virtual QVariant data(QModelIndex const& index, int role = Qt::DisplayRole) const;
+	QVariant data(QModelIndex const& index, int role = Qt::DisplayRole) const override;
 
 	/**
 	 * This method guarantees that
@@ -68,7 +68,7 @@ public:
 	 */
 	IntrusivePtr<AbstractRelinker> relinker() const { return m_ptrRelinker; }
 
-	virtual void operator()(RelinkablePath const& path) { addPath(path); }
+	void operator()(RelinkablePath const& path) override { addPath(path); }
 
 	void addPath(RelinkablePath const& path);
 
@@ -86,7 +86,7 @@ public:
 
 	void requestStatusUpdate(QModelIndex const& index);
 protected:
-	virtual void customEvent(QEvent* event);
+	void customEvent(QEvent* event) override;
 private:
 	class StatusUpdateThread;
 	class StatusUpdateResponse;
@@ -110,7 +110,7 @@ private:
 		void addMapping(QString const& from, QString const& to);
 
 		/** Returns path.normalizedPath() if there is no mapping for it. */
-		virtual QString substitutionPathFor(RelinkablePath const& path) const;
+		QString substitutionPathFor(RelinkablePath const& path) const override;
 
 		void swap(Relinker& other);
 	private:

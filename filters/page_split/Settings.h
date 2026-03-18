@@ -133,7 +133,7 @@ public:
 	
 	Settings();
 	
-	virtual ~Settings();
+	~Settings() override;
 	
 	/**
 	 * \brief Reset all settings to their initial state.

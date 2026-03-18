@@ -52,7 +52,7 @@ public:
 		IntrusivePtr<Settings> const& settings,
 		PageId const& page_id, bool batch, bool debug);
 	
-	virtual ~Task();
+	~Task() override;
 	
 	FilterResultPtr process(TaskStatus const& status, FilterData const& data);
 private:

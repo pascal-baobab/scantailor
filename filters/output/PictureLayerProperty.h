@@ -41,9 +41,9 @@ public:
 
 	static void registerIn(PropertyFactory& factory);
 
-	virtual IntrusivePtr<Property> clone() const;
+	IntrusivePtr<Property> clone() const override;
 
-	virtual QDomElement toXml(QDomDocument& doc, QString const& name) const;
+	QDomElement toXml(QDomDocument& doc, QString const& name) const override;
 
 	Layer layer() const { return m_layer; }
 

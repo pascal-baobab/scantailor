@@ -38,7 +38,7 @@ public:
 	ApplyDialog(QWidget* parent, PageId const& cur_page,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~ApplyDialog();
+	~ApplyDialog() override;
 signals:
 	void appliedTo(std::set<PageId> const& pages);
 	void appliedToAllPages(std::set<PageId> const& pages);

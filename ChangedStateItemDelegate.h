@@ -52,9 +52,9 @@ public:
 		m_changedMask = QStyle::State();
 	}
 	
-	virtual void paint(QPainter* painter,
+	void paint(QPainter* painter,
 			QStyleOptionViewItem const& option,
-			QModelIndex const& index) const {
+			QModelIndex const& index) const override {
 		
 		QStyle::State const orig_state = option.state;
 		

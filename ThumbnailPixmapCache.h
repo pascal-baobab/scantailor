@@ -65,7 +65,7 @@ public:
 	/**
 	 * \brief Destructor.  To be called from the GUI thread only.
 	 */
-	virtual ~ThumbnailPixmapCache();
+	~ThumbnailPixmapCache() override;
 	
 	void setThumbDir(QString const& thumb_dir);
 

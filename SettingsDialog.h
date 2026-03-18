@@ -28,7 +28,7 @@ class SettingsDialog : public QDialog
 public:
 	SettingsDialog(QWidget* parent = nullptr);
 	
-	virtual ~SettingsDialog();
+	~SettingsDialog() override;
 private slots:
 	void commitChanges();
 private:

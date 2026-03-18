@@ -46,7 +46,7 @@ public:
 		IntrusivePtr<Settings> const& settings,
 		IntrusivePtr<deskew::CacheDrivenTask> const& next_task);
 	
-	virtual ~CacheDrivenTask();
+	~CacheDrivenTask() override;
 	
 	void process(
 		PageInfo const& page_info, AbstractFilterDataCollector* collector,

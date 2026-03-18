@@ -59,7 +59,7 @@ public:
 		PageId const& page_id, OutputFileNameGenerator const& out_file_name_gen,
 		ImageViewTab last_tab, bool batch, bool debug);
 	
-	virtual ~Task();
+	~Task() override;
 	
 	FilterResultPtr process(
 		TaskStatus const& status, FilterData const& data,

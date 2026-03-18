@@ -30,7 +30,7 @@ class RelinkingListView : public QListView
 public:
 	RelinkingListView(QWidget* parent = nullptr);
 protected:
-	virtual void paintEvent(QPaintEvent* e);
+	void paintEvent(QPaintEvent* e) override;
 private:
 	class Delegate;
 	class IndicationGroup;

@@ -34,9 +34,9 @@ class PdfMetadataLoader : public ImageMetadataLoader
 public:
 	static void registerMyself();
 protected:
-	virtual Status loadMetadata(
+	Status loadMetadata(
 		QIODevice& io_device,
-		VirtualFunction1<void, ImageMetadata const&>& out);
+		VirtualFunction1<void, ImageMetadata const&>& out) override;
 };
 
 #endif // HAVE_POPPLER

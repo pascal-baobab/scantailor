@@ -36,7 +36,7 @@ public:
 		QImage const& image, QImage const& downscaled_image,
 		ImageTransformation const& xform);
 	
-	virtual ~ImageView();
+	~ImageView() override;
 public slots:
 	void setPreRotation(OrthogonalRotation rotation);
 private:

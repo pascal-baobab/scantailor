@@ -51,7 +51,7 @@ public:
 		IntrusivePtr<page_split::Task> const& next_task,
 		bool batch_processing);
 	
-	virtual ~Task();
+	~Task() override;
 	
 	FilterResultPtr process(TaskStatus const& status, FilterData const& data);
 private:

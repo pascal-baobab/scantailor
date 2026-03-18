@@ -63,7 +63,7 @@ public:
 		QRectF const& adapted_content_rect,
 		OptionsWidget const& opt_widget);
 	
-	virtual ~ImageView();
+	~ImageView() override;
 signals:
 	void invalidateThumbnail(PageId const& page_id);
 	
@@ -114,9 +114,9 @@ private:
 		QPointF focalPoint;
 	};
 	
-	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
+	void onPaint(QPainter& painter, InteractionState const& interaction) override;
 
-	virtual void onContextMenuEvent(QContextMenuEvent* event, InteractionState& interaction);
+	void onContextMenuEvent(QContextMenuEvent* event, InteractionState& interaction) override;
 
 	Proximity cornerProximity(int edge_mask, QRectF const* box, QPointF const& mouse_pos) const;
 

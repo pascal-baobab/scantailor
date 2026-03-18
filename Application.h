@@ -27,7 +27,7 @@ class Application : public QApplication
 public:
 	Application(int& argc, char** argv);
 
-	virtual bool notify(QObject* receiver, QEvent* e);
+	bool notify(QObject* receiver, QEvent* e) override;
 };
 
 #endif

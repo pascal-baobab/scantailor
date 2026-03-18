@@ -42,7 +42,7 @@ public:
 		IntrusivePtr<Settings> const& settings,
 		OutputFileNameGenerator const& out_file_name_gen);
 	
-	virtual ~CacheDrivenTask();
+	~CacheDrivenTask() override;
 	
 	void process(
 		PageInfo const& page_info, AbstractFilterDataCollector* collector,

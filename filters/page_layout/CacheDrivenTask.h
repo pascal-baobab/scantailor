@@ -45,7 +45,7 @@ public:
 	CacheDrivenTask(IntrusivePtr<output::CacheDrivenTask> const& next_task,
 		IntrusivePtr<Settings> const& settings);
 	
-	virtual ~CacheDrivenTask();
+	~CacheDrivenTask() override;
 	
 	void process(
 		PageInfo const& page_info, AbstractFilterDataCollector* collector,

@@ -40,11 +40,11 @@ public:
 
 	bool isActive() const;
 protected:
-	virtual void onMousePressEvent(QMouseEvent* event, InteractionState& interaction);
+	void onMousePressEvent(QMouseEvent* event, InteractionState& interaction) override;
 
-	virtual void onMouseReleaseEvent(QMouseEvent* event, InteractionState& interaction);
+	void onMouseReleaseEvent(QMouseEvent* event, InteractionState& interaction) override;
 
-	virtual void onMouseMoveEvent(QMouseEvent* event, InteractionState& interaction);
+	void onMouseMoveEvent(QMouseEvent* event, InteractionState& interaction) override;
 private:
 	void init();
 

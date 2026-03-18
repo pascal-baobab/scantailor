@@ -35,7 +35,7 @@ public:
 		ImagePixmapUnion const& downscaled_image = ImagePixmapUnion(),
 		Margins const& margins = Margins());
 	
-	virtual ~BasicImageView();
+	~BasicImageView() override;
 private:
 	DragHandler m_dragHandler;
 	ZoomHandler m_zoomHandler;

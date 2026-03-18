@@ -41,13 +41,13 @@ public:
 
 	void setProximityPriority(int priority) { m_proximityPriority = priority; }
 
-	virtual int proximityPriority() const;
+	int proximityPriority() const override;
 
-	virtual Proximity proximity(QPointF const& mouse_pos);
+	Proximity proximity(QPointF const& mouse_pos) override;
 
-	virtual void dragInitiated(QPointF const& mouse_pos);
+	void dragInitiated(QPointF const& mouse_pos) override;
 
-	virtual void dragContinuation(QPointF const& mouse_pos);
+	void dragContinuation(QPointF const& mouse_pos) override;
 
 	void setPositionCallback(PositionCallback const& callback) {
 		m_positionCallback = callback;

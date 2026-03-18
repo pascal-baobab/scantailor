@@ -45,9 +45,9 @@ public:
 	 */
 	void processingRestartedEffect();
 protected:
-	virtual void paintEvent(QPaintEvent* event);
+	void paintEvent(QPaintEvent* event) override;
 	
-	virtual void timerEvent(QTimerEvent* event);
+	void timerEvent(QTimerEvent* event) override;
 private:
 	QRect animationRect() const;
 	

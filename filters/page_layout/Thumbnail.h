@@ -40,10 +40,10 @@ public:
 		ImageTransformation const& xform, QPolygonF const& phys_content_rect,
 		bool deviant = false);
 
-	virtual void paintOverImage(
+	void paintOverImage(
 		QPainter& painter,
 		QTransform const& image_to_display,
-		QTransform const& thumb_to_display);
+		QTransform const& thumb_to_display) override;
 private:
 	Params m_params;
 	QRectF m_virtContentRect;

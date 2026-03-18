@@ -84,7 +84,7 @@ class MainWindow : public QMainWindow,
 public:
   MainWindow();
 
-  virtual ~MainWindow();
+  ~MainWindow() override;
 
   PageSequence allPages() const;
 
@@ -93,8 +93,8 @@ public:
   std::vector<PageRange> selectedRanges() const;
 
 protected:
-  virtual void closeEvent(QCloseEvent *event);
-  virtual void timerEvent(QTimerEvent *event);
+  void closeEvent(QCloseEvent *event) override;
+  void timerEvent(QTimerEvent *event) override;
 public slots:
   void openProject(QString const &project_file);
 
@@ -190,13 +190,13 @@ private:
 
   typedef IntrusivePtr<AbstractFilter> FilterPtr;
 
-  virtual void setOptionsWidget(FilterOptionsWidget *widget,
-                                Ownership ownership);
+  void setOptionsWidget(FilterOptionsWidget *widget,
+                        Ownership ownership) override;
 
-  virtual void setImageWidget(QWidget *widget, Ownership ownership,
-                              DebugImages *debug_images = nullptr);
+  void setImageWidget(QWidget *widget, Ownership ownership,
+                      DebugImages *debug_images = nullptr) override;
 
-  virtual IntrusivePtr<AbstractCommand0<void>> relinkingDialogRequester();
+  IntrusivePtr<AbstractCommand0<void>> relinkingDialogRequester() override;
 
   void switchToNewProject(IntrusivePtr<ProjectPages> const &pages,
                           QString const &out_dir,

@@ -52,7 +52,7 @@ public:
 		IntrusivePtr<ProjectPages> const& pages, ImageId const& image_id,
 		bool left_half_removed, bool right_half_removed);
 	
-	virtual ~ImageView();
+	~ImageView() override;
 signals:
 	void invalidateThumbnail(PageInfo const& page_info);
 
@@ -60,7 +60,7 @@ signals:
 public slots:
 	void pageLayoutSetExternally(PageLayout const& layout);
 protected:
-	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
+	void onPaint(QPainter& painter, InteractionState const& interaction) override;
 private:
 	void setupCuttersInteraction();
 

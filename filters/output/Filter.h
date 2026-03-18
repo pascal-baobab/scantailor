@@ -48,21 +48,21 @@ class Filter : public AbstractFilter
 public:
 	Filter(PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~Filter();
+	~Filter() override;
 	
-	virtual QString getName() const;
+	QString getName() const override;
 	
-	virtual PageView getView() const;
+	PageView getView() const override;
 	
-	virtual void performRelinking(AbstractRelinker const& relinker);
+	void performRelinking(AbstractRelinker const& relinker) override;
 
-	virtual void preUpdateUI(FilterUiInterface* ui, PageId const& page_id);
+	void preUpdateUI(FilterUiInterface* ui, PageId const& page_id) override;
 	
-	virtual QDomElement saveSettings(
-		ProjectWriter const& writer, QDomDocument& doc) const;
+	QDomElement saveSettings(
+		ProjectWriter const& writer, QDomDocument& doc) const override;
 	
-	virtual void loadSettings(
-		ProjectReader const& reader, QDomElement const& filters_el);
+	void loadSettings(
+		ProjectReader const& reader, QDomElement const& filters_el) override;
 	
 	IntrusivePtr<Task> createTask(
 		PageId const& page_id,

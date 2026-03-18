@@ -42,7 +42,7 @@ public:
 		QWidget* parent, Dpi const& dpi, PageId const& cur_page,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~ChangeDpiDialog();
+	~ChangeDpiDialog() override;
 signals:
 	void accepted(std::set<PageId> const& pages, Dpi const& dpi);
 private slots:

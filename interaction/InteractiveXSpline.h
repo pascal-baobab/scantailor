@@ -64,17 +64,17 @@ public:
 	bool curveIsProximityLeader(
 		InteractionState const& state, QPointF* pt = nullptr, double* t = nullptr) const;
 protected:
-	virtual void onProximityUpdate(
-		QPointF const& screen_mouse_pos, InteractionState& interaction);
+	void onProximityUpdate(
+		QPointF const& screen_mouse_pos, InteractionState& interaction) override;
 
-	virtual void onMouseMoveEvent(
-		QMouseEvent* event, InteractionState& interaction);
+	void onMouseMoveEvent(
+		QMouseEvent* event, InteractionState& interaction) override;
 
-	virtual void onMousePressEvent(
-		QMouseEvent* event, InteractionState& interaction);
+	void onMousePressEvent(
+		QMouseEvent* event, InteractionState& interaction) override;
 
-	virtual void onKeyPressEvent(
-		QKeyEvent* event, InteractionState& interaction);
+	void onKeyPressEvent(
+		QKeyEvent* event, InteractionState& interaction) override;
 private:
 	struct NoOp;
 	struct IdentTransform;

@@ -101,7 +101,7 @@ public:
 	 *
 	 * \return The size of the normal state image.
 	 */
-	virtual QSize sizeHint() const;
+	QSize sizeHint() const override;
 private:
 	void updateStyleSheet();
 	

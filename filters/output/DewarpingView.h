@@ -51,13 +51,13 @@ public:
 		dewarping::DistortionModel const& distortion_model,
 		DepthPerception const& depth_perception);
 	
-	virtual ~DewarpingView();
+	~DewarpingView() override;
 signals:
 	void distortionModelChanged(dewarping::DistortionModel const& model);
 public slots:
 	void depthPerceptionChanged(double val);	
 protected:
-	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
+	void onPaint(QPainter& painter, InteractionState const& interaction) override;
 private:
 	static void initNewSpline(XSpline& spline, QPointF const& p1, QPointF const& p2);
 

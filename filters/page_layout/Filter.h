@@ -58,29 +58,29 @@ public:
 	Filter(IntrusivePtr<ProjectPages> const& page_sequence,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~Filter();
+	~Filter() override;
 	
-	virtual QString getName() const;
+	QString getName() const override;
 	
-	virtual PageView getView() const;
+	PageView getView() const override;
 
-	virtual void selected();
+	void selected() override;
 
-	virtual int selectedPageOrder() const;
+	int selectedPageOrder() const override;
 
-	virtual void selectPageOrder(int option);
+	void selectPageOrder(int option) override;
 
-	virtual std::vector<PageOrderOption> pageOrderOptions() const;
+	std::vector<PageOrderOption> pageOrderOptions() const override;
 
-	virtual void performRelinking(AbstractRelinker const& relinker);
+	void performRelinking(AbstractRelinker const& relinker) override;
 
-	virtual void preUpdateUI(FilterUiInterface* ui, PageId const& page_id);
+	void preUpdateUI(FilterUiInterface* ui, PageId const& page_id) override;
 	
-	virtual QDomElement saveSettings(
-		ProjectWriter const& writer, QDomDocument& doc) const;
+	QDomElement saveSettings(
+		ProjectWriter const& writer, QDomDocument& doc) const override;
 	
-	virtual void loadSettings(
-		ProjectReader const& reader, QDomElement const& filters_el);
+	void loadSettings(
+		ProjectReader const& reader, QDomElement const& filters_el) override;
 	
 	void setContentBox(
 		PageId const& page_id, ImageTransformation const& xform,

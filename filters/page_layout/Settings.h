@@ -50,7 +50,7 @@ public:
 
 	Settings();
 	
-	virtual ~Settings();
+	~Settings() override;
 
 	/**
 	 * \brief Removes all stored data.

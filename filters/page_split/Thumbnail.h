@@ -42,10 +42,10 @@ public:
 		ImageTransformation const& xform, PageLayout const& layout,
 		bool left_half_removed, bool right_half_removed);
 	
-	virtual void paintOverImage(
+	void paintOverImage(
 		QPainter& painter,
 		QTransform const& image_to_display,
-		QTransform const& thumb_to_display);
+		QTransform const& thumb_to_display) override;
 private:
 	QPointF subPageCenter(
 		QPolygonF const& left_page, QPolygonF const& right_page,

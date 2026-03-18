@@ -36,7 +36,7 @@ signals:
 	
 	void openRecentProject(QString const& project_file);
 protected:
-	virtual void paintEvent(QPaintEvent* event);
+	void paintEvent(QPaintEvent* event) override;
 private:
 	void addRecentProject(QString const& file_path);
 };

@@ -39,7 +39,7 @@ signals:
 	/** \p type is either RelinkablePath::File or RelinkablePath::Dir */
 	void clicked(QString const& prefix_path, QString const& suffix_path, int type);
 protected:
-	virtual void paintEvent(QPaintEvent* evt);
+	void paintEvent(QPaintEvent* evt) override;
 private:
 	struct PathComponent;
 	class ComponentButton;

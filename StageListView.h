@@ -32,11 +32,11 @@ class StageListView : public QTableView
 public:
 	StageListView(QWidget* parent);
 	
-	virtual ~StageListView();
+	~StageListView() override;
 	
 	void setStages(IntrusivePtr<StageSequence> const& stages);
 	
-	virtual QSize sizeHint() const { return m_sizeHint; }
+	QSize sizeHint() const override { return m_sizeHint; }
 signals:
 	void launchBatchProcessing();
 public slots:
@@ -44,13 +44,13 @@ public slots:
 	
 	void setBatchProcessingInProgress(bool in_progress);
 protected slots:
-	virtual void selectionChanged(
+	void selectionChanged(
 		QItemSelection const& selected,
-		QItemSelection const& deselected);
+		QItemSelection const& deselected) override;
 private slots:
 	void ensureSelectedRowVisible();
 protected:
-	virtual void timerEvent(QTimerEvent* event);
+	void timerEvent(QTimerEvent* event) override;
 private:
 	class Model;
 	class LeftColDelegate;

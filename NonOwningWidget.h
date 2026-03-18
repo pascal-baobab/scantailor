@@ -30,7 +30,7 @@ class NonOwningWidget : public QWidget
 public:
 	NonOwningWidget(QWidget* parent = nullptr);
 
-	virtual ~NonOwningWidget();
+	~NonOwningWidget() override;
 };
 
 #endif

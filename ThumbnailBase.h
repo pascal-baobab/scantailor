@@ -41,12 +41,12 @@ public:
 		QSizeF const& max_size, ImageId const& image_id,
 		ImageTransformation const& image_xform);
 	
-	virtual ~ThumbnailBase();
+	~ThumbnailBase() override;
 	
-	virtual QRectF boundingRect() const;
+	QRectF boundingRect() const override;
 	
-	virtual void paint(QPainter* painter,
-		QStyleOptionGraphicsItem const* option, QWidget *widget);
+	void paint(QPainter* painter,
+		QStyleOptionGraphicsItem const* option, QWidget *widget) override;
 protected:
 	/**
 	 * \brief A hook to allow subclasses to draw over the thumbnail.

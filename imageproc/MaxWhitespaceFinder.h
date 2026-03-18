@@ -209,15 +209,15 @@ class PriorityStorageImpl : public PriorityStorage
 public:
 	PriorityStorageImpl(QualityCompare comp) : m_qualityLess(comp) {}
 	
-	virtual bool empty() const { return m_priorityQueue.empty(); }
-	
-	virtual size_t size() const { return m_priorityQueue.size(); }
-	
-	virtual Region& top() { return m_priorityQueue.front(); }
-	
-	virtual void push(Region& region);
-	
-	virtual void pop();
+	bool empty() const override { return m_priorityQueue.empty(); }
+
+	size_t size() const override { return m_priorityQueue.size(); }
+
+	Region& top() override { return m_priorityQueue.front(); }
+
+	void push(Region& region) override;
+
+	void pop() override;
 private:
 	class ProxyComparator
 	{

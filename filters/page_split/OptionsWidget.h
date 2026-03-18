@@ -78,7 +78,7 @@ public:
 		IntrusivePtr<ProjectPages> const& page_sequence,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~OptionsWidget();
+	~OptionsWidget() override;
 	
 	void preUpdateUI(PageId const& page_id);
 	

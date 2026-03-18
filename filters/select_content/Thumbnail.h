@@ -38,10 +38,10 @@ public:
 		ImageTransformation const& xform, QRectF const& content_rect,
 		bool deviant = false);
 
-	virtual void paintOverImage(
+	void paintOverImage(
 		QPainter& painter,
 		QTransform const& image_to_display,
-		QTransform const& thumb_to_display);
+		QTransform const& thumb_to_display) override;
 private:
 	QRectF m_contentRect;
 	bool m_deviant;

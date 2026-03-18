@@ -34,23 +34,23 @@ public:
 	class CancelledException : public std::exception
 	{
 	public:
-		virtual char const* what() const throw();
+		char const* what() const throw() override;
 	};
 	
 	BackgroundTask(Type type) : m_type(type) {}
 
 	Type type() const { return m_type; }
 
-	virtual void cancel() { m_cancelFlag.fetchAndStoreRelaxed(1); }
+	void cancel() override { m_cancelFlag.fetchAndStoreRelaxed(1); }
 	
-	virtual bool isCancelled() const {
+	bool isCancelled() const override {
 		return m_cancelFlag.fetchAndAddRelaxed(0) != 0;
 	}
 	
 	/**
 	 * \brief If cancelled, throws CancelledException.
 	 */
-	virtual void throwIfCancelled() const;
+	void throwIfCancelled() const override;
 private:
 	mutable QAtomicInt m_cancelFlag;
 	Type const m_type;

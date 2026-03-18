@@ -40,9 +40,9 @@ public:
 
 	bool haveSignificantDrag() const;
 protected:
-	virtual void onMousePressEvent(QMouseEvent* event, InteractionState& interaction);
+	void onMousePressEvent(QMouseEvent* event, InteractionState& interaction) override;
 
-	virtual void onMouseMoveEvent(QMouseEvent* event, InteractionState& interaction);
+	void onMouseMoveEvent(QMouseEvent* event, InteractionState& interaction) override;
 private:
 	void updateState(QPoint mouse_pos);
 

@@ -96,17 +96,17 @@ class SentinelSplineVertex : public SplineVertex
 public:
 	SentinelSplineVertex();
 
-	virtual ~SentinelSplineVertex();
+	~SentinelSplineVertex() override;
 
-	virtual SplineVertex::Ptr thisOrPrevReal(Loop loop);
+	SplineVertex::Ptr thisOrPrevReal(Loop loop) override;
 
-	virtual SplineVertex::Ptr thisOrNextReal(Loop loop);
+	SplineVertex::Ptr thisOrNextReal(Loop loop) override;
 
-	virtual QPointF const point() const;
+	QPointF const point() const override;
 
-	virtual void setPoint(QPointF const& pt);
+	void setPoint(QPointF const& pt) override;
 
-	virtual void remove();
+	void remove() override;
 
 	SplineVertex::Ptr firstVertex() const;
 
@@ -126,17 +126,17 @@ class RealSplineVertex : public SplineVertex
 public:
 	RealSplineVertex(QPointF const& pt, SplineVertex* prev, SplineVertex* next);
 
-	virtual void ref() const;
+	void ref() const override;
 
-	virtual void unref() const;
+	void unref() const override;
 
-	virtual SplineVertex::Ptr thisOrPrevReal(Loop loop);
+	SplineVertex::Ptr thisOrPrevReal(Loop loop) override;
 
-	virtual SplineVertex::Ptr thisOrNextReal(Loop loop);
+	SplineVertex::Ptr thisOrNextReal(Loop loop) override;
 
-	virtual QPointF const point() const;
+	QPointF const point() const override;
 
-	virtual void setPoint(QPointF const& pt);
+	void setPoint(QPointF const& pt) override;
 private:
 	QPointF m_point;
 	mutable int m_refCounter;

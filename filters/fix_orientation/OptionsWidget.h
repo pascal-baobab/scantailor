@@ -39,7 +39,7 @@ public:
 	OptionsWidget(IntrusivePtr<Settings> const& settings,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~OptionsWidget();
+	~OptionsWidget() override;
 	
 	void preUpdateUI(PageId const& page_id, OrthogonalRotation rotation);
 	

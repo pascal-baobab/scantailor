@@ -56,7 +56,7 @@ public:
 		PageInfo const& page_info,
 		bool batch_processing, bool debug);
 	
-	virtual ~Task();
+	~Task() override;
 	
 	FilterResultPtr process(TaskStatus const& status, FilterData const& data);
 private:

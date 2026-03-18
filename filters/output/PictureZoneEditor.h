@@ -58,11 +58,11 @@ public:
 		QTransform const& image_to_virt, QPolygonF const& virt_display_area,
 		PageId const& page_id, IntrusivePtr<Settings> const& settings);
 	
-	virtual ~PictureZoneEditor();
+	~PictureZoneEditor() override;
 signals:
 	void invalidateThumbnail(PageId const& page_id);
 protected:
-	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
+	void onPaint(QPainter& painter, InteractionState const& interaction) override;
 private slots:
 	void advancePictureMaskAnimation();
 

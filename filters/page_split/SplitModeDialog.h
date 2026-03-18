@@ -44,7 +44,7 @@ public:
 		LayoutType layout_type, PageLayout::Type auto_detected_layout_type,
 		bool auto_detected_layout_type_valid);
 	
-	virtual ~SplitModeDialog();
+	~SplitModeDialog() override;
 signals:
 	void accepted(std::set<PageId> const& pages,
 		bool all_pages, LayoutType layout_type);

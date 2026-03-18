@@ -54,7 +54,7 @@ public:
 		QRectF const& content_rect,
 		QRectF const& page_rect = QRectF());
 
-	virtual ~ImageView();
+	~ImageView() override;
 signals:
 	void manualContentRectSet(QRectF const& content_rect);
 
@@ -70,7 +70,7 @@ private slots:
 private:
 	enum Edge { LEFT = 1, RIGHT = 2, TOP = 4, BOTTOM = 8 };
 
-	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
+	void onPaint(QPainter& painter, InteractionState const& interaction) override;
 
 	void onMouseDoubleClickEvent(QMouseEvent* event, InteractionState& interaction);
 

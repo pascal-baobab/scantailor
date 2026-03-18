@@ -198,10 +198,10 @@ public:
 	/**
 	 * \see rasterOp()
 	 */
-	virtual void operator()(
+	void operator()(
 		BinaryImage& dst, QRect const& dr,
-		BinaryImage const& src, QPoint const& sp) const {
-		
+		BinaryImage const& src, QPoint const& sp) const override {
+
 		rasterOp<Rop>(dst, dr, src, sp);
 	}
 };

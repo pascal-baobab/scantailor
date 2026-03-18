@@ -43,11 +43,11 @@ public:
 		m_clickCallback = callback;
 	}
 protected:
-	virtual void onPaint(QPainter& painter, InteractionState const& interaction);
+	void onPaint(QPainter& painter, InteractionState const& interaction) override;
 
-	virtual void onProximityUpdate(QPointF const& screen_mouse_pos, InteractionState& interaction);
+	void onProximityUpdate(QPointF const& screen_mouse_pos, InteractionState& interaction) override;
 
-	virtual void onMousePressEvent(QMouseEvent* event, InteractionState& interaction);
+	void onMousePressEvent(QMouseEvent* event, InteractionState& interaction) override;
 private:
 	static void noOp() {}
 

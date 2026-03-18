@@ -38,7 +38,7 @@ public:
 		IntrusivePtr<ThumbnailPixmapCache> const& pixmap_cache,
 		QSizeF const& max_size, IntrusivePtr<CompositeCacheDrivenTask> const& task);
 	
-	virtual ~ThumbnailFactory();
+	~ThumbnailFactory() override;
 	
 	std::auto_ptr<QGraphicsItem> get(PageInfo const& page_info);
 private:

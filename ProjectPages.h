@@ -60,7 +60,7 @@ public:
 	ProjectPages(std::vector<ImageFileInfo> const& files,
 		Pages pages, Qt::LayoutDirection layout_direction);
 	
-	virtual ~ProjectPages();
+	~ProjectPages() override;
 	
 	Qt::LayoutDirection layoutDirection() const;
 	

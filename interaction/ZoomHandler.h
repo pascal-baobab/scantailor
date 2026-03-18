@@ -42,8 +42,8 @@ public:
 
 	void setFocus(Focus focus) { m_focus = focus; }
 protected:
-	virtual void onWheelEvent(QWheelEvent* event, InteractionState& interaction);
-	virtual void onKeyPressEvent(QKeyEvent* event, InteractionState& interaction);
+	void onWheelEvent(QWheelEvent* event, InteractionState& interaction) override;
+	void onKeyPressEvent(QKeyEvent* event, InteractionState& interaction) override;
 private:
 	ImageViewBase& m_rImageView;
 	std::function<bool(InteractionState const&)> m_interactionPermitter;

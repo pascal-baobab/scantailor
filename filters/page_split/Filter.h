@@ -59,21 +59,21 @@ public:
 	Filter(IntrusivePtr<ProjectPages> const& page_sequence,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~Filter();
+	~Filter() override;
 	
-	virtual QString getName() const;
+	QString getName() const override;
 	
-	virtual PageView getView() const;
+	PageView getView() const override;
 
-	virtual void performRelinking(AbstractRelinker const& relinker);
+	void performRelinking(AbstractRelinker const& relinker) override;
 	
-	virtual void preUpdateUI(FilterUiInterface* ui, PageId const& page_id);
+	void preUpdateUI(FilterUiInterface* ui, PageId const& page_id) override;
 	
-	virtual QDomElement saveSettings(
-		ProjectWriter const& wirter, QDomDocument& doc) const;
+	QDomElement saveSettings(
+		ProjectWriter const& wirter, QDomDocument& doc) const override;
 	
-	virtual void loadSettings(
-		ProjectReader const& reader, QDomElement const& filters_el);
+	void loadSettings(
+		ProjectReader const& reader, QDomElement const& filters_el) override;
 	
 	IntrusivePtr<Task> createTask(PageInfo const& page_info,
 		IntrusivePtr<deskew::Task> const& next_task,
@@ -89,9 +89,9 @@ public:
 
 	Settings* getSettings() { return m_ptrSettings.get(); };
 	
-	virtual std::vector<PageOrderOption> pageOrderOptions() const;
-	virtual int selectedPageOrder() const;
-	virtual void selectPageOrder(int option);
+	std::vector<PageOrderOption> pageOrderOptions() const override;
+	int selectedPageOrder() const override;
+	void selectPageOrder(int option) override;
 private:
 	void writeImageSettings(
 		QDomDocument& doc, QDomElement& filter_el,

@@ -45,9 +45,9 @@ public:
 		IntrusivePtr<ProjectPages> const& pages,
 		IntrusivePtr<fix_orientation::Task> const& next_task);
 	
-	virtual ~LoadFileTask();
+	~LoadFileTask() override;
 	
-	virtual FilterResultPtr operator()();
+	FilterResultPtr operator()() override;
 private:
 	class ErrorResult;
 	

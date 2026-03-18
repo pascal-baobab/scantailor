@@ -42,7 +42,7 @@ public:
 		QWidget* parent, PageId const& cur_page, DewarpingMode const& mode,
 		PageSelectionAccessor const& page_selection_accessor);
 	
-	virtual ~ChangeDewarpingDialog();
+	~ChangeDewarpingDialog() override;
 signals:
 	void accepted(std::set<PageId> const& pages, DewarpingMode const& mode);
 private slots:

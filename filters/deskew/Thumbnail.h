@@ -37,10 +37,10 @@ public:
 		QSizeF const& max_size, ImageId const& image_id,
 		ImageTransformation const& xform, bool deviant = false);
 
-	virtual void paintOverImage(
+	void paintOverImage(
 		QPainter& painter,
 		QTransform const& image_to_display,
-		QTransform const& thumb_to_display);
+		QTransform const& thumb_to_display) override;
 private:
 	bool m_deviant;
 };

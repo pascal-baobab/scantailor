@@ -39,7 +39,7 @@ class Settings : public RefCountable
 public:
 	Settings();
 	
-	virtual ~Settings();
+	~Settings() override;
 	
 	void clear();
 	

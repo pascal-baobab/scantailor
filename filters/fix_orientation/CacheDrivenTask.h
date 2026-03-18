@@ -44,10 +44,10 @@ public:
 		IntrusivePtr<Settings> const& settings,
 		IntrusivePtr<page_split::CacheDrivenTask> const& next_task);
 	
-	virtual ~CacheDrivenTask();
+	~CacheDrivenTask() override;
 	
-	virtual void process(
-		PageInfo const& page_info, AbstractFilterDataCollector* collector);
+	void process(
+		PageInfo const& page_info, AbstractFilterDataCollector* collector) override;
 private:
 	IntrusivePtr<page_split::CacheDrivenTask> m_ptrNextTask;
 	IntrusivePtr<Settings> m_ptrSettings;

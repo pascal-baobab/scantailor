@@ -57,7 +57,7 @@ public:
 		IntrusivePtr<select_content::Task> const& next_task,
 		PageId const& page_id, bool batch_processing, bool debug);
 	
-	virtual ~Task();
+	~Task() override;
 	
 	FilterResultPtr process(
 		TaskStatus const& status, FilterData const& data);

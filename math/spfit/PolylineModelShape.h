@@ -43,8 +43,8 @@ public:
 
 	PolylineModelShape(std::vector<QPointF> const& polyline);
 
-	virtual SqDistApproximant localSqDistApproximant(
-		QPointF const& pt, FittableSpline::SampleFlags sample_flags) const;
+	SqDistApproximant localSqDistApproximant(
+		QPointF const& pt, FittableSpline::SampleFlags sample_flags) const override;
 protected:
 	virtual SqDistApproximant calcApproximant(
 		QPointF const& pt, FittableSpline::SampleFlags sample_flags,
