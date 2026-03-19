@@ -1,0 +1,73 @@
+============================================================
+ISTRUZIONI PER ADMIN DI SISTEMA - Sblocco Telegram Bot API
+============================================================
+
+RICHIESTA:
+Serve sbloccare l'accesso alle API di Telegram Bot
+(api.telegram.org) per un bot di notifiche automatiche
+usato nell'ambiente di sviluppo.
+
+PROBLEMA ATTUALE:
+Il firewall MizarFW (192.168.110.1) esegue Deep Packet
+Inspection (DPI) e blocca le connessioni TLS che hanno
+SNI (Server Name Indication) contenente "api.telegram.org".
+
+- TCP connect funziona (SYN/ACK OK in 32ms)
+- TLS handshake con SNI "api.telegram.org" -> TIMEOUT
+- TLS handshake senza SNI -> OK
+- ICMP ping -> OK
+
+COSA SBLOCCARE:
+
+  Dominio:  api.telegram.org
+  Porte:    443 (HTTPS)
+  Protocollo: TCP/TLS
+
+  IP Telegram Bot API (datacenter europeo):
+    149.154.167.220  (DC2 - Amsterdam)
+    149.154.167.198  (DC1)
+
+  Range completo Telegram:
+    149.154.160.0/20
+    91.108.4.0/22
+    91.108.8.0/22
+    91.108.12.0/22
+    91.108.16.0/22
+    91.108.20.0/22
+    91.108.56.0/22
+
+  Cloudflare (CDN usato da Telegram):
+    104.21.38.173
+    172.67.137.13
+
+TIPO DI REGOLA RICHIESTA:
+
+  Opzione A (piu' semplice):
+    Permettere traffico HTTPS (porta 443) verso
+    149.154.160.0/20 (range Telegram)
+
+  Opzione B (piu' specifica):
+    Aggiungere eccezione DPI/SSL inspection per il
+    dominio api.telegram.org (non bloccare SNI)
+
+  Opzione C (whitelist SNI):
+    Nella configurazione DPI del firewall, aggiungere
+    "api.telegram.org" alla lista SNI consentiti
+
+NOTA: Il traffico e' solo API Bot (JSON over HTTPS),
+non traffico utente Telegram. Volume minimo (~1KB per
+richiesta, poche decine al giorno).
+
+VERIFICA DOPO LO SBLOCCO:
+Da un terminale sulla workstation, eseguire:
+
+  curl -s https://api.telegram.org/bot<TOKEN>/getMe
+
+Deve restituire un JSON con "ok": true.
+
+============================================================
+ALTERNATIVA (se lo sblocco non e' possibile):
+Il software include gia' un workaround DPI bypass che
+connette direttamente all'IP senza SNI. Funziona anche
+senza modifiche al firewall.
+============================================================
