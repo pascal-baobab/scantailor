@@ -1,0 +1,290 @@
+/* Device frame base styles */
+.device-frame {
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.device-frame:hover {
+  filter: brightness(1.02);
+}
+
+/* Chassis - metallic outer shell */
+.device-chassis {
+  position: relative;
+  border-radius: inherit;
+  padding: 12px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 50%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* iPhone SE specific - thicker bezels, home button area */
+.device-chassis--se {
+  padding: 60px 16px;
+}
+
+.device-home-button {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.08),
+    inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.device-home-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+}
+
+/* iPhone SE top speaker/camera */
+.device-top-speaker {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: #111;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Screen area */
+.device-screen {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  z-index: 1;
+}
+
+/* Glass reflection overlay */
+.device-screen::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Side buttons - power/volume */
+.device-button {
+  position: absolute;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.03)
+  );
+  border-radius: 2px;
+  z-index: 10;
+}
+
+.device-button--power {
+  right: -3px;
+  top: 120px;
+  width: 3px;
+  height: 48px;
+}
+
+.device-button--volume-up {
+  left: -3px;
+  top: 100px;
+  width: 3px;
+  height: 32px;
+}
+
+.device-button--volume-down {
+  left: -3px;
+  top: 140px;
+  width: 3px;
+  height: 32px;
+}
+
+.device-button--silent {
+  left: -3px;
+  top: 72px;
+  width: 3px;
+  height: 18px;
+}
+
+/* Notch (iPhone 14 style) */
+.device-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 34px;
+  background: #000;
+  border-radius: 0 0 20px 20px;
+  z-index: 50;
+}
+
+.device-notch::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 5px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.device-notch::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 28px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0d0d0d;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Dynamic Island (iPhone 14 Pro+) */
+.device-dynamic-island {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: #000;
+  border-radius: 24px;
+  z-index: 50;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Punch-hole camera (Samsung) */
+.device-punch-hole {
+  position: absolute;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  z-index: 50;
+  box-shadow:
+    0 0 0 2px #111,
+    inset 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.device-punch-hole--center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.device-punch-hole--left {
+  left: 24px;
+}
+
+/* Android navigation bar */
+.device-nav-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.device-nav-bar--buttons {
+  padding: 8px 0;
+}
+
+.device-nav-button {
+  width: 18px;
+  height: 18px;
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #fff;
+}
+
+/* Gesture bar (Android 13+) */
+.device-gesture-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 50;
+}
+
+/* iOS Home indicator */
+.device-home-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 50;
+}
+
+/* Loading shimmer */
+.device-loading {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    #1a1a1a 0%,
+    #2a2a2a 50%,
+    #1a1a1a 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  z-index: 10;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
