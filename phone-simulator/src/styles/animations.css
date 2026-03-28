@@ -1,0 +1,88 @@
+/* Device rotation animation */
+.device-rotating {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.device-landscape {
+  transform: rotate(90deg);
+}
+
+/* Device switching morphing */
+.device-transitioning {
+  transition:
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover glow effect on device frame */
+.device-frame-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(88, 166, 255, 0.2),
+    0 0 20px rgba(88, 166, 255, 0.1),
+    0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Button press feedback */
+.btn-feedback:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+/* Fade in animation */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Slide in from left */
+.slide-in-left {
+  animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Panel expand */
+.panel-expand {
+  animation: panelExpand 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes panelExpand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 400px; opacity: 1; }
+}
+
+/* Pulse for network indicator */
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    var(--bg-secondary) 50%,
+    var(--bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
